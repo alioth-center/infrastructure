@@ -99,7 +99,7 @@ func (s *BaseDatabaseImplement) exec(command func(tx *gorm.DB) *gorm.DB, ctx ...
 	sqlCommand := s.Db.ToSQL(command)
 	s.Logger.Debug(logger.NewFields(trace).WithMessage("sql executed").WithData(sqlCommand))
 
-	if err := command(db).Error; err != nil {
+	if err := db.Transaction(func(tx *gorm.DB) error { return command(tx).Error }); err != nil {
 		err = fmt.Errorf("sql execution failed: %w", err)
 		s.Logger.Error(logger.NewFields(trace).WithMessage(err.Error()).WithData(sqlCommand))
 		return err

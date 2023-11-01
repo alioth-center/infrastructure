@@ -10,11 +10,11 @@ func TestMysqlDb(t *testing.T) {
 	// you must create a database named "test" and a table named "test_table" in your mysql server,
 	// or you can change the config to your own database, but you must change the table name in the test code.
 	cfg := Config{
-		Server:    "192.168.1.140",
+		Server:    "localhost",
 		Port:      3306,
-		Username:  "public",
+		Username:  "root",
 		Password:  "123456",
-		Database:  "payment",
+		Database:  "test_db",
 		Charset:   "utf8mb4",
 		Location:  "Local",
 		ParseTime: true,
@@ -27,7 +27,7 @@ func TestMysqlDb(t *testing.T) {
 
 	ctx := trace.NewContextWithTraceID()
 	result := []map[string]any{}
-	qe := mysql.QueryRawWithCtx(ctx, &result, "select * from payment.merchant_data limit 10")
+	qe := mysql.QueryRawWithCtx(ctx, &result, "select * from test_db.test_table limit 10")
 	if qe != nil {
 		t.Fatal(qe)
 	}
