@@ -1,6 +1,7 @@
-package text
+package utils
 
 import (
+	"github.com/google/uuid"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -142,4 +143,9 @@ func GenerateRandomSixDigitNumberCodeWithPrefix(prefix string) string {
 // 示例输出： prefix0001, prefix0002, prefix0003...
 func GenerateRandomFourDigitNumberCodeWithPrefix(prefix string) string {
 	return prefix + GenerateRandomFourDigitNumberCode()
+}
+
+// GenerateUUID 生成UUID
+func GenerateUUID() string {
+	return uuid.NewString()
 }

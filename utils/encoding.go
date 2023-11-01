@@ -1,8 +1,9 @@
-package text
+package utils
 
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -60,4 +61,14 @@ func DecryptMessageWithAES(encrypted string, secret string) (decrypted string, e
 
 		return fmt.Sprintf("%s", encryptedBytes), nil
 	}
+}
+
+// HashMD5 使用 MD5 算法计算消息的哈希值
+func HashMD5(message string) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(message)))
+}
+
+// HashEntryMD5 使用 MD5 算法计算结构体的哈希值
+func HashEntryMD5[T any](entry T) string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%#v", entry))))
 }

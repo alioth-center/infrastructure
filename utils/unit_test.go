@@ -1,4 +1,4 @@
-package text
+package utils
 
 import (
 	"math/rand"
@@ -87,4 +87,28 @@ func TestRandom(t *testing.T) {
 		t.Error("random base64 with prefix not match")
 	}
 	t.Log("random base64 with prefix:", base64WithPrefix)
+}
+
+type entry struct {
+	Name string
+	Age  int
+}
+
+func TestHashMD5(t *testing.T) {
+	t.Run("HashMD5", func(t *testing.T) {
+		for i := 0; i < 10; i++ {
+			t.Log("hash md5:", HashMD5("i love u"))
+		}
+	})
+
+	t.Run("HashEntryMD5", func(t *testing.T) {
+		entry := &entry{
+			Name: "alice",
+			Age:  114,
+		}
+
+		for i := 0; i < 10; i++ {
+			t.Log("hash md5:", HashEntryMD5(entry))
+		}
+	})
 }
