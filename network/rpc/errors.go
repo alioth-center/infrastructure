@@ -33,3 +33,39 @@ func (e InvalidIPAddressError) Error() string {
 func NewInvalidIPAddressError(ipAddress string) InvalidIPAddressError {
 	return InvalidIPAddressError{IPAddress: ipAddress}
 }
+
+type ServerAlreadyServingError struct {
+	Address string
+}
+
+func (e ServerAlreadyServingError) Error() string {
+	return "rpc server is already serving at " + e.Address
+}
+
+func NewServerAlreadyServingError(address string) ServerAlreadyServingError {
+	return ServerAlreadyServingError{Address: address}
+}
+
+type CheckRequestFailedError struct {
+	Reason string
+}
+
+func (e CheckRequestFailedError) Error() string {
+	return "check request failed: " + e.Reason
+}
+
+func NewCheckRequestFailedError(reason string) CheckRequestFailedError {
+	return CheckRequestFailedError{Reason: reason}
+}
+
+type CheckResponseFailedError struct {
+	Reason string
+}
+
+func (e CheckResponseFailedError) Error() string {
+	return "check response failed: " + e.Reason
+}
+
+func NewCheckResponseFailedError(reason string) CheckResponseFailedError {
+	return CheckResponseFailedError{Reason: reason}
+}

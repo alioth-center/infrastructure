@@ -5,7 +5,6 @@ import (
 	"github.com/alioth-center/infrastructure/trace"
 	"google.golang.org/grpc/peer"
 	"net"
-	"strings"
 	"time"
 )
 
@@ -233,6 +232,18 @@ func (c *Context[request, response]) SetContext(ctx context.Context) {
 	c.ctx = tracedCtx
 }
 
+func (c *Context[request, response]) Error() error {
+	return c.e
+}
+
+func (c *Context[request, response]) SetError(err error) {
+	c.e = err
+}
+
+func (c *Context[request, response]) SetResult(resp response, err error) {
+	c.resp, c.e = resp, err
+}
+
 func (c *Context[request, response]) TraceID() string {
 	traceID, _ := trace.GetTraceID(c.ctx)
 	return traceID
@@ -248,21 +259,13 @@ func (c *Context[request, response]) GetContextClientIP(ctx context.Context) (ip
 	} else if pr.Addr.Network() != "tcp" {
 		// 如果获取到的不是tcp协议，则返回错误
 		return "", NewUnsupportedNetworkError(pr.Addr.Network())
-	} else if ipSlice := strings.Split(pr.Addr.String(), ":"); len(ipSlice) != 2 {
-		// 如果获取到的不是ip:port(ipv4)格式，则返回错误
+	} else if ip, _, err = net.SplitHostPort(pr.Addr.String()); err != nil {
+		// 如果解析失败，则返回错误
 		return "", NewInvalidIPAddressError(pr.Addr.String())
 	} else {
-		// 如果获取到的是ip:port(ipv4)格式，则返回ip
-		return ipSlice[0], nil
+		// 如果解析成功，则返回IP
+		return ip, nil
 	}
-}
-
-func (c *Context[request, response]) Error() error {
-	return c.e
-}
-
-func (c *Context[request, response]) SetError(err error) {
-	c.e = err
 }
 
 func (c *Context[request, response]) Deadline() (deadline time.Time, ok bool) {
@@ -281,8 +284,7 @@ func (c *Context[request, response]) Value(key any) any {
 	return c.ctx.Value(key)
 }
 
-func NewContext[request any, response any](ctx context.Context, req request) *Context[request, response] {
-	var defaultResp response
+func NewContext[request any, response any](ctx context.Context, req request, resp response) *Context[request, response] {
 	_, tracedCtx := trace.GetTraceID(ctx)
 	return &Context[request, response]{
 		idx:  -1,
@@ -290,6 +292,6 @@ func NewContext[request any, response any](ctx context.Context, req request) *Co
 		mps:  map[string]any{},
 		h:    NewChain[request, response](),
 		req:  req,
-		resp: defaultResp,
+		resp: resp,
 	}
 }
