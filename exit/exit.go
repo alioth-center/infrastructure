@@ -1,10 +1,15 @@
 package exit
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+)
+
+var (
+	exc = make(chan struct{}, 1)
 )
 
 func init() {
@@ -26,16 +31,25 @@ func handleNotify(sg chan os.Signal) {
 		signalString = "SIG"
 	}
 
-	wg := sync.WaitGroup{}
-	for _, fn := range exitEvents {
-		if fn != nil {
+	fmt.Printf("\n")
+	wg := &sync.WaitGroup{}
+	for i, fn := range exitEvents {
+		if fn.handler != nil {
 			wg.Add(1)
-			go func(f EventHandler) {
-				fn(signalString)
-				wg.Done()
-			}(fn)
+			go func(i int, fn eventList) {
+				defer wg.Done()
+				fmt.Printf("executing %d/%d exit function %s with message: %s\n", i+1, len(exitEvents), fn.name, fn.handler(signalString))
+			}(i, fn)
 		}
 	}
 
 	wg.Wait()
+	exc <- struct{}{}
+}
+
+func BlockedUntilTerminate() {
+	select {
+	case <-exc:
+		return
+	}
 }
