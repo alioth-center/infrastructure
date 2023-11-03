@@ -2,7 +2,6 @@ package exit
 
 import (
 	"fmt"
-	"github.com/alioth-center/infrastructure/trace"
 )
 
 type EventHandler func(sig string) string
@@ -20,7 +19,6 @@ var (
 func Register(fn EventHandler, name string) {
 	if fn != nil {
 		fmt.Println("register exit event", name)
-		fmt.Println(string(trace.Stack(2)))
 		exitEvents = append(exitEvents, eventList{
 			name:    name,
 			handler: fn,
