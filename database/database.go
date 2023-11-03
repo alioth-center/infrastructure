@@ -23,6 +23,7 @@ type Database interface {
 	Count(table string, query string, args ...any) (count int64, err error)
 	GetOne(receiver any, query string, args ...any) error
 	GetAll(receiver any, query string, args ...any) error
+	GetPage(receiver any, offset, limit int, query string, args ...any) error
 	PickOne(receiver any, query string, args ...any) error
 	PickAll(receiver any, length int, query string, args ...any) error
 	InsertOne(data any) error

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"fmt"
 	"github.com/alioth-center/infrastructure/database"
+	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -45,6 +46,12 @@ func (s *sqliteDb) Init(options database.Options) error {
 	// 连接成功
 	s.Db = db
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open sqliteDb database").WithData(dataSource))
+
+	exit.Register(func(_ string) string {
+		_ = sqlDb.Close()
+		return "closed sqliteDb database"
+	}, "sqlite database")
+
 	return nil
 }
 

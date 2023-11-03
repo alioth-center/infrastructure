@@ -81,19 +81,19 @@ func (s *BaseDatabaseImplement) exec(command func(tx *gorm.DB) *gorm.DB, ctx ...
 	var db *gorm.DB
 	var trace context.Context
 	if len(ctx) != 1 {
-		db = s.Db
+		db = s.Db.Session(&gorm.Session{})
 		trace = nil
 	} else if ctx[0] == nil {
-		db = s.Db
+		db = s.Db.Session(&gorm.Session{})
 		trace = nil
 	} else if s.Timeout > 0 {
 		timeout, cancel := context.WithTimeout(ctx[0], s.Timeout)
 		trace = timeout
 		defer cancel()
-		db = s.Db.WithContext(trace)
+		db = s.Db.Session(&gorm.Session{}).WithContext(trace)
 	} else {
 		trace = ctx[0]
-		db = s.Db.WithContext(trace)
+		db = s.Db.Session(&gorm.Session{}).WithContext(trace)
 	}
 
 	sqlCommand := s.Db.ToSQL(command)
@@ -132,6 +132,12 @@ func (s *BaseDatabaseImplement) GetOne(receiver any, query string, args ...any) 
 func (s *BaseDatabaseImplement) GetAll(receiver any, query string, args ...any) error {
 	return s.exec(func(tx *gorm.DB) *gorm.DB {
 		return tx.Find(receiver, append([]any{query}, args...)...)
+	})
+}
+
+func (s *BaseDatabaseImplement) GetPage(receiver any, offset, limit int, query string, args ...any) error {
+	return s.exec(func(tx *gorm.DB) *gorm.DB {
+		return tx.Offset(offset*limit).Limit(limit).Find(receiver, append([]any{query}, args...)...)
 	})
 }
 
