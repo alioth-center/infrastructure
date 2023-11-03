@@ -1,6 +1,9 @@
 package logger
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/alioth-center/infrastructure/exit"
+)
 
 var (
 	defaultLogger *logger = nil
@@ -179,6 +182,15 @@ func Default() Logger {
 
 func NewLoggerWithOptions(options Options) Logger {
 	var l = &logger{}
+	exit.Register(func(_ string) string {
+		options.StderrWriter.Close()
+		options.StdoutWriter.Close()
+		return "logger stopped"
+	}, "logger")
 	l.init(options)
 	return l
+}
+
+func NewLoggerWithConfig(cfg Config) Logger {
+	return NewLoggerWithOptions(convertConfigToOptions(cfg))
 }

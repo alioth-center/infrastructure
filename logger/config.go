@@ -7,8 +7,8 @@ import (
 type Config struct {
 	Level          string `yaml:"level,omitempty" json:"level,omitempty" xml:"level,omitempty"`
 	Formatter      string `yaml:"formatter,omitempty" json:"formatter,omitempty" xml:"formatter,omitempty"`
-	StdoutFilePath string `yaml:"stdout_path,omitempty" json:"stdoutFilePath,omitempty" xml:"stdoutFilePath,omitempty"`
-	StderrFilePath string `yaml:"stderr_path,omitempty" json:"stderrFilePath,omitempty" xml:"stderrFilePath,omitempty"`
+	StdoutFilePath string `yaml:"stdout_file_path,omitempty" json:"stdout_file_path,omitempty" xml:"stdout_file_path,omitempty"`
+	StderrFilePath string `yaml:"stderr_file_path,omitempty" json:"stderr_file_path,omitempty" xml:"stderr_file_path,omitempty"`
 }
 
 func convertConfigToOptions(cfg Config) (opt Options) {
