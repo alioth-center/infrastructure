@@ -3,6 +3,7 @@ package mysql
 import (
 	"fmt"
 	"github.com/alioth-center/infrastructure/database"
+	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -35,6 +36,12 @@ func (s *mysqlDb) Init(options database.Options) error {
 	// 连接成功
 	s.Db = db
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open mysqlDb database").WithData(dataSource))
+
+	// 注册退出事件
+	exit.Register(func(_ string) string {
+		_ = sqlDb.Close()
+		return "closed mysql database"
+	}, "mysql database")
 	return nil
 }
 

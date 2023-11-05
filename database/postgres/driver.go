@@ -3,6 +3,7 @@ package postgres
 import (
 	"fmt"
 	"github.com/alioth-center/infrastructure/database"
+	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -35,6 +36,12 @@ func (s *postgresDb) Init(options database.Options) error {
 	// 连接成功
 	s.Db = db
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open postgresDb database").WithData(dataSource))
+
+	// 注册退出事件
+	exit.Register(func(_ string) string {
+		_ = sqlDb.Close()
+		return "closed postgres database"
+	}, "postgres database")
 	return nil
 }
 

@@ -47,11 +47,11 @@ func (s *sqliteDb) Init(options database.Options) error {
 	s.Db = db
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open sqliteDb database").WithData(dataSource))
 
+	// 注册退出事件
 	exit.Register(func(_ string) string {
 		_ = sqlDb.Close()
-		return "closed sqliteDb database"
+		return "closed sqlite database"
 	}, "sqlite database")
-
 	return nil
 }
 
