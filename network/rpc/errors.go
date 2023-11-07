@@ -69,3 +69,15 @@ func (e CheckResponseFailedError) Error() string {
 func NewCheckResponseFailedError(reason string) CheckResponseFailedError {
 	return CheckResponseFailedError{Reason: reason}
 }
+
+type RequestLimiterError struct {
+	Reason string
+}
+
+func (e RequestLimiterError) Error() string {
+	return "request limiter error: " + e.Reason
+}
+
+func NewRequestLimiterError(reason string) RequestLimiterError {
+	return RequestLimiterError{Reason: reason}
+}
