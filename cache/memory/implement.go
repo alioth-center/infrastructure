@@ -8,6 +8,7 @@ import (
 type Type string
 
 const (
+	Int    Type = "int"
 	String Type = "string"
 	Set    Type = "set"
 	Hash   Type = "hash"
@@ -44,6 +45,24 @@ type entry interface {
 	IsExpired() bool
 	SetExpireTime(expiredTime time.Duration)
 }
+
+type counterEntry struct {
+	trackable
+	mtx sync.Mutex
+	val int64
+}
+
+func (e *counterEntry) Type() Type { return Int }
+
+func (e *counterEntry) Value() int64 { e.mtx.Lock(); defer e.mtx.Unlock(); return e.val }
+
+func (e *counterEntry) Add(delta int64) { e.mtx.Lock(); defer e.mtx.Unlock(); e.val += delta }
+
+func (e *counterEntry) Sub(delta int64) { e.mtx.Lock(); defer e.mtx.Unlock(); e.val -= delta }
+
+func (e *counterEntry) Set(val int64) { e.mtx.Lock(); defer e.mtx.Unlock(); e.val = val }
+
+func newCounterEntry(val int64) entry { return &counterEntry{val: val} }
 
 type stringEntry struct {
 	trackable

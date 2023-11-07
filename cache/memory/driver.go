@@ -14,7 +14,7 @@ type Config struct {
 	MaxCleanPercentage    int  `json:"max_clean_percentage,omitempty" yaml:"max_clean_percentage,omitempty" xml:"max_clean_percentage,omitempty"`
 }
 
-func NewMemoryCache(cfg Config) (mc cache.Cache, err error) {
+func newCache(cfg Config) *accessor {
 	memoryCache := &accessor{
 		mtx: sync.RWMutex{},
 		db:  map[string]entry{},
@@ -32,5 +32,13 @@ func NewMemoryCache(cfg Config) (mc cache.Cache, err error) {
 		}, "memory cache")
 	}
 
-	return memoryCache, nil
+	return memoryCache
+}
+
+func NewMemoryCache(cfg Config) (mc cache.Cache) {
+	return newCache(cfg)
+}
+
+func NewMemoryCounter(cfg Config) (mc cache.Counter) {
+	return newCache(cfg)
 }

@@ -42,3 +42,11 @@ type Cache interface {
 	HRemoveValues(ctx context.Context, key string, fields ...string) (err error)
 	Expire(ctx context.Context, key string, expire time.Duration) (err error)
 }
+
+type Counter interface {
+	Add(ctx context.Context, key string, delta int64) (err error)
+	Sub(ctx context.Context, key string, delta int64) (err error)
+	Get(ctx context.Context, key string) (value int64, err error)
+	ExistKey(ctx context.Context, key string) (exist bool, err error)
+	Expire(ctx context.Context, key string, expire time.Duration) (err error)
+}

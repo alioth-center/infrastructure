@@ -15,6 +15,51 @@ type accessor struct {
 	ec  chan struct{}
 }
 
+func (ca *accessor) Add(_ context.Context, key string, delta int64) (_ error) {
+	ca.mtx.RLock()
+	entry, exist := ca.db[key]
+	ca.mtx.RUnlock()
+	if !exist {
+		entry = newCounterEntry(delta)
+		ca.mtx.Lock()
+		ca.db[key] = entry
+		ca.mtx.Unlock()
+	} else {
+		entry.(*counterEntry).Add(delta)
+	}
+
+	if entry.IsExpired() {
+		_ = ca.Delete(nil, key)
+		return nil
+	}
+
+	return nil
+}
+
+func (ca *accessor) Sub(_ context.Context, key string, delta int64) (_ error) {
+	return ca.Add(nil, key, -delta)
+}
+
+func (ca *accessor) Get(_ context.Context, key string) (value int64, _ error) {
+	ca.mtx.RLock()
+	entry, exist := ca.db[key]
+	ca.mtx.RUnlock()
+	if !exist {
+		return 0, nil
+	}
+
+	if entry.IsExpired() {
+		_ = ca.Delete(nil, key)
+		return 0, nil
+	}
+
+	if entry.Type() != Int {
+		return 0, NewValueTypeNotMatchError(Int, entry.Type())
+	}
+
+	return entry.(*counterEntry).Value(), nil
+}
+
 func (ca *accessor) ExistKey(_ context.Context, key string) (exist bool, err error) {
 	ca.mtx.RLock()
 	defer ca.mtx.RUnlock()
