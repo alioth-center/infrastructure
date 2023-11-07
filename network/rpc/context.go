@@ -250,29 +250,18 @@ func (c *Context[request, response]) TraceID() string {
 }
 
 func (c *Context[request, response]) GetContextClientIP() (ip string, err error) {
-	tracedIp := c.MustGetString("client_ip", "")
-	if tracedIp == "" {
-		// 没有在已记录的上下文中找到IP，则尝试从rpc原文中获取
-		if pr, getPrSuccess := peer.FromContext(c.ctx); !getPrSuccess {
-			// 如果获取失败，则返回错误
-			return "", NewGetRPCClientIPFailedError()
-		} else if pr.Addr == net.Addr(nil) {
-			// 如果获取到的是空接口，则返回错误
-			return "", NewGetRPCClientIPFailedError()
-		} else if pr.Addr.Network() != "tcp" {
-			// 如果获取到的不是tcp协议，则返回错误
-			return "", NewUnsupportedNetworkError(pr.Addr.Network())
-		} else if ip, _, err = net.SplitHostPort(pr.Addr.String()); err != nil {
-			// 如果解析失败，则返回错误
-			return "", NewInvalidIPAddressError(pr.Addr.String())
-		} else {
-			// 如果解析成功，则返回IP
-			c.Set("client_ip", ip)
-			return ip, nil
-		}
-	} else if ip, _, err = net.SplitHostPort(tracedIp); err != nil {
+	if pr, getPrSuccess := peer.FromContext(c.ctx); !getPrSuccess {
+		// 如果获取失败，则返回错误
+		return "", NewGetRPCClientIPFailedError()
+	} else if pr.Addr == net.Addr(nil) {
+		// 如果获取到的是空接口，则返回错误
+		return "", NewGetRPCClientIPFailedError()
+	} else if pr.Addr.Network() != "tcp" {
+		// 如果获取到的不是tcp协议，则返回错误
+		return "", NewUnsupportedNetworkError(pr.Addr.Network())
+	} else if ip, _, err = net.SplitHostPort(pr.Addr.String()); err != nil {
 		// 如果解析失败，则返回错误
-		return "", NewInvalidIPAddressError(tracedIp)
+		return "", NewInvalidIPAddressError(pr.Addr.String())
 	} else {
 		// 如果解析成功，则返回IP
 		return ip, nil

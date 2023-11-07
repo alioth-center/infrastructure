@@ -96,12 +96,29 @@ func RequestLimiterHandler[request any, response any](rpd, rpm, rps int) func(ct
 	}
 
 	limiter := func(limitType string, expire time.Duration) func(ip string) bool {
+		limit := 0
+		switch limitType {
+		case "rps":
+			limit = rps
+		case "rpm":
+			limit = rpm
+		case "rpd":
+			limit = rpd
+		}
+
+		if limit <= 0 {
+			// 如果限制为0，则不限制
+			return func(_ string) bool {
+				return true
+			}
+		}
+
 		return func(ip string) bool {
 			key := keyBuilder(ip, limitType)
 			if exist, _ := counter.ExistKey(nil, key); exist {
 				// 如果存在，将本次请求计数加1，如果计数超过rps，拦截
 				_ = counter.Add(nil, key, 1)
-				if count, _ := counter.Get(nil, key); int(count) >= rps {
+				if count, _ := counter.Get(nil, key); int(count) >= limit {
 					return false
 				}
 
@@ -146,4 +163,8 @@ func RequestLimiterHandler[request any, response any](rpd, rpm, rps int) func(ct
 			return
 		}
 	}
+}
+
+func RequestLimiterHandlerWithFn[request any, response any](rpd, rpm, rps int, _ func(request) (response, error)) func(ctx *Context[request, response]) {
+	return RequestLimiterHandler[request, response](rpd, rpm, rps)
 }
