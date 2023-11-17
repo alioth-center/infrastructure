@@ -1,4 +1,4 @@
-package utils
+package timezone
 
 import (
 	"github.com/alioth-center/infrastructure/errors"

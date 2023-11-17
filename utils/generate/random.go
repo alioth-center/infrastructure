@@ -1,4 +1,4 @@
-package utils
+package generate
 
 import (
 	"github.com/google/uuid"
@@ -14,9 +14,9 @@ var dictionary = [64]rune{
 	'U', 'V', 'W', 'X', 'Y', 'Z', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '+', '/',
 }
 
-// GenerateRandomBase64 生成随机Base64编码的字符串
+// RandomBase64 生成随机Base64编码的字符串
 //   - length: 长度
-func GenerateRandomBase64(length int) string {
+func RandomBase64(length int) string {
 	// 以uint64为基准单位生成随机数，对应base64编码后为10位
 	generateLength := length/10 + (9+(length%10))/10
 	randomUint64 := make([]uint64, generateLength)
@@ -37,9 +37,9 @@ func GenerateRandomBase64(length int) string {
 	return builder.String()
 }
 
-// GenerateRandomBase62 生成随机Base62编码的字符串
+// RandomBase62 生成随机Base62编码的字符串
 //   - length: 长度
-func GenerateRandomBase62(length int) string {
+func RandomBase62(length int) string {
 	// 以uint64为基准单位生成随机数，对应base64编码后为10位
 	generateLength := length/10 + (9+(length%10))/10
 	randomUint64 := make([]uint64, generateLength)
@@ -59,10 +59,10 @@ func GenerateRandomBase62(length int) string {
 	return builder.String()
 }
 
-// GenerateRandomBase64WithPrefix 生成Base64编码的随机字符串，包含前缀
+// RandomBase64WithPrefix 生成Base64编码的随机字符串，包含前缀
 //   - prefix: 前缀
 //   - totalLength: 总长度
-func GenerateRandomBase64WithPrefix(prefix string, totalLength int) string {
+func RandomBase64WithPrefix(prefix string, totalLength int) string {
 	length := totalLength - len(prefix)
 	generateLength := length/10 + (9+(length%10))/10
 	randomUint64 := make([]uint64, generateLength)
@@ -84,10 +84,10 @@ func GenerateRandomBase64WithPrefix(prefix string, totalLength int) string {
 	return builder.String()
 }
 
-// GenerateRandomBase62WithPrefix 生成Base62编码的随机字符串，包含前缀
+// RandomBase62WithPrefix 生成Base62编码的随机字符串，包含前缀
 //   - prefix: 前缀
 //   - totalLength: 总长度
-func GenerateRandomBase62WithPrefix(prefix string, totalLength int) string {
+func RandomBase62WithPrefix(prefix string, totalLength int) string {
 	length := totalLength - len(prefix)
 	generateLength := length/10 + (9+(length%10))/10
 	randomUint64 := make([]uint64, generateLength)
@@ -109,9 +109,9 @@ func GenerateRandomBase62WithPrefix(prefix string, totalLength int) string {
 	return builder.String()
 }
 
-// GenerateRandomSixDigitNumberCode 生成6位随机数字验证码
+// RandomSixDigitNumberCode 生成6位随机数字验证码
 // 示例输出： 000001, 000002, 000003...
-func GenerateRandomSixDigitNumberCode() string {
+func RandomSixDigitNumberCode() string {
 	number := strconv.Itoa(rand.Intn(999999)) //nolint:gosec
 	for len(number) < 6 {
 		number = "0" + number
@@ -119,9 +119,9 @@ func GenerateRandomSixDigitNumberCode() string {
 	return number
 }
 
-// GenerateRandomFourDigitNumberCode 生成4位随机数字验证码
+// RandomFourDigitNumberCode 生成4位随机数字验证码
 // 示例输出： 0001, 0002, 0003...
-func GenerateRandomFourDigitNumberCode() string {
+func RandomFourDigitNumberCode() string {
 	number := strconv.Itoa(rand.Intn(9999)) //nolint:gosec
 	for len(number) < 4 {
 		number = "0" + number
@@ -129,23 +129,23 @@ func GenerateRandomFourDigitNumberCode() string {
 	return number
 }
 
-// GenerateRandomSixDigitNumberCodeWithPrefix 生成带前缀的6位随机数字验证码
+// RandomSixDigitNumberCodeWithPrefix 生成带前缀的6位随机数字验证码
 //   - prefix: 前缀
 //
 // 示例输出： prefix000001, prefix000002, prefix000003...
-func GenerateRandomSixDigitNumberCodeWithPrefix(prefix string) string {
-	return prefix + GenerateRandomSixDigitNumberCode()
+func RandomSixDigitNumberCodeWithPrefix(prefix string) string {
+	return prefix + RandomSixDigitNumberCode()
 }
 
-// GenerateRandomFourDigitNumberCodeWithPrefix 生成带前缀的4位随机数字验证码
+// RandomFourDigitNumberCodeWithPrefix 生成带前缀的4位随机数字验证码
 //   - prefix: 前缀
 //
 // 示例输出： prefix0001, prefix0002, prefix0003...
-func GenerateRandomFourDigitNumberCodeWithPrefix(prefix string) string {
-	return prefix + GenerateRandomFourDigitNumberCode()
+func RandomFourDigitNumberCodeWithPrefix(prefix string) string {
+	return prefix + RandomFourDigitNumberCode()
 }
 
-// GenerateUUID 生成UUID
-func GenerateUUID() string {
+// UUID 生成UUID
+func UUID() string {
 	return uuid.NewString()
 }

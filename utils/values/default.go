@@ -1,12 +1,12 @@
-package utils
+package values
 
-func NilValue[T any]() T {
+func Nil[T any]() T {
 	var nilValue T
 	return nilValue
 }
 
 func NilFunction[T any]() func() T {
 	return func() T {
-		return NilValue[T]()
+		return Nil[T]()
 	}
 }
