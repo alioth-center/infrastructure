@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/alioth-center/infrastructure/cache"
 	"github.com/alioth-center/infrastructure/exit"
-	"github.com/alioth-center/infrastructure/utils"
+	"github.com/alioth-center/infrastructure/utils/values"
 	"github.com/go-redis/redis/v8"
 	"time"
 )
@@ -39,7 +39,7 @@ func NewRedisCache(cfg Config) (rds cache.Cache, err error) {
 
 	_, pingErr := client.Ping(context.Background()).Result()
 	if pingErr != nil {
-		return utils.NilValue[cache.Cache](), fmt.Errorf("failed to connect redis server %s: %w", cfg.Address, pingErr)
+		return values.Nil[cache.Cache](), fmt.Errorf("failed to connect redis server %s: %w", cfg.Address, pingErr)
 	}
 
 	// 初始化成功，需要注册退出函数

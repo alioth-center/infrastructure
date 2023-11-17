@@ -6,7 +6,7 @@ import (
 	"github.com/alioth-center/infrastructure/cache/memory"
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/trace"
-	"github.com/alioth-center/infrastructure/utils"
+	"github.com/alioth-center/infrastructure/utils/values"
 	"strings"
 	"time"
 )
@@ -51,7 +51,7 @@ func RecoveryHandler[request any, response any](log logger.Logger, service strin
 				stack := string(trace.Stack(2))
 				fmt.Println(stack)
 				log.Panic(logger.NewFields(ctx).WithBaseFields(getBaseLogFields(ctx, service, handler)).WithMessage("rpc panic recovered").WithData(err).WithField("stack", stack))
-				ctx.SetResult(utils.NilValue[response](), err.(error))
+				ctx.SetResult(values.Nil[response](), err.(error))
 			}
 		}()
 		ctx.Next()
@@ -62,7 +62,7 @@ func CheckRequestHandler[request any, response any](checkFunc func(request) (boo
 	return func(ctx *Context[request, response]) {
 		if success, reason := checkFunc(ctx.req); !success {
 			ctx.Abort()
-			ctx.SetResult(utils.NilValue[response](), NewCheckRequestFailedError(reason))
+			ctx.SetResult(values.Nil[response](), NewCheckRequestFailedError(reason))
 		}
 	}
 }
@@ -72,7 +72,7 @@ func CheckResponseHandler[request any, response any](checkFunc func(response) (b
 		ctx.Next()
 		if success, reason := checkFunc(ctx.resp); !success {
 			ctx.Abort()
-			ctx.SetResult(utils.NilValue[response](), NewCheckResponseFailedError(reason))
+			ctx.SetResult(values.Nil[response](), NewCheckResponseFailedError(reason))
 		}
 	}
 }
@@ -137,29 +137,13 @@ func RequestLimiterHandler[request any, response any](rpd, rpm, rps int) func(ct
 		ip, getIpErr := ctx.GetContextClientIP()
 		if getIpErr != nil {
 			ctx.Abort()
-			ctx.SetResult(utils.NilValue[response](), NewGetRPCClientIPFailedError())
+			ctx.SetResult(values.Nil[response](), NewGetRPCClientIPFailedError())
 			return
 		}
 
-		rpsPromise, rpmPromise, rpdPromise := utils.Async(func() bool { return rpsLimiter(ip) }), utils.Async(func() bool { return rpmLimiter(ip) }), utils.Async(func() bool { return rpdLimiter(ip) })
-		judge := utils.Async(func() bool {
-			rpsLimited, rpsLimiterErr := utils.Await(rpsPromise)
-			rpmLimited, rpmLimiterErr := utils.Await(rpmPromise)
-			rpdLimited, rpdLimiterErr := utils.Await(rpdPromise)
-			if rpsLimiterErr != nil || rpmLimiterErr != nil || rpdLimiterErr != nil {
-				return false
-			}
-			return rpsLimited && rpmLimited && rpdLimited
-		})
-
-		unlimited, getLimitedErr := utils.Await(judge)
-		if getLimitedErr != nil {
+		if rpsLimiter(ip) || rpmLimiter(ip) || rpdLimiter(ip) {
 			ctx.Abort()
-			ctx.SetResult(utils.NilValue[response](), NewRequestLimiterError(getLimitedErr.Error()))
-			return
-		} else if !unlimited {
-			ctx.Abort()
-			ctx.SetResult(utils.NilValue[response](), NewRequestLimiterError("too many requests"))
+			ctx.SetResult(values.Nil[response](), NewRequestLimiterError("too many requests"))
 			return
 		}
 	}
