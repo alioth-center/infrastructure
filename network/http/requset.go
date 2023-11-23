@@ -20,6 +20,7 @@ type Request interface {
 	SetAccept(accept string) Request
 	SetHeader(key, value string) Request
 	SetJsonBody(ptr any) Request
+	SetMultiPartBodyWithErrorHandler(multipartField, multipartName string, multiWriter io.Reader, others map[string]string, handler func(err error) (ignore bool)) Request
 	SetMultiPartBody(multipartField, multipartName string, multiWriter io.Reader, others map[string]string) Request
 	SetCookie(cookieKey, cookieValue string) Request
 	build() (req *http.Request, err error)
@@ -77,19 +78,53 @@ func (r *request) SetJsonBody(ptr any) Request {
 	return r
 }
 
-func (r *request) SetMultiPartBody(multipartField, multipartName string, multiWriter io.Reader, others map[string]string) Request {
-	body := bytes.NewBufferString("")
+func (r *request) SetMultiPartBodyWithErrorHandler(multipartField, multipartName string, multiWriter io.Reader, others map[string]string, handler func(err error) (ignore bool)) Request {
+	body := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(body)
+
 	if others != nil {
 		for k, v := range others {
-			_ = bodyWriter.WriteField(k, v)
+			if writeFieldErr := bodyWriter.WriteField(k, v); writeFieldErr != nil {
+				if handler(writeFieldErr) {
+					continue
+				} else {
+					return r
+				}
+			}
 		}
 	}
-	formFile, _ := bodyWriter.CreateFormFile(multipartField, multipartName)
-	_, _ = io.Copy(formFile, multiWriter)
+
+	// 创建文件部分
+	formFilePart, createFormFileErr := bodyWriter.CreateFormFile(multipartField, multipartName)
+	if createFormFileErr != nil && !handler(createFormFileErr) {
+		return r
+	}
+
+	// 复制文件数据到表单
+	_, copyDataErr := io.Copy(formFilePart, multiWriter)
+	if copyDataErr != nil && !handler(copyDataErr) {
+		return r
+	}
+
+	// 关闭multipart写入器以写入结尾分隔符
+	closeWriterErr := bodyWriter.Close()
+	if closeWriterErr != nil && !handler(closeWriterErr) {
+		return r
+	}
+
+	// 设置内容类型为multipart form数据的内容类型
 	r.SetHeader("Content-Type", bodyWriter.FormDataContentType())
+
+	// 设置请求体
 	r.body = body
+
 	return r
+}
+
+func (r *request) SetMultiPartBody(multipartField, multipartName string, multiWriter io.Reader, others map[string]string) Request {
+	return r.SetMultiPartBodyWithErrorHandler(multipartField, multipartName, multiWriter, others, func(_ error) (ignore bool) {
+		return true
+	})
 }
 
 func (r *request) SetCookie(cookieKey, cookieValue string) Request {
@@ -107,7 +142,7 @@ func (r *request) build() (req *http.Request, err error) {
 	if req, err = http.NewRequest(r.method, r.path.String(), r.body); err != nil {
 		return nil, fmt.Errorf("build request failed: %w", err)
 	} else {
-		req.WithContext(r.ctx)
+		req = req.WithContext(r.ctx)
 		for k, v := range r.headers {
 			req.Header.Set(k, v)
 		}
