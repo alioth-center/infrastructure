@@ -348,8 +348,8 @@ type PurposeEnum string
 func (pe PurposeEnum) String() string { return string(pe) }
 
 const (
-	PurposeEnumFineTune PurposeEnum = "fine-tune"  // 微调
-	PurposeEnumAnswers  PurposeEnum = "assistants" // 助理
+	PurposeEnumFineTune   PurposeEnum = "fine-tune"  // 微调
+	PurposeEnumAssistants PurposeEnum = "assistants" // 助理
 )
 
 // HyperparametersObject 超参数对象

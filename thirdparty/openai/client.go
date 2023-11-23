@@ -275,7 +275,15 @@ func (c client) UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, 
 
 func (c client) ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err error) {
 	request := c.options.
-		buildBaseRequest(EndpointEnumListFiles).
+		buildBaseRequest(EndpointEnumListFiles,
+			func(original string) (result string) {
+				if req.Body.Purpose != "" {
+					return fmt.Sprintf("%s?purpose=%s", original, req.Body.Purpose)
+				} else {
+					return original
+				}
+			},
+		).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson).
 		SetUserAgent(userAgent)
