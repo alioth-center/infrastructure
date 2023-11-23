@@ -8,10 +8,10 @@ import (
 // ModelObject 模型对象
 // reference https://platform.openai.com/docs/api-reference/models/object
 type ModelObject struct {
-	ID      string `json:"id"`              // 模型的唯一标识符
-	Created int64  `json:"created"`         // 模型创建的时间
-	Object  string `json:"object"`          // 模型的类型，一般为model
-	Owner   string `json:"owner,omitempty"` // 模型的所有者，一般为openai
+	ID      string `json:"id"`                 // 模型的唯一标识符
+	Created int64  `json:"created"`            // 模型创建的时间
+	Object  string `json:"object"`             // 模型的类型，一般为model
+	OwnedBy string `json:"owned_by,omitempty"` // 模型的所有者，一般为openai
 }
 
 // ListModelRequest 列出模型请求
@@ -312,4 +312,225 @@ type CompleteModerationResponseBody struct {
 	ID      string                   `json:"id"`      // openai提供的回复id
 	Model   string                   `json:"model"`   // 进行内容审核的模型
 	Results []ModerationResultObject `json:"results"` // 内容审核结果
+}
+
+// AvailableFineTuningModelEnum 可用的微调模型枚举值
+// reference https://platform.openai.com/docs/guides/fine-tuning
+type AvailableFineTuningModelEnum string
+
+func (afme AvailableFineTuningModelEnum) String() string { return string(afme) }
+
+const (
+	AvailableFineTuningModelEnumGPT35   AvailableFineTuningModelEnum = "gpt-3.5-turbo-1106" // gpt3.5模型(default)
+	AvailableFineTuningModelEnumDavinci AvailableFineTuningModelEnum = "davinci-002"        // davinci模型
+)
+
+var (
+	// 支持的微调模型枚举
+	supportedAvailableFineTuningModelEnum = map[string]AvailableFineTuningModelEnum{
+		AvailableFineTuningModelEnumGPT35.String():   AvailableFineTuningModelEnumGPT35,
+		AvailableFineTuningModelEnumDavinci.String(): AvailableFineTuningModelEnumDavinci,
+	}
+)
+
+func getAvailableFineTuningModelEnum(enum AvailableFineTuningModelEnum) string {
+	if _, exist := supportedAvailableFineTuningModelEnum[enum.String()]; !exist {
+		return AvailableFineTuningModelEnumDavinci.String()
+	} else {
+		return enum.String()
+	}
+}
+
+// PurposeEnum 可用的用途枚举值
+// reference https://platform.openai.com/docs/api-reference/files/create
+type PurposeEnum string
+
+func (pe PurposeEnum) String() string { return string(pe) }
+
+const (
+	PurposeEnumFineTune   PurposeEnum = "fine-tune"  // 微调
+	PurposeEnumAssistants PurposeEnum = "assistants" // 助理
+)
+
+// HyperparametersObject 超参数对象
+type HyperparametersObject struct {
+	NEpochs                interface{} `json:"n_epochs"`                           // 训练的Epoch数, 一般为int或者"auto"
+	BatchSize              interface{} `json:"batch_size,omitempty"`               // 每个batch的大小
+	LearningRateMultiplier interface{} `json:"learning_rate_multiplier,omitempty"` // 学习率乘数
+}
+
+// FineTuningJobObject 微调任务对象
+// reference https://platform.openai.com/docs/api-reference/fine-tuning/object
+type FineTuningJobObject struct {
+	Object          string                `json:"object"`                    // 一般为fine-tuning.job(通过API创建的微调任务)
+	ID              string                `json:"id"`                        // 微调任务的唯一标识符
+	Model           string                `json:"model"`                     // 进行微调的模型
+	CreatedAt       int64                 `json:"created_at"`                // 微调任务创建的时间
+	FinishedAt      int64                 `json:"finished_at,omitempty"`     // 微调任务结束的时间 (Optional)
+	FineTunedModel  string                `json:"fine_tuned_model"`          // 微调后的模型
+	OrganizationID  string                `json:"organization_id"`           // 微调任务所属的组织
+	ResultFiles     []string              `json:"result_files"`              // 微调任务的结果文件
+	Status          string                `json:"status"`                    // 微调任务的状态
+	ValidationFile  interface{}           `json:"validation_file,omitempty"` // 微调任务的验证文件 (Optional)
+	TrainingFile    string                `json:"training_file"`             // 微调任务的训练文件
+	Hyperparameters HyperparametersObject `json:"hyperparameters"`           // 微调任务的超参数
+	TrainedTokens   int                   `json:"trained_tokens"`            // 微调任务的训练token数
+}
+
+// CreateFineTuningJobRequestBody 创建微调任务请求体
+// reference https://platform.openai.com/docs/api-reference/fine-tuning/create
+type CreateFineTuningJobRequestBody struct {
+	Model           string                `json:"model"`                     // 进行微调的模型
+	TrainingFile    string                `json:"training_file"`             // 微调任务的训练文件
+	ValidationFile  string                `json:"validation_file,omitempty"` // 微调任务的验证文件
+	Hyperparameters HyperparametersObject `json:"hyperparameters,omitempty"` // 微调任务的超参数
+	Suffix          string                `json:"suffix,omitempty"`          // 微调任务的后缀 (Optional)
+}
+
+// CreateFineTuningJobRequest 创建微调任务请求
+type CreateFineTuningJobRequest struct {
+	Body CreateFineTuningJobRequestBody
+}
+
+// CreateFineTuningJobResponseBody 创建微调任务响应
+type CreateFineTuningJobResponseBody struct {
+	FineTuningJobObject
+}
+
+// RetrieveFineTuningJobRequestBody 获取微调任务请求
+// reference https://platform.openai.com/docs/api-reference/fine-tuning/retrieve
+type RetrieveFineTuningJobRequestBody struct {
+	ID string // 微调任务的唯一标识符
+}
+
+// RetrieveFineTuningJobRequest 获取微调任务请求
+type RetrieveFineTuningJobRequest struct {
+	Body RetrieveFineTuningJobRequestBody
+}
+
+// RetrieveFineTuningJobResponseBody 获取微调任务响应
+type RetrieveFineTuningJobResponseBody struct {
+	FineTuningJobObject
+}
+
+// ListFineTuningJobsRequestBody 列出微调任务请求体
+// reference https://platform.openai.com/docs/api-reference/fine-tuning/list
+type ListFineTuningJobsRequestBody struct {
+	After string // 上一页最后一个微调任务的标识符，用于分页
+	Limit int    // 每页的微调任务数量, 默认20
+}
+
+// ListFineTuningJobsRequest 列出微调任务请求
+type ListFineTuningJobsRequest struct {
+	Body ListFineTuningJobsRequestBody
+}
+
+// ListFineTuningJobsResponseBody 列出微调任务响应
+type ListFineTuningJobsResponseBody struct {
+	Object  string                `json:"object"`   // 一般为list
+	Data    []FineTuningJobObject `json:"data"`     // 微调任务列表
+	HasMore bool                  `json:"has_more"` // 是否还有更多的微调任务
+}
+
+// CancelFineTuningJobRequestBody 取消微调任务请求体
+// reference https://platform.openai.com/docs/api-reference/fine-tuning/cancel
+type CancelFineTuningJobRequestBody struct {
+	ID string // 微调任务的唯一标识符
+}
+
+// CancelFineTuningJobRequest 取消微调任务请求
+type CancelFineTuningJobRequest struct {
+	Body CancelFineTuningJobRequestBody
+}
+
+// CancelFineTuningJobResponseBody 取消微调任务响应
+type CancelFineTuningJobResponseBody struct {
+	FineTuningJobObject
+}
+
+// FileObject 文件对象
+// reference https://platform.openai.com/docs/api-reference/files/object
+type FileObject struct {
+	ID       string `json:"id"`       // 文件的唯一标识符
+	Bytes    int64  `json:"bytes"`    // 文件的大小
+	Created  int64  `json:"created"`  // 文件创建的时间
+	FileName string `json:"filename"` // 文件的名称
+	Object   string `json:"object"`   // 文件的类型，一定为file
+	Purpose  string `json:"purpose"`  // 文件的用途, 可能的值见reference
+	//Status        string `json:"status"`         // 已过时。文件的状态，uploaded/processed/error
+	//StatusDetails string `json:"status_details"` // 已过时。文件的状态详情
+}
+
+// UploadFileRequestBody 文件上传请求体
+// reference https://platform.openai.com/docs/api-reference/files/create
+type UploadFileRequestBody struct {
+	File     io.Reader `json:"file"`     // 需要上传的文件
+	FileName string    `json:"filename"` // 文件的名称, openai不需要此字段
+	Purpose  string    `json:"purpose"`  // 文件的用途
+}
+
+func (ufr UploadFileRequestBody) ToMultiPartBody() map[string]string {
+	return map[string]string{
+		"purpose": ufr.Purpose,
+	}
+}
+
+// UploadFileRequest 文件上传请求
+type UploadFileRequest struct {
+	FormBody UploadFileRequestBody
+}
+
+// UploadFileResponseBody 文件上传响应
+// reference https://platform.openai.com/docs/api-reference/files/create
+type UploadFileResponseBody struct {
+	FileObject
+}
+
+// ListFilesRequestBody 列出文件请求体
+// reference https://platform.openai.com/docs/api-reference/files/list
+type ListFilesRequestBody struct {
+	Purpose string `json:"purpose,omitempty"` // 文件的用途
+}
+
+// ListFilesRequest 列出文件请求
+type ListFilesRequest struct {
+	Body ListFilesRequestBody
+}
+
+// ListFilesResponseBody 列出文件响应
+type ListFilesResponseBody struct {
+	Object string       `json:"object"` // 一般为list
+	Data   []FileObject `json:"data"`   // 文件列表
+}
+
+// DeleteFileRequestBody 删除文件请求体
+// reference https://platform.openai.com/docs/api-reference/files/delete
+type DeleteFileRequestBody struct {
+	ID string // 文件的唯一标识符
+}
+
+// DeleteFileRequest 删除文件请求
+type DeleteFileRequest struct {
+	Body DeleteFileRequestBody
+}
+
+// DeleteFileResponseBody 删除文件响应
+type DeleteFileResponseBody struct {
+	FileObject
+}
+
+// RetrieveFileRequestBody 获取文件请求体
+// reference https://platform.openai.com/docs/api-reference/files/retrieve
+type RetrieveFileRequestBody struct {
+	ID string // 文件的唯一标识符
+}
+
+// RetrieveFileRequest 获取文件请求
+type RetrieveFileRequest struct {
+	Body RetrieveFileRequestBody
+}
+
+// RetrieveFileResponseBody 获取文件响应
+type RetrieveFileResponseBody struct {
+	FileObject
 }

@@ -17,13 +17,21 @@ type EndpointEnum string
 func (e EndpointEnum) String() string { return string(e) }
 
 const (
-	EndpointEnumListModel           EndpointEnum = "list_models"          // 列出模型
-	EndpointEnumRetrieveModel       EndpointEnum = "retrieve_model"       // 检索模型
-	EndpointEnumCreateImage         EndpointEnum = "create_image"         // 创建图片
-	EndpointEnumCompleteChat        EndpointEnum = "complete_chat"        // 完成聊天
-	EndpointEnumCreateSpeech        EndpointEnum = "create_speech"        // 创建语音
-	EndpointEnumCreateTranscription EndpointEnum = "create_transcription" // 创建转录
-	EndpointEnumCompleteModeration  EndpointEnum = "complete_moderation"  // 完成审核
+	EndpointEnumListModel             EndpointEnum = "list_models"          // 列出模型
+	EndpointEnumRetrieveModel         EndpointEnum = "retrieve_model"       // 检索模型
+	EndpointEnumCreateImage           EndpointEnum = "create_image"         // 创建图片
+	EndpointEnumCompleteChat          EndpointEnum = "complete_chat"        // 完成聊天
+	EndpointEnumCreateSpeech          EndpointEnum = "create_speech"        // 创建语音
+	EndpointEnumCreateTranscription   EndpointEnum = "create_transcription" // 创建转录
+	EndpointEnumCompleteModeration    EndpointEnum = "complete_moderation"  // 完成审核
+	EndpointEnumCreateFineTuningJob   EndpointEnum = "create_fine_tuning"   // 创建微调
+	EndpointEnumRetrieveFineTuningJob EndpointEnum = "retrieve_fine_tuning" // 检索微调
+	EndpointEnumListFineTuningJobs    EndpointEnum = "list_fine_tuning"     // 列出微调
+	EndpointEnumCancelFineTuningJob   EndpointEnum = "cancel_fine_tuning"   // 取消微调
+	EndpointEnumUploadFile            EndpointEnum = "upload_file"          // 上传文件
+	EndpointEnumListFiles             EndpointEnum = "list_files"           // 列出文件
+	EndpointEnumRetrieveFile          EndpointEnum = "retrieve_file"        // 检索文件
+	EndpointEnumDeleteFile            EndpointEnum = "delete_file"          // 删除文件
 )
 
 var (
@@ -32,13 +40,21 @@ var (
 
 	// defaultEndpoints 默认的endpoint
 	defaultEndpoints = map[EndpointEnum]string{
-		EndpointEnumListModel:           "models",
-		EndpointEnumRetrieveModel:       "models/{:model:}",
-		EndpointEnumCreateImage:         "images/generations",
-		EndpointEnumCompleteChat:        "chat/completions",
-		EndpointEnumCreateSpeech:        "audio/speech",
-		EndpointEnumCreateTranscription: "audio/transcriptions",
-		EndpointEnumCompleteModeration:  "moderations",
+		EndpointEnumListModel:             "models",
+		EndpointEnumRetrieveModel:         "models/{:model:}",
+		EndpointEnumCreateImage:           "images/generations",
+		EndpointEnumCompleteChat:          "chat/completions",
+		EndpointEnumCreateSpeech:          "audio/speech",
+		EndpointEnumCreateTranscription:   "audio/transcriptions",
+		EndpointEnumCompleteModeration:    "moderations",
+		EndpointEnumCreateFineTuningJob:   "fine_tuning/jobs",
+		EndpointEnumRetrieveFineTuningJob: "fine_tuning/jobs/{:id:}",
+		EndpointEnumListFineTuningJobs:    "fine_tuning/jobs",
+		EndpointEnumCancelFineTuningJob:   "fine_tuning/jobs/{:id:}/cancel",
+		EndpointEnumUploadFile:            "files",
+		EndpointEnumListFiles:             "files",
+		EndpointEnumRetrieveFile:          "files/{:id:}",
+		EndpointEnumDeleteFile:            "files/{:id:}",
 	}
 )
 
