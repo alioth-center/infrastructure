@@ -106,7 +106,7 @@ var (
 // reference https://platform.openai.com/docs/api-reference/chat/object
 type ChatMessageObject struct {
 	Role    ChatRoleEnum `json:"role"`
-	Message string       `json:"message"`
+	Content string       `json:"content"`
 }
 
 // ReplyChoiceObject 回复选择对象
