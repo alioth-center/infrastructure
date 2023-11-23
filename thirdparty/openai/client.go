@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/alioth-center/infrastructure/network/http"
+	"net/url"
 	"strings"
 )
 
@@ -19,6 +20,15 @@ type Client interface {
 	CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error)
 	CreateTranscription(req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error)
 	CompleteModeration(req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error)
+
+	CreateFineTuningJob(req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error)
+	RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error)
+	ListFineTuningJobs(req ListFineTuningJobsRequest) (resp ListFineTuningJobsResponseBody, err error)
+	CancelFineTuningJob(req CancelFineTuningJobRequest) (resp CancelFineTuningJobResponseBody, err error)
+	UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, err error)
+	ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err error)
+	DeleteFile(req DeleteFileRequest) (resp DeleteFileResponseBody, err error)
+	RetrieveFile(req RetrieveFileRequest) (resp RetrieveFileResponseBody, err error)
 }
 
 type client struct {
@@ -146,6 +156,176 @@ func (c client) CompleteModeration(req CompleteModerationRequest) (resp Complete
 		return CompleteModerationResponseBody{}, fmt.Errorf("execute complete moderation request error: %d: %s", status, string(body))
 	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
 		return CompleteModerationResponseBody{}, fmt.Errorf("parse complete moderation response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) CreateFineTuningJob(req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumCreateFineTuningJob).
+		SetUserAgent(userAgent).
+		SetMethod(http.POST).
+		SetAccept(http.ContentTypeJson).
+		SetJsonBody(&req.Body)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return CreateFineTuningJobResponseBody{}, fmt.Errorf("execute create fine tuning job request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return CreateFineTuningJobResponseBody{}, fmt.Errorf("execute create fine tuning job request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return CreateFineTuningJobResponseBody{}, fmt.Errorf("parse create fine tuning job response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumRetrieveFineTuningJob,
+			func(original string) (result string) { return strings.ReplaceAll(original, "{:id:}", req.Body.ID) },
+		).
+		SetUserAgent(userAgent).
+		SetMethod(http.GET).
+		SetAccept(http.ContentTypeJson)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return RetrieveFineTuningJobResponseBody{}, fmt.Errorf("execute retrieve fine tuning job request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return RetrieveFineTuningJobResponseBody{}, fmt.Errorf("execute retrieve fine tuning job request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return RetrieveFineTuningJobResponseBody{}, fmt.Errorf("parse retrieve fine tuning job response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) ListFineTuningJobs(req ListFineTuningJobsRequest) (resp ListFineTuningJobsResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumListFineTuningJobs,
+			func(original string) (result string) {
+				// build query string from request {after,limit}
+				queryParams := url.Values{}
+				if req.Body.After != "" {
+					queryParams.Set("after", req.Body.After)
+				}
+				if req.Body.Limit != 0 {
+					queryParams.Set("limit", fmt.Sprintf("%d", req.Body.Limit))
+				}
+				if len(queryParams) == 0 {
+					return original
+				} else {
+					return fmt.Sprintf("%s?%s", original, queryParams.Encode())
+				}
+			},
+		).
+		SetUserAgent(userAgent).
+		SetMethod(http.GET).
+		SetAccept(http.ContentTypeJson)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return ListFineTuningJobsResponseBody{}, fmt.Errorf("execute list fine tuning jobs request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return ListFineTuningJobsResponseBody{}, fmt.Errorf("execute list fine tuning jobs request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return ListFineTuningJobsResponseBody{}, fmt.Errorf("parse list fine tuning jobs response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) CancelFineTuningJob(req CancelFineTuningJobRequest) (resp CancelFineTuningJobResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumCancelFineTuningJob,
+			func(original string) (result string) { return strings.ReplaceAll(original, "{:id:}", req.Body.ID) },
+		).
+		SetUserAgent(userAgent).
+		SetMethod(http.POST).
+		SetAccept(http.ContentTypeJson)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return CancelFineTuningJobResponseBody{}, fmt.Errorf("execute cancel fine tuning job request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return CancelFineTuningJobResponseBody{}, fmt.Errorf("execute cancel fine tuning job request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return CancelFineTuningJobResponseBody{}, fmt.Errorf("parse cancel fine tuning job response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumUploadFile).
+		SetUserAgent(userAgent).
+		SetMethod(http.POST).
+		SetAccept(http.ContentTypeJson).
+		SetMultiPartBody("file", req.FormBody.FileName, req.FormBody.File, req.FormBody.ToMultiPartBody())
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return UploadFileResponseBody{}, fmt.Errorf("execute upload file request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return UploadFileResponseBody{}, fmt.Errorf("execute upload file request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return UploadFileResponseBody{}, fmt.Errorf("parse upload file response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumListFiles).
+		SetMethod(http.GET).
+		SetAccept(http.ContentTypeJson).
+		SetUserAgent(userAgent)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return ListFilesResponseBody{}, fmt.Errorf("execute list files request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return ListFilesResponseBody{}, fmt.Errorf("execute list files request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return ListFilesResponseBody{}, fmt.Errorf("parse list files response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) DeleteFile(req DeleteFileRequest) (resp DeleteFileResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumDeleteFile,
+			func(original string) (result string) { return strings.ReplaceAll(original, "{:id:}", req.Body.ID) },
+		).
+		SetMethod(http.DELETE).
+		SetAccept(http.ContentTypeJson).
+		SetUserAgent(userAgent)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return DeleteFileResponseBody{}, fmt.Errorf("execute delete file request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return DeleteFileResponseBody{}, fmt.Errorf("execute delete file request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return DeleteFileResponseBody{}, fmt.Errorf("parse delete file response error: %w", parseErr)
+	} else {
+		return resp, nil
+	}
+}
+
+func (c client) RetrieveFile(req RetrieveFileRequest) (resp RetrieveFileResponseBody, err error) {
+	request := c.options.
+		buildBaseRequest(EndpointEnumRetrieveFile,
+			func(original string) (result string) { return strings.ReplaceAll(original, "{:id:}", req.Body.ID) },
+		).
+		SetMethod(http.GET).
+		SetAccept(http.ContentTypeJson).
+		SetUserAgent(userAgent)
+	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
+	if executeErr != nil {
+		return RetrieveFileResponseBody{}, fmt.Errorf("execute retrieve file request error: %w", executeErr)
+	} else if status != http.StatusOK {
+		return RetrieveFileResponseBody{}, fmt.Errorf("execute retrieve file request error: %d: %s", status, string(body))
+	} else if parseErr := json.Unmarshal(body, &resp); parseErr != nil {
+		return RetrieveFileResponseBody{}, fmt.Errorf("parse retrieve file response error: %w", parseErr)
 	} else {
 		return resp, nil
 	}
