@@ -8,10 +8,10 @@ import (
 // ModelObject 模型对象
 // reference https://platform.openai.com/docs/api-reference/models/object
 type ModelObject struct {
-	ID      string `json:"id"`              // 模型的唯一标识符
-	Created int64  `json:"created"`         // 模型创建的时间
-	Object  string `json:"object"`          // 模型的类型，一般为model
-	Owner   string `json:"owner,omitempty"` // 模型的所有者，一般为openai
+	ID      string `json:"id"`                 // 模型的唯一标识符
+	Created int64  `json:"created"`            // 模型创建的时间
+	Object  string `json:"object"`             // 模型的类型，一般为model
+	OwnedBy string `json:"owned_by,omitempty"` // 模型的所有者，一般为openai
 }
 
 // ListModelRequest 列出模型请求
