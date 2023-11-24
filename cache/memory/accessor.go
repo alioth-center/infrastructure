@@ -207,7 +207,7 @@ func (ca *accessor) LoadOrStoreJson(_ context.Context, key string, senderPtr any
 	if exist, loadErr := ca.LoadJson(nil, key, receiverPtr); exist {
 		return true, loadErr
 	} else {
-		receiverPtr = senderPtr
+		receiverPtr = senderPtr // nolint: ineffassign
 		return false, ca.StoreJson(nil, key, senderPtr)
 	}
 }
@@ -216,7 +216,7 @@ func (ca *accessor) LoadOrStoreJsonEx(_ context.Context, key string, senderPtr a
 	if exist, loadErr := ca.LoadJson(nil, key, receiverPtr); exist {
 		return true, loadErr
 	} else {
-		receiverPtr = senderPtr
+		receiverPtr = senderPtr // nolint: ineffassign
 		return false, ca.StoreJsonEX(nil, key, senderPtr, expiration)
 	}
 }
