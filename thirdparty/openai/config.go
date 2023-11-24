@@ -10,6 +10,7 @@ type Config struct {
 	BaseUrl         string            `json:"base_url,omitempty" yaml:"base_url,omitempty" xml:"base_url,omitempty"`
 	BetaFeatures    string            `json:"beta_features,omitempty" yaml:"beta_features,omitempty" xml:"beta_features,omitempty"`
 	CustomEndpoints map[string]string `json:"custom_endpoints,omitempty" yaml:"custom_endpoints,omitempty" xml:"custom_endpoints,omitempty"`
+	CustomUserAgent string            `json:"custom_user_agent,omitempty" yaml:"custom_user_agent,omitempty" xml:"custom_user_agent,omitempty"`
 }
 
 type EndpointEnum string
@@ -34,9 +35,15 @@ const (
 	EndpointEnumDeleteFile            EndpointEnum = "delete_file"          // 删除文件
 )
 
-var (
+const (
 	// defaultBaseUrl 默认的请求地址
 	defaultBaseUrl = "https://api.openai.com/v1"
+
+	// defaultUserAgent 默认的user-agent
+	defaultUserAgent = "alioth-center/http-client v1.2.1"
+)
+
+var (
 
 	// defaultEndpoints 默认的endpoint
 	defaultEndpoints = map[EndpointEnum]string{
@@ -79,6 +86,14 @@ func (c Config) getRequestUrl(endpoint EndpointEnum) string {
 
 	result.WriteString(defaultEndpoints[endpoint])
 	return result.String()
+}
+
+func (c Config) getUserAgent() string {
+	if c.CustomUserAgent != "" {
+		return c.CustomUserAgent
+	} else {
+		return defaultUserAgent
+	}
 }
 
 func (c Config) buildBaseRequest(endpoint EndpointEnum, injectUrlFunction ...func(original string) (result string)) http.Request {

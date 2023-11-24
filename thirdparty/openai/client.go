@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	userAgent = "alioth-center/http-client v1.2.1"
-)
-
 type Client interface {
 	ListModels(req ListModelRequest) (resp ListModelResponseBody, err error)
 	RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error)
@@ -38,7 +34,7 @@ type client struct {
 
 func (c client) ListModels(_ ListModelRequest) (resp ListModelResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumListModel).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson)
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
@@ -58,7 +54,7 @@ func (c client) RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelRespo
 		buildBaseRequest(EndpointEnumRetrieveModel,
 			func(original string) (result string) { return strings.ReplaceAll(original, "{:model:}", req.Model) },
 		).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson)
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
@@ -75,7 +71,7 @@ func (c client) RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelRespo
 
 func (c client) GenerateImage(req CreateImageRequest) (resp ImageResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCreateImage).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson).
 		SetJsonBody(&req.Body)
@@ -93,7 +89,7 @@ func (c client) GenerateImage(req CreateImageRequest) (resp ImageResponseBody, e
 
 func (c client) CompleteChat(req CompleteChatRequest) (resp CompleteChatResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCompleteChat).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson).
 		SetJsonBody(&req.Body)
@@ -111,9 +107,8 @@ func (c client) CompleteChat(req CompleteChatRequest) (resp CompleteChatResponse
 
 func (c client) CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCreateSpeech).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
-		SetAccept(http.ContentTypeJson).
 		SetJsonBody(&req.Body)
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
 	if executeErr != nil {
@@ -127,7 +122,7 @@ func (c client) CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponse
 
 func (c client) CreateTranscription(req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCreateTranscription).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson).
 		SetMultiPartBody("file", req.FormBody.FileName, req.FormBody.File, req.FormBody.ToMultiPartBody())
@@ -145,7 +140,7 @@ func (c client) CreateTranscription(req CreateTranscriptionRequest) (resp Create
 
 func (c client) CompleteModeration(req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCompleteModeration).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson).
 		SetJsonBody(&req.Body)
@@ -164,7 +159,7 @@ func (c client) CompleteModeration(req CompleteModerationRequest) (resp Complete
 func (c client) CreateFineTuningJob(req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error) {
 	request := c.options.
 		buildBaseRequest(EndpointEnumCreateFineTuningJob).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson).
 		SetJsonBody(&req.Body)
@@ -185,7 +180,7 @@ func (c client) RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp Re
 		buildBaseRequest(EndpointEnumRetrieveFineTuningJob,
 			func(original string) (result string) { return strings.ReplaceAll(original, "{:id:}", req.Body.ID) },
 		).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson)
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
@@ -219,7 +214,7 @@ func (c client) ListFineTuningJobs(req ListFineTuningJobsRequest) (resp ListFine
 				}
 			},
 		).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson)
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
@@ -239,7 +234,7 @@ func (c client) CancelFineTuningJob(req CancelFineTuningJobRequest) (resp Cancel
 		buildBaseRequest(EndpointEnumCancelFineTuningJob,
 			func(original string) (result string) { return strings.ReplaceAll(original, "{:id:}", req.Body.ID) },
 		).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson)
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
@@ -257,7 +252,7 @@ func (c client) CancelFineTuningJob(req CancelFineTuningJobRequest) (resp Cancel
 func (c client) UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, err error) {
 	request := c.options.
 		buildBaseRequest(EndpointEnumUploadFile).
-		SetUserAgent(userAgent).
+		SetUserAgent(c.options.getUserAgent()).
 		SetMethod(http.POST).
 		SetAccept(http.ContentTypeJson).
 		SetMultiPartBody("file", req.FormBody.FileName, req.FormBody.File, req.FormBody.ToMultiPartBody())
@@ -286,7 +281,7 @@ func (c client) ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err
 		).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson).
-		SetUserAgent(userAgent)
+		SetUserAgent(c.options.getUserAgent())
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
 	if executeErr != nil {
 		return ListFilesResponseBody{}, fmt.Errorf("execute list files request error: %w", executeErr)
@@ -306,7 +301,7 @@ func (c client) DeleteFile(req DeleteFileRequest) (resp DeleteFileResponseBody, 
 		).
 		SetMethod(http.DELETE).
 		SetAccept(http.ContentTypeJson).
-		SetUserAgent(userAgent)
+		SetUserAgent(c.options.getUserAgent())
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
 	if executeErr != nil {
 		return DeleteFileResponseBody{}, fmt.Errorf("execute delete file request error: %w", executeErr)
@@ -326,7 +321,7 @@ func (c client) RetrieveFile(req RetrieveFileRequest) (resp RetrieveFileResponse
 		).
 		SetMethod(http.GET).
 		SetAccept(http.ContentTypeJson).
-		SetUserAgent(userAgent)
+		SetUserAgent(c.options.getUserAgent())
 	status, body, executeErr := c.executor.ExecuteRequest(request).Result()
 	if executeErr != nil {
 		return RetrieveFileResponseBody{}, fmt.Errorf("execute retrieve file request error: %w", executeErr)
