@@ -17,10 +17,10 @@ type Client interface {
 	UploadMediaFile(ctx context.Context, fileName string, fileType LarkFileType, fileDuration int, fileContent io.Reader) (fileKey string, err error)
 	UploadMessageImage(ctx context.Context, imageContent io.Reader) (imageKey string, err error)
 	UploadAvatarImage(ctx context.Context, imageContent io.Reader) (imageKey string, err error)
-	SendTextMessage(ctx context.Context, receiver LarkReceiver, text string) (err error)
-	SendMarkdownMessage(ctx context.Context, receiver LarkReceiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (err error)
-	SendImageMessage(ctx context.Context, receiver LarkReceiver, imageContent io.Reader) (err error)
-	SendAudioMessage(ctx context.Context, receiver LarkReceiver, opusAudioMilliSeconds int, opusAudioContent io.Reader) (err error)
+	SendTextMessage(ctx context.Context, receiver Receiver, text string) (err error)
+	SendMarkdownMessage(ctx context.Context, receiver Receiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (err error)
+	SendImageMessage(ctx context.Context, receiver Receiver, imageContent io.Reader) (err error)
+	SendAudioMessage(ctx context.Context, receiver Receiver, opusAudioMilliSeconds int, opusAudioContent io.Reader) (err error)
 }
 
 type client struct {
@@ -53,7 +53,7 @@ func (c *client) uploadImage(ctx context.Context, imageType LarkImageType, image
 	return *uploadResult.Data.ImageKey, nil
 }
 
-func (c *client) buildTextMessage(ctx context.Context, receiver LarkReceiver, text string) (context.Context, *larkim.CreateMessageReq) {
+func (c *client) buildTextMessage(ctx context.Context, receiver Receiver, text string) (context.Context, *larkim.CreateMessageReq) {
 	traceId, newCtx := trace.GetTraceID(ctx)
 	message := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(getLarkReceiverIdType(receiver.Type)).
@@ -67,7 +67,7 @@ func (c *client) buildTextMessage(ctx context.Context, receiver LarkReceiver, te
 	return newCtx, message
 }
 
-func (c *client) buildMarkdownMessage(ctx context.Context, receiver LarkReceiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (context.Context, *larkim.CreateMessageReq, error) {
+func (c *client) buildMarkdownMessage(ctx context.Context, receiver Receiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (context.Context, *larkim.CreateMessageReq, error) {
 	traceId, newCtx := trace.GetTraceID(ctx)
 
 	header := larkcard.NewMessageCardHeader().
@@ -101,7 +101,7 @@ func (c *client) buildMarkdownMessage(ctx context.Context, receiver LarkReceiver
 	return newCtx, message, nil
 }
 
-func (c *client) buildImageMessage(ctx context.Context, receiver LarkReceiver, imageKey string) (context.Context, *larkim.CreateMessageReq) {
+func (c *client) buildImageMessage(ctx context.Context, receiver Receiver, imageKey string) (context.Context, *larkim.CreateMessageReq) {
 	traceId, newCtx := trace.GetTraceID(ctx)
 	payload := map[string]string{"image_key": imageKey}
 	content, _ := json.Marshal(payload)
@@ -118,7 +118,7 @@ func (c *client) buildImageMessage(ctx context.Context, receiver LarkReceiver, i
 	return newCtx, message
 }
 
-func (c *client) buildAudioMessage(ctx context.Context, receiver LarkReceiver, audioKey string) (context.Context, *larkim.CreateMessageReq) {
+func (c *client) buildAudioMessage(ctx context.Context, receiver Receiver, audioKey string) (context.Context, *larkim.CreateMessageReq) {
 	traceId, newCtx := trace.GetTraceID(ctx)
 	payload := map[string]string{"file_key": audioKey}
 	content, _ := json.Marshal(payload)
@@ -184,7 +184,7 @@ func (c *client) UploadAvatarImage(ctx context.Context, imageContent io.Reader) 
 	return c.uploadImage(ctx, LarkImageTypeAvatar, imageContent)
 }
 
-func (c *client) SendTextMessage(ctx context.Context, receiver LarkReceiver, text string) (err error) {
+func (c *client) SendTextMessage(ctx context.Context, receiver Receiver, text string) (err error) {
 	sendResult, sendErr := c.larkCore.Im.Message.Create(c.buildTextMessage(ctx, receiver, text))
 	if sendErr != nil {
 		return fmt.Errorf("failed to send text message: %w", sendErr)
@@ -195,7 +195,7 @@ func (c *client) SendTextMessage(ctx context.Context, receiver LarkReceiver, tex
 	return nil
 }
 
-func (c *client) SendMarkdownMessage(ctx context.Context, receiver LarkReceiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (err error) {
+func (c *client) SendMarkdownMessage(ctx context.Context, receiver Receiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (err error) {
 	sendCtx, sendMsg, buildErr := c.buildMarkdownMessage(ctx, receiver, markdownHeader, markdownContent, theme)
 	if buildErr != nil {
 		return fmt.Errorf("failed to send markdown message: %w", buildErr)
@@ -210,7 +210,7 @@ func (c *client) SendMarkdownMessage(ctx context.Context, receiver LarkReceiver,
 	return nil
 }
 
-func (c *client) SendImageMessage(ctx context.Context, receiver LarkReceiver, imageContent io.Reader) (err error) {
+func (c *client) SendImageMessage(ctx context.Context, receiver Receiver, imageContent io.Reader) (err error) {
 	imageKey, uploadImageErr := c.UploadMessageImage(ctx, imageContent)
 	if uploadImageErr != nil {
 		return fmt.Errorf("failed to send image message: %w", uploadImageErr)
@@ -226,7 +226,7 @@ func (c *client) SendImageMessage(ctx context.Context, receiver LarkReceiver, im
 	return nil
 }
 
-func (c *client) SendAudioMessage(ctx context.Context, receiver LarkReceiver, opusAudioMilliSeconds int, opusAudioContent io.Reader) (err error) {
+func (c *client) SendAudioMessage(ctx context.Context, receiver Receiver, opusAudioMilliSeconds int, opusAudioContent io.Reader) (err error) {
 	audioKey, uploadAudioErr := c.UploadMediaFile(ctx, fmt.Sprintf("%d_%s.opus", time.Now().UnixNano(), receiver.Receiver), LarkFileTypeOpus, opusAudioMilliSeconds, opusAudioContent)
 	if uploadAudioErr != nil {
 		return fmt.Errorf("failed to send audio message: %w", uploadAudioErr)
