@@ -9,6 +9,7 @@ import (
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type Client interface {
 	SendMarkdownMessage(ctx context.Context, receiver Receiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (err error)
 	SendImageMessage(ctx context.Context, receiver Receiver, imageContent io.Reader) (err error)
 	SendAudioMessage(ctx context.Context, receiver Receiver, opusAudioMilliSeconds int, opusAudioContent io.Reader) (err error)
+	GetMessageResourceFile(ctx context.Context, messageID string, fileKey string) (fileContent io.Reader, err error)
 }
 
 type client struct {
@@ -54,13 +56,19 @@ func (c *client) uploadImage(ctx context.Context, imageType LarkImageType, image
 }
 
 func (c *client) buildTextMessage(ctx context.Context, receiver Receiver, text string) (context.Context, *larkim.CreateMessageReq) {
+	textMessage := strings.Builder{}
+	textMessage.WriteString(`{"text": "`)
+	textMessage.WriteString(escapePayload(text))
+	textMessage.WriteString(`"}`)
+
 	traceId, newCtx := trace.GetTraceID(ctx)
 	message := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(getLarkReceiverIdType(receiver.Type)).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			MsgType(larkim.MsgTypeText).
 			ReceiveId(receiver.Receiver).
-			Uuid(traceId).Content(text).
+			Uuid(traceId).
+			Content(textMessage.String()).
 			Build(),
 		).
 		Build()
@@ -240,6 +248,23 @@ func (c *client) SendAudioMessage(ctx context.Context, receiver Receiver, opusAu
 	}
 
 	return nil
+}
+
+func (c *client) GetMessageResourceFile(ctx context.Context, messageID string, fileKey string) (fileContent io.Reader, err error) {
+	request := larkim.NewGetMessageResourceReqBuilder().
+		MessageId(messageID).
+		FileKey(fileKey).
+		Type("file").
+		Build()
+
+	getResult, getErr := c.larkCore.Im.MessageResource.Get(ctx, request)
+	if getErr != nil {
+		return nil, fmt.Errorf("failed to get file: %w", getErr)
+	} else if getResult.Code != 0 {
+		return nil, fmt.Errorf("failed to get file: %s", getResult.Msg)
+	}
+
+	return getResult.File, nil
 }
 
 func NewClient(cfg Config) Client {

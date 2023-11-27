@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func getAudioLength(reader io.Reader, bitRateKbps float64) (int, error) {
+func GetAudioLength(reader io.Reader, bitRateKbps float64) (int, error) {
 	// 将数据从 reader 复制到 io.Discard，计算出总字节数
 	bytesCopied, err := io.Copy(io.Discard, reader)
 	if err != nil {
