@@ -10,6 +10,7 @@ import (
 
 var (
 	exc = make(chan struct{}, 1)
+	set = false
 )
 
 func init() {
@@ -32,6 +33,7 @@ func handleNotify(sg chan os.Signal) {
 	}
 
 	fmt.Printf("\n")
+	fmt.Printf("waiting for %d exit functions to finish...\n", len(exitEvents))
 	wg := &sync.WaitGroup{}
 	for i, fn := range exitEvents {
 		if fn.handler != nil {
@@ -44,10 +46,18 @@ func handleNotify(sg chan os.Signal) {
 	}
 
 	wg.Wait()
+	if !set {
+		os.Exit(0)
+	}
 	exc <- struct{}{}
 }
 
 func BlockedUntilTerminate() {
+	if set {
+		return
+	}
+
+	set = true
 	select {
 	case <-exc:
 		return
