@@ -49,7 +49,7 @@ func NewRedisCache(cfg Config) (rds cache.Cache, err error) {
 	}, "redis cache")
 
 	return &accessor{
-		db: nil,
+		db: client,
 		kb: keyBuilder{
 			localRedisKeyPrefix: cfg.Prefix,
 			redisKeySeparator:   cfg.KeySeparator,
