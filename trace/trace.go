@@ -36,3 +36,9 @@ func GetTraceID(ctx context.Context) (traceID string, result context.Context) {
 	// 转换 trace_id 成功，返回
 	return traceIDString, ctx
 }
+
+// ForkTracedContext 从已有 trace_id 的 context 中生成一个新的 context，用于在新的 goroutine 中使用
+func ForkTracedContext(ctx context.Context) (forked context.Context) {
+	traceID, _ := GetTraceID(ctx)
+	return context.WithValue(context.Background(), "trace_id", traceID)
+}
