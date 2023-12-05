@@ -1,6 +1,9 @@
 package im
 
-import event "github.com/alioth-center/infrastructure/thirdparty/lark/event"
+import (
+	"context"
+	"github.com/alioth-center/infrastructure/thirdparty/lark/event"
+)
 
 // 此处定义了飞书群聊用户被删除事件的数据结构和处理函数
 // reference: https://open.feishu.cn/document/server-docs/group/chat-member/event/deleted-2
@@ -37,7 +40,7 @@ type MemberDeleteEventHandler struct {
 	event.BaseEventHandler[MemberDeleteEvent]
 }
 
-func SetMemberDeleteHandler(handler func(event *event.FullCallbackRequest[MemberDeleteEvent]) (status int)) {
+func SetMemberDeleteHandler(handler func(ctx context.Context, event *event.FullCallbackRequest[MemberDeleteEvent]) (err error)) {
 	if handler != nil {
 		// 只设置非空的事件处理函数
 		event.SetEventHandler(MemberDeleteEventHandler{BaseEventHandler: event.InitializeBaseEventHandler(handler, event.EnumMemberDelete)})

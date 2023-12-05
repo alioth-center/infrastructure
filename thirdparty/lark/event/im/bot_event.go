@@ -1,6 +1,9 @@
 package im
 
-import "github.com/alioth-center/infrastructure/thirdparty/lark/event"
+import (
+	"context"
+	"github.com/alioth-center/infrastructure/thirdparty/lark/event"
+)
 
 // 此处定义了飞书机器人事件的数据结构和处理函数
 // reference: https://open.feishu.cn/document/client-docs/bot-v3/events/menu
@@ -26,7 +29,7 @@ type BotEventHandler struct {
 	event.BaseEventHandler[BotEvent]
 }
 
-func SetBotEventHandler(handler func(event *event.FullCallbackRequest[BotEvent]) (status int)) {
+func SetBotEventHandler(handler func(ctx context.Context, event *event.FullCallbackRequest[BotEvent]) (err error)) {
 	if handler != nil {
 		// 只设置非空的事件处理函数
 		event.SetEventHandler(BotEventHandler{BaseEventHandler: event.InitializeBaseEventHandler(handler, event.EnumBotEvent)})

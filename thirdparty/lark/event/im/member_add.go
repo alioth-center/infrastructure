@@ -1,6 +1,9 @@
 package im
 
-import event "github.com/alioth-center/infrastructure/thirdparty/lark/event"
+import (
+	"context"
+	"github.com/alioth-center/infrastructure/thirdparty/lark/event"
+)
 
 // 此处定义了飞书群聊用户进群事件的数据结构和处理函数
 // reference: https://open.feishu.cn/document/server-docs/group/chat-member/event/added
@@ -37,7 +40,7 @@ type MemberAddEventHandler struct {
 	event.BaseEventHandler[MemberAddEvent]
 }
 
-func SetMemberAddHandler(handler func(event *event.FullCallbackRequest[MemberAddEvent]) (status int)) {
+func SetMemberAddHandler(handler func(ctx context.Context, event *event.FullCallbackRequest[MemberAddEvent]) (err error)) {
 	if handler != nil {
 		// 只设置非空的事件处理函数
 		event.SetEventHandler(MemberAddEventHandler{BaseEventHandler: event.InitializeBaseEventHandler(handler, event.EnumMemberAdd)})

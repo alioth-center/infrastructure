@@ -20,6 +20,46 @@ type ChallengeResponse struct {
 	Challenge string `json:"challenge"`
 }
 
+// decrypt 解密飞书的加密请求
+func decrypt(content string, secretKey string) (decrypted []byte, err error) {
+	// 解码加密的字符串
+	buffer, decodeErr := base64.StdEncoding.DecodeString(content)
+	if decodeErr != nil {
+		return []byte{}, fmt.Errorf("failed to decode challenge request encrypt: %w", decodeErr)
+	}
+	if len(buffer) < aes.BlockSize {
+		return []byte{}, fmt.Errorf("cipher too short")
+	}
+
+	// 使用 SHA256 生成密钥
+	keyBuffer := sha256.Sum256([]byte(secretKey))
+
+	// 创建 AES 解密器
+	blockData, createCipherErr := aes.NewCipher(keyBuffer[:])
+	if createCipherErr != nil {
+		return []byte{}, fmt.Errorf("failed to calculate aes cipher: %w", createCipherErr)
+	}
+
+	// 检查密文长度是否合法
+	if len(buffer)%aes.BlockSize != 0 {
+		return []byte{}, fmt.Errorf("ciphertext is not a multiple of the block size")
+	}
+
+	// 解密数据
+	iv, buf := buffer[:aes.BlockSize], buffer[aes.BlockSize:]
+	mode := cipher.NewCBCDecrypter(blockData, iv)
+	mode.CryptBlocks(buf, buf)
+
+	// 查找 JSON 对象的起始和终止位置
+	n := bytes.Index(buf, []byte("{"))
+	m := bytes.LastIndex(buf, []byte("}"))
+	if n == -1 || m == -1 {
+		return []byte{}, fmt.Errorf("decrypted data does not contain a valid JSON object")
+	}
+
+	return buf[n : m+1], nil
+}
+
 // ParseChallenge 解析飞书的 challenge 请求，无需解密
 // reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/request-url-configuration-case
 func ParseChallenge(requestBody []byte, verificationToken string) (challengeBody ChallengeResponse, err error) {
@@ -37,58 +77,29 @@ func ParseChallenge(requestBody []byte, verificationToken string) (challengeBody
 	return ChallengeResponse{Challenge: challengeRequest.Challenge}, nil
 }
 
-type ChallengeWithEncryptionRequest struct {
+type EncryptedRequest struct {
 	Encrypt string `json:"encrypt"`
 }
 
 // ParseChallengeWithEncryption 解析飞书的 challenge 请求，并进行解密
 // reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case
 func ParseChallengeWithEncryption(requestBody []byte, verificationToken, secretKey string) (challengeBody ChallengeResponse, err error) {
-	var challengeRequest ChallengeWithEncryptionRequest
-	if unmarshalErr := json.Unmarshal(requestBody, &challengeRequest); unmarshalErr != nil {
-		return ChallengeResponse{}, fmt.Errorf("failed to unmarshal challenge request: %w", unmarshalErr)
-	}
-	if challengeRequest.Encrypt == "" {
-		return ChallengeResponse{}, fmt.Errorf("invalid challenge request encrypt: %s", challengeRequest.Encrypt)
-	}
+	var encryptedRequest EncryptedRequest
 
-	// 解码加密的字符串
-	buffer, decodeErr := base64.StdEncoding.DecodeString(challengeRequest.Encrypt)
-	if decodeErr != nil {
-		return ChallengeResponse{}, fmt.Errorf("failed to decode challenge request encrypt: %w", decodeErr)
-	}
-	if len(buffer) < aes.BlockSize {
-		return ChallengeResponse{}, fmt.Errorf("cipher too short")
+	// 解析加密的请求
+	if err := json.Unmarshal(requestBody, &encryptedRequest); err != nil {
+		return ChallengeResponse{}, fmt.Errorf("failed to unmarshal challenge request: %w", err)
+	} else if encryptedRequest.Encrypt == "" {
+		return ChallengeResponse{}, fmt.Errorf("invalid challenge request: empty encrypt")
 	}
 
-	// 使用 SHA256 生成密钥
-	keyBuffer := sha256.Sum256([]byte(secretKey))
-
-	// 创建 AES 解密器
-	blockData, createCipherErr := aes.NewCipher(keyBuffer[:])
-	if createCipherErr != nil {
-		return ChallengeResponse{}, fmt.Errorf("failed to calculate aes cipher: %w", createCipherErr)
+	// 解密请求
+	challenge, decryptErr := decrypt(encryptedRequest.Encrypt, secretKey)
+	if decryptErr != nil {
+		return ChallengeResponse{}, fmt.Errorf("failed to decrypt challenge request: %w", decryptErr)
 	}
 
-	// 检查密文长度是否合法
-	if len(buffer)%aes.BlockSize != 0 {
-		return ChallengeResponse{}, fmt.Errorf("ciphertext is not a multiple of the block size")
-	}
-
-	// 解密数据
-	iv, buf := buffer[:aes.BlockSize], buffer[aes.BlockSize:]
-	mode := cipher.NewCBCDecrypter(blockData, iv)
-	mode.CryptBlocks(buf, buf)
-
-	// 查找 JSON 对象的起始和终止位置
-	n := bytes.Index(buf, []byte("{"))
-	m := bytes.LastIndex(buf, []byte("}"))
-	if n == -1 || m == -1 {
-		return ChallengeResponse{}, fmt.Errorf("decrypted data does not contain a valid JSON object")
-	}
-
-	// 提取 JSON 对象并验证 token
-	challenge := buf[n : m+1]
+	// 解析请求
 	var challengeData ChallengeRequest
 	if err := json.Unmarshal(challenge, &challengeData); err != nil {
 		return ChallengeResponse{}, fmt.Errorf("failed to unmarshal decrypted challenge data: %w", err)
@@ -101,25 +112,30 @@ func ParseChallengeWithEncryption(requestBody []byte, verificationToken, secretK
 	return ChallengeResponse{Challenge: challengeData.Challenge}, nil
 }
 
-type ChallengeAdaptionRequest struct {
-	Encrypt   string `json:"encrypt,omitempty"`
-	Challenge string `json:"challenge,omitempty"`
-	Token     string `json:"token,omitempty"`
-	Type      string `json:"type,omitempty"`
+// ParseEncryptedRequest 解析飞书的回调请求，并进行解密
+// reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case
+func ParseEncryptedRequest(requestBody []byte, secretKey string) (challengeBody CallbackRequest, err error) {
+	var encryptedRequest EncryptedRequest
+	if err := json.Unmarshal(requestBody, &encryptedRequest); err != nil {
+		return CallbackRequest{}, fmt.Errorf("failed to unmarshal challenge request: %w", err)
+	} else if encryptedRequest.Encrypt == "" {
+		return CallbackRequest{}, fmt.Errorf("invalid challenge request: empty encrypt")
+	}
+
+	return ParseEncryptedRequestString(encryptedRequest.Encrypt, secretKey)
 }
 
-// ParseChallengeAdaption 解析飞书的 challenge 请求，自适应解密
-func ParseChallengeAdaption(requestBody []byte, verificationToken, secretKey string) (challengeBody ChallengeResponse, err error) {
-	fullRequest := ChallengeAdaptionRequest{}
-	if unmarshalErr := json.Unmarshal(requestBody, &fullRequest); unmarshalErr != nil {
-		return ChallengeResponse{}, fmt.Errorf("failed to unmarshal challenge request: %w", unmarshalErr)
+// ParseEncryptedRequestString 解析飞书的回调请求的encrypted字段，并进行解密
+// reference: https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case
+func ParseEncryptedRequestString(encrypted string, secretKey string) (challengeBody CallbackRequest, err error) {
+	challenge, decryptErr := decrypt(encrypted, secretKey)
+	if decryptErr != nil {
+		return CallbackRequest{}, fmt.Errorf("failed to decrypt challenge request: %w", decryptErr)
 	}
 
-	if fullRequest.Encrypt != "" {
-		// 使用加密方式解析
-		return ParseChallengeWithEncryption(requestBody, verificationToken, secretKey)
-	} else {
-		// 使用非加密方式解析
-		return ParseChallenge(requestBody, verificationToken)
+	var challengeData CallbackRequest
+	if err := json.Unmarshal(challenge, &challengeData); err != nil {
+		return CallbackRequest{}, fmt.Errorf("failed to unmarshal decrypted challenge data: %w", err)
 	}
+	return challengeData, nil
 }

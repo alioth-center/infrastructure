@@ -7,7 +7,7 @@ import (
 )
 
 func TestMemoryCache(t *testing.T) {
-	cache, _ := NewMemoryCache(Config{
+	cache := NewMemoryCache(Config{
 		EnableInitiativeClean: true,
 		CleanIntervalSecond:   1,
 		MaxCleanMicroSecond:   10000,
@@ -22,7 +22,7 @@ func TestMemoryCache(t *testing.T) {
 }
 
 func BenchmarkMemoryCache(b *testing.B) {
-	cache, _ := NewMemoryCache(Config{
+	cache := NewMemoryCache(Config{
 		EnableInitiativeClean: true,
 		CleanIntervalSecond:   1,
 		MaxCleanMicroSecond:   100,
