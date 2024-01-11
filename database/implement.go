@@ -16,6 +16,10 @@ type BaseDatabaseImplement struct {
 	randCmd string
 }
 
+func (s *BaseDatabaseImplement) DriverName() string {
+	panic("driver name must be implemented")
+}
+
 func (s *BaseDatabaseImplement) Init(_ Options) error {
 	panic("init function must be implemented")
 }
@@ -201,6 +205,16 @@ func (s *BaseDatabaseImplement) QueryRaw(receiver any, sql string, args ...any) 
 	})
 }
 
+func (s *BaseDatabaseImplement) ExecOrm(execFunc func(db *gorm.DB) *gorm.DB) error {
+	return s.exec(execFunc)
+}
+
+func (s *BaseDatabaseImplement) QueryOrm(receiver any, queryFunc func(db *gorm.DB) *gorm.DB) error {
+	return s.exec(func(tx *gorm.DB) *gorm.DB {
+		return queryFunc(tx).Scan(receiver)
+	})
+}
+
 func (s *BaseDatabaseImplement) HasWithCtx(ctx context.Context, table, query string, args ...any) (exist bool, err error) {
 	var count int64
 	err = s.exec(func(tx *gorm.DB) *gorm.DB {
@@ -285,5 +299,15 @@ func (s *BaseDatabaseImplement) ExecRawWithCtx(ctx context.Context, sql string, 
 func (s *BaseDatabaseImplement) QueryRawWithCtx(ctx context.Context, receiver any, sql string, args ...any) error {
 	return s.exec(func(tx *gorm.DB) *gorm.DB {
 		return tx.Raw(sql, args...).Scan(receiver)
+	}, ctx)
+}
+
+func (s *BaseDatabaseImplement) ExecOrmWithCtx(ctx context.Context, execFunc func(db *gorm.DB) *gorm.DB) error {
+	return s.exec(execFunc, ctx)
+}
+
+func (s *BaseDatabaseImplement) QueryOrmWithCtx(ctx context.Context, receiver any, queryFunc func(db *gorm.DB) *gorm.DB) error {
+	return s.exec(func(tx *gorm.DB) *gorm.DB {
+		return queryFunc(tx).Scan(receiver)
 	}, ctx)
 }

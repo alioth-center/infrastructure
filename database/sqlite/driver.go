@@ -11,8 +11,14 @@ import (
 	"path/filepath"
 )
 
+const DriverName = "sqlite"
+
 type sqliteDb struct {
 	database.BaseDatabaseImplement
+}
+
+func (s *sqliteDb) DriverName() string {
+	return DriverName
 }
 
 func (s *sqliteDb) Init(options database.Options) error {

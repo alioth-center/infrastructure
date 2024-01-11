@@ -9,8 +9,14 @@ import (
 	"gorm.io/gorm"
 )
 
+const DriverName = "postgres"
+
 type postgresDb struct {
 	database.BaseDatabaseImplement
+}
+
+func (s *postgresDb) DriverName() string {
+	return DriverName
 }
 
 func (s *postgresDb) Init(options database.Options) error {

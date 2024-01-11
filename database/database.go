@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Options struct {
 }
 
 type Database interface {
+	DriverName() string
 	Init(options Options) error
 	Migrate(models ...any) error
 	Has(table string, query string, args ...any) (exist bool, err error)
@@ -34,6 +36,8 @@ type Database interface {
 	DeleteAll(query string, args ...any) error
 	ExecRaw(sql string, args ...any) error
 	QueryRaw(receiver any, sql string, args ...any) error
+	ExecOrm(execFunc func(db *gorm.DB) *gorm.DB) error
+	QueryOrm(receiver any, queryFunc func(db *gorm.DB) *gorm.DB) error
 	HasWithCtx(ctx context.Context, table string, query string, args ...any) (exist bool, err error)
 	CountWithCtx(ctx context.Context, table string, query string, args ...any) (count int64, err error)
 	GetOneWithCtx(ctx context.Context, receiver any, query string, args ...any) error
@@ -48,4 +52,6 @@ type Database interface {
 	DeleteAllWithCtx(ctx context.Context, query string, args ...any) error
 	ExecRawWithCtx(ctx context.Context, sql string, args ...any) error
 	QueryRawWithCtx(ctx context.Context, receiver any, sql string, args ...any) error
+	ExecOrmWithCtx(ctx context.Context, execFunc func(db *gorm.DB) *gorm.DB) error
+	QueryOrmWithCtx(ctx context.Context, receiver any, queryFunc func(db *gorm.DB) *gorm.DB) error
 }

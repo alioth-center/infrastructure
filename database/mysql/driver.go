@@ -9,8 +9,14 @@ import (
 	"gorm.io/gorm"
 )
 
+const DriverName = "mysql"
+
 type mysqlDb struct {
 	database.BaseDatabaseImplement
+}
+
+func (s *mysqlDb) DriverName() string {
+	return DriverName
 }
 
 func (s *mysqlDb) Init(options database.Options) error {
