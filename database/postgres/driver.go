@@ -15,10 +15,6 @@ type postgresDb struct {
 	database.BaseDatabaseImplement
 }
 
-func (s *postgresDb) DriverName() string {
-	return DriverName
-}
-
 func (s *postgresDb) Init(options database.Options) error {
 	// 初始化日志
 	s.BaseDatabaseImplement.ParseLoggerOptions(options)
@@ -38,6 +34,7 @@ func (s *postgresDb) Init(options database.Options) error {
 	}
 	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
 	s.BaseDatabaseImplement.SetRandCommand("random()")
+	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
 	s.Db = db

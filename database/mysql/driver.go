@@ -15,10 +15,6 @@ type mysqlDb struct {
 	database.BaseDatabaseImplement
 }
 
-func (s *mysqlDb) DriverName() string {
-	return DriverName
-}
-
 func (s *mysqlDb) Init(options database.Options) error {
 	// 初始化日志
 	s.BaseDatabaseImplement.ParseLoggerOptions(options)
@@ -38,6 +34,7 @@ func (s *mysqlDb) Init(options database.Options) error {
 	}
 	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
 	s.BaseDatabaseImplement.SetRandCommand("rand()")
+	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
 	s.Db = db

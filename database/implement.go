@@ -14,10 +14,27 @@ type BaseDatabaseImplement struct {
 	Logger  logger.Logger
 	Timeout time.Duration
 	randCmd string
+	driver  string
 }
 
-func (s *BaseDatabaseImplement) DriverName() string {
-	panic("driver name must be implemented")
+type BaseExtMethodGroup struct {
+	core *BaseDatabaseImplement
+}
+
+func (b *BaseExtMethodGroup) DriverName() string {
+	return b.core.driver
+}
+
+func (b *BaseExtMethodGroup) GetGorm() *gorm.DB {
+	return b.core.Db
+}
+
+func (b *BaseExtMethodGroup) Exec(cmd func(db *gorm.DB) *gorm.DB) error {
+	return b.core.exec(cmd)
+}
+
+func (b *BaseExtMethodGroup) ExecCtx(ctx context.Context, cmd func(db *gorm.DB) *gorm.DB) error {
+	return b.core.exec(cmd, ctx)
 }
 
 func (s *BaseDatabaseImplement) Init(_ Options) error {
@@ -30,6 +47,10 @@ func (s *BaseDatabaseImplement) SetRandCommand(command string) {
 	}
 
 	s.randCmd = command
+}
+
+func (s *BaseDatabaseImplement) SetDriverName(name string) {
+	s.driver = name
 }
 
 func (s *BaseDatabaseImplement) ParseLoggerOptions(opts Options) {
@@ -205,16 +226,6 @@ func (s *BaseDatabaseImplement) QueryRaw(receiver any, sql string, args ...any) 
 	})
 }
 
-func (s *BaseDatabaseImplement) ExecOrm(execFunc func(db *gorm.DB) *gorm.DB) error {
-	return s.exec(execFunc)
-}
-
-func (s *BaseDatabaseImplement) QueryOrm(receiver any, queryFunc func(db *gorm.DB) *gorm.DB) error {
-	return s.exec(func(tx *gorm.DB) *gorm.DB {
-		return queryFunc(tx).Scan(receiver)
-	})
-}
-
 func (s *BaseDatabaseImplement) HasWithCtx(ctx context.Context, table, query string, args ...any) (exist bool, err error) {
 	var count int64
 	err = s.exec(func(tx *gorm.DB) *gorm.DB {
@@ -302,12 +313,6 @@ func (s *BaseDatabaseImplement) QueryRawWithCtx(ctx context.Context, receiver an
 	}, ctx)
 }
 
-func (s *BaseDatabaseImplement) ExecOrmWithCtx(ctx context.Context, execFunc func(db *gorm.DB) *gorm.DB) error {
-	return s.exec(execFunc, ctx)
-}
-
-func (s *BaseDatabaseImplement) QueryOrmWithCtx(ctx context.Context, receiver any, queryFunc func(db *gorm.DB) *gorm.DB) error {
-	return s.exec(func(tx *gorm.DB) *gorm.DB {
-		return queryFunc(tx).Scan(receiver)
-	}, ctx)
+func (s *BaseDatabaseImplement) ExtMethods() ExtMethods {
+	return &BaseExtMethodGroup{core: s}
 }

@@ -17,10 +17,6 @@ type sqliteDb struct {
 	database.BaseDatabaseImplement
 }
 
-func (s *sqliteDb) DriverName() string {
-	return DriverName
-}
-
 func (s *sqliteDb) Init(options database.Options) error {
 	// 初始化日志
 	s.BaseDatabaseImplement.ParseLoggerOptions(options)
@@ -48,6 +44,7 @@ func (s *sqliteDb) Init(options database.Options) error {
 	}
 	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
 	s.BaseDatabaseImplement.SetRandCommand("random()")
+	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
 	s.Db = db
