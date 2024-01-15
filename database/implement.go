@@ -54,28 +54,18 @@ func (s *BaseDatabaseImplement) SetDriverName(name string) {
 }
 
 func (s *BaseDatabaseImplement) ParseLoggerOptions(opts Options) {
-	loggerOpts := logger.Options{
-		LogLevel:     logger.LevelInfo,
-		StdoutWriter: logger.ConsoleWriter(),
-		StderrWriter: logger.ConsoleErrorWriter(),
-	}
-	if opts.DebugLog {
-		loggerOpts.LogLevel = logger.LevelDebug
-	}
-	if opts.Stdout != "" {
-		stdout, fwe := logger.FileWriter(opts.Stdout)
-		if fwe == nil {
-			loggerOpts.StdoutWriter = stdout
-		}
-	}
-	if opts.Stderr != "" {
-		stderr, fwe := logger.FileWriter(opts.Stderr)
-		if fwe == nil {
-			loggerOpts.StderrWriter = stderr
-		}
+	loggerCfg := logger.Config{
+		Level:          string(logger.LevelInfo),
+		Formatter:      "json",
+		StdoutFilePath: opts.Stdout,
+		StderrFilePath: opts.Stderr,
 	}
 
-	s.Logger = logger.NewLoggerWithOptions(loggerOpts)
+	if opts.DebugLog {
+		loggerCfg.Level = string(logger.LevelDebug)
+	}
+
+	s.Logger = logger.NewLoggerWithConfig(loggerCfg)
 }
 
 func (s *BaseDatabaseImplement) ParseDatabaseOptions(db *sql.DB, opts Options) {

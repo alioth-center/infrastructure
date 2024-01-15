@@ -59,7 +59,7 @@ func TestConsoleWriter(t *testing.T) {
 	cw.Write(wb)
 	cw.Write(wb)
 	cw.Write(wb)
-	cw.Close()
+	//cw.Close()
 }
 
 func TestLogger(t *testing.T) {
@@ -77,6 +77,6 @@ func TestConfigConvert(t *testing.T) {
 		Formatter: "json",
 	}
 	opt := convertConfigToOptions(cfg)
-	logger := NewLoggerWithOptions(opt)
+	logger := newLoggerWithOptions(opt)
 	logger.Info(NewFields(context.Background()).WithMessage("test1").WithData("hello"))
 }
