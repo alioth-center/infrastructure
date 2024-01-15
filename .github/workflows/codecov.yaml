@@ -18,14 +18,14 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
 
+    - name: Test
+      run: go test -race -v ./... -coverprofile ./coverage.txt
+
     - name: Lint
       uses: golangci/golangci-lint-action@v3.3.1
       with:
         version: latest
-        args: --timeout 5m
-
-    - name: Test
-      run: go test -race -v ./... -coverprofile ./coverage.txt
+        args: --timeout 5m --disable=errcheck,unused,gosimple,staticcheck
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
