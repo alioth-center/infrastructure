@@ -14,6 +14,27 @@ type BaseDatabaseImplement struct {
 	Logger  logger.Logger
 	Timeout time.Duration
 	randCmd string
+	driver  string
+}
+
+type BaseExtMethodGroup struct {
+	core *BaseDatabaseImplement
+}
+
+func (b *BaseExtMethodGroup) DriverName() string {
+	return b.core.driver
+}
+
+func (b *BaseExtMethodGroup) GetGorm() *gorm.DB {
+	return b.core.Db
+}
+
+func (b *BaseExtMethodGroup) Exec(cmd func(db *gorm.DB) *gorm.DB) error {
+	return b.core.exec(cmd)
+}
+
+func (b *BaseExtMethodGroup) ExecCtx(ctx context.Context, cmd func(db *gorm.DB) *gorm.DB) error {
+	return b.core.exec(cmd, ctx)
 }
 
 func (s *BaseDatabaseImplement) Init(_ Options) error {
@@ -28,29 +49,23 @@ func (s *BaseDatabaseImplement) SetRandCommand(command string) {
 	s.randCmd = command
 }
 
+func (s *BaseDatabaseImplement) SetDriverName(name string) {
+	s.driver = name
+}
+
 func (s *BaseDatabaseImplement) ParseLoggerOptions(opts Options) {
-	loggerOpts := logger.Options{
-		LogLevel:     logger.LevelInfo,
-		StdoutWriter: logger.ConsoleWriter(),
-		StderrWriter: logger.ConsoleErrorWriter(),
-	}
-	if opts.DebugLog {
-		loggerOpts.LogLevel = logger.LevelDebug
-	}
-	if opts.Stdout != "" {
-		stdout, fwe := logger.FileWriter(opts.Stdout)
-		if fwe == nil {
-			loggerOpts.StdoutWriter = stdout
-		}
-	}
-	if opts.Stderr != "" {
-		stderr, fwe := logger.FileWriter(opts.Stderr)
-		if fwe == nil {
-			loggerOpts.StderrWriter = stderr
-		}
+	loggerCfg := logger.Config{
+		Level:          string(logger.LevelInfo),
+		Formatter:      "json",
+		StdoutFilePath: opts.Stdout,
+		StderrFilePath: opts.Stderr,
 	}
 
-	s.Logger = logger.NewLoggerWithOptions(loggerOpts)
+	if opts.DebugLog {
+		loggerCfg.Level = string(logger.LevelDebug)
+	}
+
+	s.Logger = logger.NewLoggerWithConfig(loggerCfg)
 }
 
 func (s *BaseDatabaseImplement) ParseDatabaseOptions(db *sql.DB, opts Options) {
@@ -286,4 +301,8 @@ func (s *BaseDatabaseImplement) QueryRawWithCtx(ctx context.Context, receiver an
 	return s.exec(func(tx *gorm.DB) *gorm.DB {
 		return tx.Raw(sql, args...).Scan(receiver)
 	}, ctx)
+}
+
+func (s *BaseDatabaseImplement) ExtMethods() ExtMethods {
+	return &BaseExtMethodGroup{core: s}
 }

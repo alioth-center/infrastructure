@@ -15,6 +15,8 @@ func convertConfigToOptions(cfg Config) (opt Options) {
 	opts := Options{
 		StdoutWriter: ConsoleWriter(),
 		StderrWriter: ConsoleErrorWriter(),
+		notStdout:    false,
+		notStderr:    false,
 	}
 
 	switch strings.ToLower(cfg.Level) {
@@ -51,6 +53,7 @@ func convertConfigToOptions(cfg Config) (opt Options) {
 		stdout, fwe := FileWriter(cfg.StdoutFilePath)
 		if fwe == nil {
 			opts.StdoutWriter = stdout
+			opts.notStdout = true
 		}
 	}
 
@@ -58,6 +61,7 @@ func convertConfigToOptions(cfg Config) (opt Options) {
 		stderr, fwe := FileWriter(cfg.StderrFilePath)
 		if fwe == nil {
 			opts.StderrWriter = stderr
+			opts.notStderr = true
 		}
 	}
 

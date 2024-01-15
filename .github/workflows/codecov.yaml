@@ -1,0 +1,35 @@
+name: CodeCov
+
+on:
+  - push
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        go-version: [ '1.21', 'stable' ]
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Test
+      run: go test -race -v ./... -coverprofile ./coverage.txt
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v3.3.1
+      with:
+        version: latest
+        args: --timeout 5m --disable=errcheck,unused,gosimple,staticcheck
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      with:
+        files: ./coverage.txt

@@ -48,4 +48,5 @@ type Database interface {
 	DeleteAllWithCtx(ctx context.Context, query string, args ...any) error
 	ExecRawWithCtx(ctx context.Context, sql string, args ...any) error
 	QueryRawWithCtx(ctx context.Context, receiver any, sql string, args ...any) error
+	ExtMethods() ExtMethods
 }

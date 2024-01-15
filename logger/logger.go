@@ -14,6 +14,8 @@ type Options struct {
 	Marshaller   Marshaller
 	StdoutWriter Writer
 	StderrWriter Writer
+	notStdout    bool
+	notStderr    bool
 }
 
 type Logger interface {
@@ -180,11 +182,16 @@ func Default() Logger {
 	return defaultLogger
 }
 
-func NewLoggerWithOptions(options Options) Logger {
+func newLoggerWithOptions(options Options) Logger {
 	var l = &logger{}
 	exit.Register(func(_ string) string {
-		options.StderrWriter.Close()
-		options.StdoutWriter.Close()
+		// stdout 和 stderr 不能关闭，可能会导致异常情况
+		if options.notStdout {
+			options.StdoutWriter.Close()
+		}
+		if options.notStderr {
+			options.StderrWriter.Close()
+		}
 		return "logger stopped"
 	}, "logger")
 	l.init(options)
@@ -192,5 +199,5 @@ func NewLoggerWithOptions(options Options) Logger {
 }
 
 func NewLoggerWithConfig(cfg Config) Logger {
-	return NewLoggerWithOptions(convertConfigToOptions(cfg))
+	return newLoggerWithOptions(convertConfigToOptions(cfg))
 }

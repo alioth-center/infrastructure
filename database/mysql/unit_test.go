@@ -3,10 +3,15 @@ package mysql
 import (
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/trace"
+	"os"
 	"testing"
 )
 
 func TestMysqlDb(t *testing.T) {
+	if os.Getenv("MYSQL_TEST_ENABLE") != "true" {
+		t.Skip("skip mysql test")
+	}
+
 	// you must create a database named "test" and a table named "test_table" in your mysql server,
 	// or you can change the config to your own database, but you must change the table name in the test code.
 	cfg := Config{

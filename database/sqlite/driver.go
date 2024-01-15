@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 )
 
+const DriverName = "sqlite"
+
 type sqliteDb struct {
 	database.BaseDatabaseImplement
 }
@@ -42,6 +44,7 @@ func (s *sqliteDb) Init(options database.Options) error {
 	}
 	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
 	s.BaseDatabaseImplement.SetRandCommand("random()")
+	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
 	s.Db = db

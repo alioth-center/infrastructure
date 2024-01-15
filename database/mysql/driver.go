@@ -9,6 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const DriverName = "mysql"
+
 type mysqlDb struct {
 	database.BaseDatabaseImplement
 }
@@ -32,6 +34,7 @@ func (s *mysqlDb) Init(options database.Options) error {
 	}
 	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
 	s.BaseDatabaseImplement.SetRandCommand("rand()")
+	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
 	s.Db = db

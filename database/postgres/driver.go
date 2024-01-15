@@ -9,6 +9,8 @@ import (
 	"gorm.io/gorm"
 )
 
+const DriverName = "postgres"
+
 type postgresDb struct {
 	database.BaseDatabaseImplement
 }
@@ -32,6 +34,7 @@ func (s *postgresDb) Init(options database.Options) error {
 	}
 	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
 	s.BaseDatabaseImplement.SetRandCommand("random()")
+	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
 	s.Db = db
