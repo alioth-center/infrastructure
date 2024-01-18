@@ -3,3 +3,6 @@
 
 # macos系统文件
 .DS_Store
+
+# codecov生成文件
+coverage.txt
