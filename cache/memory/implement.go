@@ -39,11 +39,22 @@ func (e *trackable) SetExpireTime(expiredTime time.Duration) {
 	e.createdAt, e.expiredTime = time.Now(), expiredTime
 }
 
+func (e *trackable) GetExpireTime() time.Duration {
+	if e.expiredTime < 0 || e.createdAt.IsZero() {
+		// 如果没有设置过期时间，或者没有创建时间，则返回0
+		return 0
+	} else {
+		// 返回剩余过期时间
+		return time.Until(e.createdAt.Add(e.expiredTime))
+	}
+}
+
 type entry interface {
 	Type() Type
 	GetExpiredAt() time.Time
 	IsExpired() bool
 	SetExpireTime(expiredTime time.Duration)
+	GetExpireTime() time.Duration
 }
 
 type counterEntry struct {
@@ -127,7 +138,7 @@ func (e *setEntry) Members() (members []string) {
 	return members
 }
 
-func newSetEntry() entry { return &setEntry{mtx: sync.RWMutex{}, val: map[string]struct{}{}} }
+func newSetEntry() *setEntry { return &setEntry{mtx: sync.RWMutex{}, val: map[string]struct{}{}} }
 
 type hashEntry struct {
 	trackable
@@ -173,25 +184,30 @@ func (e *hashEntry) GetField(field string) (value string, exist bool) {
 }
 
 func (e *hashEntry) GetFields(fields ...string) (resultMap map[string]string) {
+	if fields == nil || len(fields) == 0 {
+		return map[string]string{}
+	}
+
 	e.mtx.RLock()
 	defer e.mtx.RUnlock()
-	resultMap = make(map[string]string)
+	resultMap = map[string]string{}
 	for _, field := range fields {
 		if value, exist := e.val[field]; exist {
 			resultMap[field] = value
 		}
 	}
+
 	return resultMap
 }
 
 func (e *hashEntry) GetAllFields() (resultMap map[string]string) {
 	e.mtx.RLock()
 	defer e.mtx.RUnlock()
-	resultMap = make(map[string]string)
+	resultMap = map[string]string{}
 	for k, v := range e.val {
 		resultMap[k] = v
 	}
 	return resultMap
 }
 
-func newHashEntry() entry { return &hashEntry{mtx: sync.RWMutex{}, val: map[string]string{}} }
+func newHashEntry() *hashEntry { return &hashEntry{mtx: sync.RWMutex{}, val: map[string]string{}} }

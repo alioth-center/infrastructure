@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/alioth-center/infrastructure/cache"
 	"github.com/go-redis/redis/v8"
+	"reflect"
 	"time"
 )
 
@@ -13,234 +15,426 @@ type accessor struct {
 	kb keyBuilder
 }
 
-func (ra *accessor) ExistKey(ctx context.Context, key string) (exist bool, err error) {
-	if count, executeRedisErr := ra.db.Exists(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
-		return false, ra.kb.BuildError("check key exist", err, key)
-	} else {
-		return count == 1, nil
+func (ra *accessor) copySenderToReceiver(key string, senderPtr, receiverPtr any) error {
+	rv := reflect.ValueOf(receiverPtr)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		// 如果接收者不是指针，或者是空指针，返回错误
+		return ra.kb.BuildError("copy sender to receiver", errors.New("receiver is not pointer or is nil"), key)
 	}
+
+	rv.Elem().Set(reflect.ValueOf(senderPtr))
+	return nil
+}
+
+func (ra *accessor) Increase(ctx context.Context, key string, delta uint64) (result cache.CounterResultEnum) {
+	resultNum, executeErr := ra.db.IncrBy(ctx, ra.kb.BuildKey(key), int64(delta)).Result()
+	if executeErr != nil && !errors.Is(executeErr, redis.Nil) {
+		return cache.CounterResultEnumFailed
+	}
+
+	return cache.CounterResultEnum(resultNum)
+}
+
+func (ra *accessor) IncreaseWithExpireWhenNotExist(ctx context.Context, key string, delta uint64, expire time.Duration) (result cache.CounterResultEnum) {
+	exist, existErr := ra.ExistKey(ctx, key)
+	if existErr != nil {
+		// 无法获取key是否存在
+		return cache.CounterResultEnumFailed
+	}
+	if exist {
+		// key已存在，直接增加，不需要设置过期时间
+		return ra.Increase(ctx, ra.kb.BuildKey(key), delta)
+	}
+
+	resultNum, incrErr := ra.db.IncrBy(ctx, ra.kb.BuildKey(key), int64(delta)).Result()
+	if incrErr != nil {
+		// 增加失败
+		return cache.CounterResultEnumFailed
+	}
+	if ra.db.Expire(ctx, ra.kb.BuildKey(key), expire).Err() != nil {
+		// 设置过期时间失败
+		return cache.CounterResultEnumFailed
+	}
+
+	// 增加成功
+	return cache.CounterResultEnum(resultNum)
+}
+
+func (ra *accessor) SetExpire(ctx context.Context, key string, expire time.Duration) (result cache.CounterResultEnum) {
+	exist, existErr := ra.ExistKey(ctx, key)
+	if existErr != nil {
+		// 无法获取key是否存在
+		return cache.CounterResultEnumFailed
+	}
+	if !exist {
+		// key不存在，设置过期时间无效
+		return cache.CounterResultEnumNotEffective
+	}
+	if ra.db.Expire(ctx, ra.kb.BuildKey(key), expire).Err() != nil {
+		// 设置过期时间失败
+		return cache.CounterResultEnumFailed
+	}
+
+	// 设置成功
+	return cache.CounterResultEnumSuccess
+}
+
+func (ra *accessor) SetExpireWhenNotSet(ctx context.Context, key string, expire time.Duration) (result cache.CounterResultEnum) {
+	exist, expiredAt, existErr := ra.GetExpiredTime(ctx, key)
+	if existErr != nil {
+		// 无法获取key是否存在
+		return cache.CounterResultEnumFailed
+	}
+	if !exist {
+		// key不存在，设置过期时间无效
+		return cache.CounterResultEnumNotEffective
+	}
+	if !expiredAt.IsZero() {
+		// key已设置过期时间，设置过期时间无效
+		return cache.CounterResultEnumNotEffective
+	}
+	if ra.db.Expire(ctx, ra.kb.BuildKey(key), expire).Err() != nil {
+		// 设置过期时间失败
+		return cache.CounterResultEnumFailed
+	}
+
+	// 设置成功
+	return cache.CounterResultEnumSuccess
+}
+
+func (ra *accessor) ExpireImmediately(ctx context.Context, key string) (result cache.CounterResultEnum) {
+	exist, existErr := ra.ExistKey(ctx, key)
+	if existErr != nil {
+		// 无法获取key是否存在
+		return cache.CounterResultEnumFailed
+	}
+	if !exist {
+		// key不存在，设置过期时间无效
+		return cache.CounterResultEnumNotEffective
+	}
+	if ra.Delete(ctx, key) != nil {
+		// 删除失败
+		return cache.CounterResultEnumFailed
+	}
+
+	// 设置成功
+	return cache.CounterResultEnumSuccess
+}
+
+func (ra *accessor) ExistKey(ctx context.Context, key string) (exist bool, err error) {
+	count, executeRedisErr := ra.db.Exists(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil && !errors.Is(executeRedisErr, redis.Nil) {
+		return false, ra.kb.BuildError("check key exist", err, key)
+	}
+
+	return count == 1, nil
 }
 
 func (ra *accessor) GetExpiredTime(ctx context.Context, key string) (exist bool, expiredAt time.Time, err error) {
 	// 检查是否存在key
-	if exist, existErr := ra.ExistKey(ctx, key); existErr != nil {
+	existed, existErr := ra.ExistKey(ctx, key)
+	if existErr != nil {
 		return false, time.Time{}, existErr
-	} else if !exist {
+	}
+	if !existed {
 		return false, time.Time{}, nil
 	}
 
 	// 获取过期时间
-	if result, executeRedisErr := ra.db.TTL(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.TTL(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
 		return false, time.Time{}, ra.kb.BuildError("get expired time", executeRedisErr, key)
-	} else if result == -1 {
+	}
+	if result == -1 {
 		// 永不过期，返回空
 		return true, time.Time{}, nil
-	} else if result == -2 {
+	}
+	if result == -2 {
 		// 不存在key，返回空
 		return false, time.Time{}, nil
-	} else {
-		// 返回过期时间
-		return true, time.Now().Add(result), nil
 	}
+
+	// 返回过期时间
+	return true, time.Now().Add(result), nil
 }
 
 func (ra *accessor) Load(ctx context.Context, key string) (exist bool, value string, err error) {
-	if result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
 		if errors.Is(executeRedisErr, redis.Nil) {
 			return false, "", nil
-		} else {
-			return false, "", ra.kb.BuildError("load data", executeRedisErr, key)
 		}
-	} else {
-		return true, result, nil
+
+		return false, "", ra.kb.BuildError("load data", executeRedisErr, key)
 	}
+
+	return true, result, nil
 }
 
 func (ra *accessor) LoadWithEX(ctx context.Context, key string) (loaded bool, expiredTime time.Duration, value string, err error) {
-	if exist, result, executeRedisErr := ra.Load(ctx, key); executeRedisErr != nil {
+	exist, result, executeRedisErr := ra.Load(ctx, key)
+	if executeRedisErr != nil {
 		return false, 0, "", executeRedisErr
-	} else if !exist {
+	}
+	if !exist {
 		return false, 0, "", nil
-	} else if hasTTL, ttl, getTTLErr := ra.GetExpiredTime(ctx, key); getTTLErr != nil {
+	}
+
+	hasTTL, ttl, getTTLErr := ra.GetExpiredTime(ctx, key)
+	if getTTLErr != nil {
 		return true, 0, "", getTTLErr
-	} else if !hasTTL {
-		return true, 0, result, nil
-	} else if !ttl.IsZero() {
-		return true, time.Until(ttl), result, nil
-	} else {
+	}
+	if !hasTTL {
 		return true, 0, result, nil
 	}
+	if !ttl.IsZero() {
+		return true, time.Until(ttl), result, nil
+	}
+
+	return true, 0, result, nil
 }
 
 func (ra *accessor) LoadJson(ctx context.Context, key string, receiverPtr any) (exist bool, err error) {
-	if existValue, value, loadValueErr := ra.Load(ctx, key); loadValueErr != nil {
+	existValue, value, loadValueErr := ra.Load(ctx, key)
+	if loadValueErr != nil {
 		return false, loadValueErr
-	} else if !existValue {
-		return false, nil
-	} else if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
-		return true, ra.kb.BuildError("load json data", unmarshalJsonErr, key)
-	} else {
-		return true, nil
 	}
+	if !existValue {
+		return false, nil
+	}
+
+	unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr)
+	if unmarshalJsonErr != nil {
+		return true, ra.kb.BuildError("load json data", unmarshalJsonErr, key)
+	}
+
+	return true, nil
 }
 
 func (ra *accessor) LoadJsonWithEX(ctx context.Context, key string, receiverPtr any) (exist bool, expiredTime time.Duration, err error) {
-	if existValue, expiredTime, value, loadValueErr := ra.LoadWithEX(ctx, key); loadValueErr != nil {
+	existValue, expired, value, loadValueErr := ra.LoadWithEX(ctx, key)
+	if loadValueErr != nil {
 		return false, 0, loadValueErr
-	} else if !existValue {
-		return false, 0, nil
-	} else if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
-		return true, 0, ra.kb.BuildError("load ex json data", unmarshalJsonErr, key)
-	} else {
-		return true, expiredTime, nil
 	}
+	if !existValue {
+		return false, 0, nil
+	}
+
+	unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr)
+	if unmarshalJsonErr != nil {
+		return true, 0, ra.kb.BuildError("load ex json data", unmarshalJsonErr, key)
+	}
+
+	return true, expired, nil
 }
 
 func (ra *accessor) Store(ctx context.Context, key string, value string) (err error) {
-	if setRedisErr := ra.db.Set(ctx, ra.kb.BuildKey(key), value, 0).Err(); setRedisErr != nil {
+	setRedisErr := ra.db.Set(ctx, ra.kb.BuildKey(key), value, 0).Err()
+	if setRedisErr != nil {
+		if errors.Is(setRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("store data", setRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) StoreEX(ctx context.Context, key string, value string, expiration time.Duration) (err error) {
-	if setRedisErr := ra.db.SetEX(ctx, ra.kb.BuildKey(key), value, expiration).Err(); setRedisErr != nil {
+	setRedisErr := ra.db.SetEX(ctx, ra.kb.BuildKey(key), value, expiration).Err()
+	if setRedisErr != nil {
+		if errors.Is(setRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("store ex data", setRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) StoreJson(ctx context.Context, key string, senderPtr any) (err error) {
-	if payload, marshalJsonErr := json.Marshal(senderPtr); marshalJsonErr != nil {
+	payload, marshalJsonErr := json.Marshal(senderPtr)
+	if marshalJsonErr != nil {
 		return ra.kb.BuildError("marshal json data", marshalJsonErr, key)
-	} else if storeRedisErr := ra.Store(ctx, key, string(payload)); storeRedisErr != nil {
-		return storeRedisErr
-	} else {
-		return nil
 	}
+
+	storeRedisErr := ra.Store(ctx, key, string(payload))
+	if storeRedisErr != nil {
+		return storeRedisErr
+	}
+
+	return nil
 }
 
 func (ra *accessor) StoreJsonEX(ctx context.Context, key string, senderPtr any, expiration time.Duration) (err error) {
-	if payload, marshalJsonErr := json.Marshal(senderPtr); marshalJsonErr != nil {
+	payload, marshalJsonErr := json.Marshal(senderPtr)
+	if marshalJsonErr != nil {
 		return ra.kb.BuildError("marshal ex json data", marshalJsonErr, key)
-	} else if storeRedisErr := ra.StoreEX(ctx, key, string(payload), expiration); storeRedisErr != nil {
-		return storeRedisErr
-	} else {
-		return nil
 	}
+
+	storeRedisErr := ra.StoreEX(ctx, key, string(payload), expiration)
+	if storeRedisErr != nil {
+		return storeRedisErr
+	}
+
+	return nil
 }
 
 func (ra *accessor) Delete(ctx context.Context, key string) (err error) {
-	if deleteRedisErr := ra.db.Del(ctx, ra.kb.BuildKey(key)).Err(); deleteRedisErr != nil {
+	deleteRedisErr := ra.db.Del(ctx, ra.kb.BuildKey(key)).Err()
+	if deleteRedisErr != nil {
+		if errors.Is(deleteRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("delete data", deleteRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) LoadAndDelete(ctx context.Context, key string) (loaded bool, value string, err error) {
-	if result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
 		if errors.Is(executeRedisErr, redis.Nil) {
 			return false, "", nil
-		} else {
-			return false, "", ra.kb.BuildError("load data", executeRedisErr, key)
 		}
-	} else if deleteRedisErr := ra.db.Del(ctx, ra.kb.BuildKey(key)).Err(); deleteRedisErr != nil {
-		return true, result, ra.kb.BuildError("delete data", deleteRedisErr, key)
-	} else {
-		return true, result, nil
+
+		return false, "", ra.kb.BuildError("load data", executeRedisErr, key)
 	}
+
+	if deleteRedisErr := ra.db.Del(ctx, ra.kb.BuildKey(key)).Err(); deleteRedisErr != nil {
+		if errors.Is(deleteRedisErr, redis.Nil) {
+			return true, result, nil
+		}
+
+		return true, result, ra.kb.BuildError("delete data", deleteRedisErr, key)
+	}
+
+	return true, result, nil
 }
 
 func (ra *accessor) LoadAndDeleteJson(ctx context.Context, key string, receivePtr any) (loaded bool, err error) {
-	if loaded, value, loadValueErr := ra.LoadAndDelete(ctx, key); loadValueErr != nil {
+	exist, value, loadValueErr := ra.LoadAndDelete(ctx, key)
+	if loadValueErr != nil {
 		return false, loadValueErr
-	} else if !loaded {
-		return false, nil
-	} else if unmarshalJsonErr := json.Unmarshal([]byte(value), receivePtr); unmarshalJsonErr != nil {
-		return true, ra.kb.BuildError("unmarshal json data", unmarshalJsonErr, key)
-	} else {
-		return true, nil
 	}
+	if !exist {
+		return false, nil
+	}
+	if unmarshalJsonErr := json.Unmarshal([]byte(value), receivePtr); unmarshalJsonErr != nil {
+		return true, ra.kb.BuildError("unmarshal json data", unmarshalJsonErr, key)
+	}
+
+	return true, nil
 }
 
 func (ra *accessor) LoadOrStore(ctx context.Context, key string, storeValue string) (loaded bool, value string, err error) {
-	if result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
 		if !errors.Is(executeRedisErr, redis.Nil) {
 			return false, "", ra.kb.BuildError("load data", executeRedisErr, key)
-		} else {
-			// 如果不存在，存储
-			if setRedisErr := ra.db.Set(ctx, ra.kb.BuildKey(key), storeValue, 0).Err(); setRedisErr != nil {
-				return false, "", ra.kb.BuildError("store data", setRedisErr, key)
-			} else {
-				return false, storeValue, nil
-			}
 		}
-	} else {
-		// 如果存在，返回
-		return true, result, nil
+
+		// 如果不存在，存储
+		if setRedisErr := ra.db.Set(ctx, ra.kb.BuildKey(key), storeValue, 0).Err(); setRedisErr != nil {
+			if errors.Is(setRedisErr, redis.Nil) {
+				return false, "", nil
+			}
+
+			return false, "", ra.kb.BuildError("store data", setRedisErr, key)
+		}
+
+		return false, storeValue, nil
 	}
+
+	// 如果存在，返回
+	return true, result, nil
 }
 
-func (ra *accessor) LoadOrStoreEx(ctx context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error) {
-	if result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+func (ra *accessor) LoadOrStoreEX(ctx context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error) {
+	result, executeRedisErr := ra.db.Get(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
 		if !errors.Is(executeRedisErr, redis.Nil) {
 			return false, "", ra.kb.BuildError("load ex data", executeRedisErr, key)
-		} else {
-			// 如果不存在，存储
-			if setRedisErr := ra.db.SetEX(ctx, ra.kb.BuildKey(key), storeValue, expiration).Err(); setRedisErr != nil {
-				return false, "", ra.kb.BuildError("store ex data", setRedisErr, key)
-			} else {
-				return false, storeValue, nil
-			}
 		}
-	} else {
-		// 如果存在，返回
-		return true, result, nil
+
+		// 如果不存在，存储
+		if setRedisErr := ra.db.SetEX(ctx, ra.kb.BuildKey(key), storeValue, expiration).Err(); setRedisErr != nil {
+			if errors.Is(setRedisErr, redis.Nil) {
+				return false, "", nil
+			}
+
+			return false, "", ra.kb.BuildError("store ex data", setRedisErr, key)
+		}
+
+		return false, storeValue, nil
 	}
+
+	// 如果存在，返回
+	return true, result, nil
 }
 
 func (ra *accessor) LoadOrStoreJson(ctx context.Context, key string, senderPtr any, receiverPtr any) (loaded bool, err error) {
-	if payload, marshalJsonErr := json.Marshal(senderPtr); marshalJsonErr != nil {
+	payload, marshalJsonErr := json.Marshal(senderPtr)
+	if marshalJsonErr != nil {
 		return false, ra.kb.BuildError("marshal json data", marshalJsonErr, key)
-	} else if loaded, value, loadValueErr := ra.LoadOrStore(ctx, key, string(payload)); loadValueErr != nil {
-		return false, loadValueErr
-	} else if !loaded {
-		return false, nil
-	} else if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
-		return true, ra.kb.BuildError("unmarshal json data", unmarshalJsonErr, key)
-	} else {
-		return true, nil
 	}
+
+	exist, value, loadValueErr := ra.LoadOrStore(ctx, key, string(payload))
+	if loadValueErr != nil {
+		return false, loadValueErr
+	}
+	if !exist && value == "" {
+		return false, nil
+	}
+
+	if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
+		return true, ra.kb.BuildError("unmarshal json data", unmarshalJsonErr, key)
+	}
+
+	return exist, nil
 }
 
-func (ra *accessor) LoadOrStoreJsonEx(ctx context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error) {
-	if payload, marshalJsonErr := json.Marshal(senderPtr); marshalJsonErr != nil {
+func (ra *accessor) LoadOrStoreJsonEX(ctx context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error) {
+	payload, marshalJsonErr := json.Marshal(senderPtr)
+	if marshalJsonErr != nil {
 		return false, ra.kb.BuildError("marshal ex json data", marshalJsonErr, key)
-	} else if loaded, value, loadValueErr := ra.LoadOrStoreEx(ctx, key, string(payload), expiration); loadValueErr != nil {
-		return false, loadValueErr
-	} else if !loaded {
-		return false, nil
-	} else if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
-		return true, ra.kb.BuildError("marshal ex json data", marshalJsonErr, key)
-	} else {
-		return true, nil
 	}
+
+	exist, value, loadValueErr := ra.LoadOrStoreEX(ctx, key, string(payload), expiration)
+	if loadValueErr != nil {
+		return false, loadValueErr
+	}
+	if !exist && value == "" {
+		return false, nil
+	}
+
+	if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
+		return true, ra.kb.BuildError("marshal ex json data", marshalJsonErr, key)
+	}
+
+	return exist, nil
 }
 
 func (ra *accessor) IsMember(ctx context.Context, key string, member string) (isMember bool, err error) {
-	if result, executeRedisErr := ra.db.SIsMember(ctx, ra.kb.BuildKey(key), member).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.SIsMember(ctx, ra.kb.BuildKey(key), member).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return false, nil
+		}
+
 		return false, ra.kb.BuildError("check is member", executeRedisErr, key)
-	} else {
-		return result, nil
 	}
+
+	return result, nil
 }
 
 func (ra *accessor) IsMembers(ctx context.Context, key string, members ...string) (isMembers bool, err error) {
 	if len(members) == 0 {
-		return true, nil
+		return false, nil
 	}
 
 	membersInterfaces := make([]interface{}, len(members))
@@ -248,25 +442,36 @@ func (ra *accessor) IsMembers(ctx context.Context, key string, members ...string
 		membersInterfaces[i] = member
 	}
 
-	if result, executeRedisErr := ra.db.SMIsMember(ctx, ra.kb.BuildKey(key), membersInterfaces...).Result(); executeRedisErr != nil {
-		return false, ra.kb.BuildError("check is member", executeRedisErr, key)
-	} else {
-		// 如果有一个不是成员，返回false
-		for _, b := range result {
-			if !b {
-				return false, nil
-			}
+	result, executeRedisErr := ra.db.SMIsMember(ctx, ra.kb.BuildKey(key), membersInterfaces...).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return false, nil
 		}
-		return true, nil
+
+		return false, ra.kb.BuildError("check is member", executeRedisErr, key)
 	}
+
+	// 如果有一个不是成员，返回false
+	for _, b := range result {
+		if !b {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func (ra *accessor) AddMember(ctx context.Context, key string, member string) (err error) {
-	if addRedisErr := ra.db.SAdd(ctx, ra.kb.BuildKey(key), member).Err(); addRedisErr != nil {
+	addRedisErr := ra.db.SAdd(ctx, ra.kb.BuildKey(key), member).Err()
+	if addRedisErr != nil {
+		if errors.Is(addRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("add member", addRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) AddMembers(ctx context.Context, key string, members ...string) (err error) {
@@ -279,55 +484,81 @@ func (ra *accessor) AddMembers(ctx context.Context, key string, members ...strin
 		membersInterfaces[i] = member
 	}
 
-	if addRedisErr := ra.db.SAdd(ctx, ra.kb.BuildKey(key), membersInterfaces...).Err(); addRedisErr != nil {
+	addRedisErr := ra.db.SAdd(ctx, ra.kb.BuildKey(key), membersInterfaces...).Err()
+	if addRedisErr != nil {
+		if errors.Is(addRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("add members", addRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) RemoveMember(ctx context.Context, key string, member string) (err error) {
-	if removeRedisErr := ra.db.SRem(ctx, ra.kb.BuildKey(key), member).Err(); removeRedisErr != nil {
+	removeRedisErr := ra.db.SRem(ctx, ra.kb.BuildKey(key), member).Err()
+	if removeRedisErr != nil {
+		if errors.Is(removeRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("remove member", removeRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) GetMembers(ctx context.Context, key string) (members []string, err error) {
-	if result, executeRedisErr := ra.db.SMembers(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
-		return nil, ra.kb.BuildError("get members", executeRedisErr, key)
-	} else {
-		return result, nil
+	result, executeRedisErr := ra.db.SMembers(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return []string{}, nil
+		}
+
+		return []string{}, ra.kb.BuildError("get members", executeRedisErr, key)
 	}
+
+	return result, nil
 }
 
 func (ra *accessor) GetRandomMember(ctx context.Context, key string) (member string, err error) {
-	if result, executeRedisErr := ra.db.SRandMember(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.SRandMember(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return "", nil
+		}
+
 		return "", ra.kb.BuildError("get random member", executeRedisErr, key)
-	} else {
-		return result, nil
 	}
+
+	return result, nil
 }
 
 func (ra *accessor) GetRandomMembers(ctx context.Context, key string, count int64) (members []string, err error) {
-	if result, executeRedisErr := ra.db.SRandMemberN(ctx, ra.kb.BuildKey(key), count).Result(); executeRedisErr != nil {
-		return nil, ra.kb.BuildError("get random members", executeRedisErr, key)
-	} else {
-		return result, nil
+	result, executeRedisErr := ra.db.SRandMemberN(ctx, ra.kb.BuildKey(key), count).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return []string{}, nil
+		}
+
+		return []string{}, ra.kb.BuildError("get random members", executeRedisErr, key)
 	}
+
+	return result, nil
 }
 
 func (ra *accessor) HGetValue(ctx context.Context, key string, field string) (exist bool, value string, err error) {
-	if result, executeRedisErr := ra.db.HGet(ctx, ra.kb.BuildKey(key), field).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.HGet(ctx, ra.kb.BuildKey(key), field).Result()
+	if executeRedisErr != nil {
 		if errors.Is(executeRedisErr, redis.Nil) {
 			return false, "", nil
-		} else {
-			return false, "", ra.kb.BuildError("get hash value", executeRedisErr, key)
 		}
-	} else {
-		return true, result, nil
+
+		return false, "", ra.kb.BuildError("get hash value", executeRedisErr, key)
 	}
+
+	return true, result, nil
 }
 
 func (ra *accessor) HGetValues(ctx context.Context, key string, fields ...string) (resultMap map[string]string, err error) {
@@ -335,59 +566,87 @@ func (ra *accessor) HGetValues(ctx context.Context, key string, fields ...string
 		return map[string]string{}, nil
 	}
 
-	if result, executeRedisErr := ra.db.HMGet(ctx, ra.kb.BuildKey(key), fields...).Result(); executeRedisErr != nil {
-		return nil, ra.kb.BuildError("get hash values", executeRedisErr, key)
-	} else {
-		resultMap = map[string]string{}
-		for i, field := range fields {
-			if result[i] == nil {
-				resultMap[field] = ""
-			} else {
-				resultMap[field] = result[i].(string)
-			}
+	result, executeRedisErr := ra.db.HMGet(ctx, ra.kb.BuildKey(key), fields...).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return map[string]string{}, nil
 		}
-		return resultMap, nil
+
+		return map[string]string{}, ra.kb.BuildError("get hash values", executeRedisErr, key)
 	}
+
+	resultMap = map[string]string{}
+	for i, field := range fields {
+		if result[i] == nil {
+			resultMap[field] = ""
+		} else {
+			resultMap[field] = result[i].(string)
+		}
+	}
+
+	return resultMap, nil
 }
 
 func (ra *accessor) HGetJson(ctx context.Context, key string, field string, receiverPtr any) (exist bool, err error) {
-	if existValue, value, loadValueErr := ra.HGetValue(ctx, key, field); loadValueErr != nil {
+	existValue, value, loadValueErr := ra.HGetValue(ctx, key, field)
+	if loadValueErr != nil {
 		return false, loadValueErr
-	} else if !existValue {
-		return false, nil
-	} else if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
-		return true, ra.kb.BuildError("unmarshal hash json data", unmarshalJsonErr, key)
-	} else {
-		return true, nil
 	}
+	if !existValue {
+		return false, nil
+	}
+	if unmarshalJsonErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalJsonErr != nil {
+		return true, ra.kb.BuildError("unmarshal hash json data", unmarshalJsonErr, key)
+	}
+
+	return true, nil
 }
 
 func (ra *accessor) HGetAll(ctx context.Context, key string) (resultMap map[string]string, err error) {
-	if result, executeRedisErr := ra.db.HGetAll(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.HGetAll(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return map[string]string{}, nil
+		}
+
 		return map[string]string{}, ra.kb.BuildError("get all hash data", executeRedisErr, key)
-	} else {
-		return result, nil
 	}
+
+	return result, nil
 }
 
 func (ra *accessor) HGetAllJson(ctx context.Context, key string, receiverPtr any) (err error) {
-	if result, executeRedisErr := ra.db.HGetAll(ctx, ra.kb.BuildKey(key)).Result(); executeRedisErr != nil {
+	result, executeRedisErr := ra.db.HGetAll(ctx, ra.kb.BuildKey(key)).Result()
+	if executeRedisErr != nil {
+		if errors.Is(executeRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("get all hash json", executeRedisErr, key)
-	} else if marshalBytes, marshalJsonErr := json.Marshal(result); marshalJsonErr != nil {
-		return ra.kb.BuildError("marshal hash json data", marshalJsonErr, key)
-	} else if unmarshalJsonErr := json.Unmarshal(marshalBytes, receiverPtr); unmarshalJsonErr != nil {
-		return ra.kb.BuildError("unmarshal hash json data", unmarshalJsonErr, key)
-	} else {
-		return nil
 	}
+
+	marshalBytes, marshalJsonErr := json.Marshal(result)
+	if marshalJsonErr != nil {
+		return ra.kb.BuildError("marshal hash json data", marshalJsonErr, key)
+	}
+	if unmarshalJsonErr := json.Unmarshal(marshalBytes, receiverPtr); unmarshalJsonErr != nil {
+		return ra.kb.BuildError("unmarshal hash json data", unmarshalJsonErr, key)
+	}
+
+	return nil
 }
 
 func (ra *accessor) HSetValue(ctx context.Context, key string, field string, value string) (err error) {
-	if setRedisErr := ra.db.HSet(ctx, ra.kb.BuildKey(key), field, value).Err(); setRedisErr != nil {
+	setRedisErr := ra.db.HSet(ctx, ra.kb.BuildKey(key), field, value).Err()
+	if setRedisErr != nil {
+		if errors.Is(setRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("set hash value", setRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) HSetValues(ctx context.Context, key string, values map[string]string) (err error) {
@@ -395,19 +654,29 @@ func (ra *accessor) HSetValues(ctx context.Context, key string, values map[strin
 		return nil
 	}
 
-	if setRedisErr := ra.db.HSet(ctx, ra.kb.BuildKey(key), values).Err(); setRedisErr != nil {
+	setRedisErr := ra.db.HSet(ctx, ra.kb.BuildKey(key), values).Err()
+	if setRedisErr != nil {
+		if errors.Is(setRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("set hash values", setRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) HRemoveValue(ctx context.Context, key string, field string) (err error) {
-	if removeRedisErr := ra.db.HDel(ctx, ra.kb.BuildKey(key), field).Err(); removeRedisErr != nil {
+	removeRedisErr := ra.db.HDel(ctx, ra.kb.BuildKey(key), field).Err()
+	if removeRedisErr != nil {
+		if errors.Is(removeRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("remove hash value", removeRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) HRemoveValues(ctx context.Context, key string, fields ...string) (err error) {
@@ -415,17 +684,27 @@ func (ra *accessor) HRemoveValues(ctx context.Context, key string, fields ...str
 		return nil
 	}
 
-	if removeRedisErr := ra.db.HDel(ctx, ra.kb.BuildKey(key), fields...).Err(); removeRedisErr != nil {
+	removeRedisErr := ra.db.HDel(ctx, ra.kb.BuildKey(key), fields...).Err()
+	if removeRedisErr != nil {
+		if errors.Is(removeRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("remove hash values", removeRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
 
 func (ra *accessor) Expire(ctx context.Context, key string, expire time.Duration) (err error) {
-	if expireRedisErr := ra.db.Expire(ctx, ra.kb.BuildKey(key), expire).Err(); expireRedisErr != nil {
+	expireRedisErr := ra.db.Expire(ctx, ra.kb.BuildKey(key), expire).Err()
+	if expireRedisErr != nil {
+		if errors.Is(expireRedisErr, redis.Nil) {
+			return nil
+		}
+
 		return ra.kb.BuildError("expire key", expireRedisErr, key)
-	} else {
-		return nil
 	}
+
+	return nil
 }
