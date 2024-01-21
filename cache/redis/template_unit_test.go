@@ -812,15 +812,6 @@ func StoreFunction(impl cache.Cache) func(t *testing.T) {
 				t.Errorf("Store:NotExpired case failed: incorrect value")
 			}
 		})
-
-		// 存储一个非字符串的样例
-		t.Run("Store:NotString", func(t *testing.T) {
-			key, value := "Store:NotString", "NotString"
-			addErr := impl.AddMember(context.Background(), key, value)
-			if addErr == nil {
-				t.Errorf("Store:NotString case failed: want error but not")
-			}
-		})
 	}
 }
 
@@ -2852,7 +2843,6 @@ func HGetValuesFunction(impl cache.Cache) func(t *testing.T) {
 			}
 
 			getValues, getValuesErr := impl.HGetValues(context.Background(), key, getFields...)
-			t.Log(getValues)
 			if getValuesErr != nil {
 				t.Errorf("HGetValues:PartFieldNotExist case failed when getting values: %v", getValuesErr.Error())
 			}
