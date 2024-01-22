@@ -15,7 +15,7 @@ var (
 	expire        = time.Second
 	sleepInterval = time.Millisecond * 1100
 
-	BaseCacheUnitTestCaseList = []TestCase{
+	BaseCacheUnitTestCaseList = []TestCase[cache.Cache]{
 		{
 			CaseName:     "ExistKey",
 			TestFunction: ExistKeyTestFunction,
@@ -177,9 +177,9 @@ func containsString(s []string, e string) bool {
 	return false
 }
 
-type TestCase struct {
+type TestCase[T any] struct {
 	CaseName     string
-	TestFunction func(impl cache.Cache) func(t *testing.T)
+	TestFunction func(impl T) func(t *testing.T)
 }
 
 type testStruct struct {
@@ -1020,7 +1020,7 @@ func StoreJsonFunction(impl cache.Cache) func(t *testing.T) {
 			if storeErr == nil {
 				t.Errorf("StoreJson:JsonError case failed: want error but not")
 			}
-			_, wantErr := json.Marshal(value)
+			var wantErr *json.UnsupportedTypeError
 			if !errors.As(storeErr, &wantErr) {
 				t.Errorf("StoreJson:JsonError case failed: want error %v but got %v", wantErr, storeErr)
 			}
@@ -3333,7 +3333,7 @@ func HRemoveValuesFunction(impl cache.Cache) func(t *testing.T) {
 	}
 }
 
-func RunTestCase(t *testing.T, impl cache.Cache) {
+func RunCacheTestCases(t *testing.T, impl cache.Cache) {
 	for _, i := range BaseCacheUnitTestCaseList {
 		t.Run(i.CaseName, i.TestFunction(impl))
 	}
