@@ -148,10 +148,14 @@ func (ca *accessor) IncreaseWithExpireWhenNotExist(_ context.Context, key string
 }
 
 func (ca *accessor) SetExpire(_ context.Context, key string, expire time.Duration) (result cache.CounterResultEnum) {
-	entry, exist := ca.getEntry(key)
+	entry, exist, _ := ca.getCounterEntry(key)
 	if !exist {
 		// 不存在计数器，返回修改无影响
 		return cache.CounterResultEnumNotEffective
+	}
+	if entry == nil {
+		// 计数器类型不匹配或转换失败，返回错误
+		return cache.CounterResultEnumFailed
 	}
 
 	// 如果存在计数器，修改过期时间
@@ -161,13 +165,19 @@ func (ca *accessor) SetExpire(_ context.Context, key string, expire time.Duratio
 }
 
 func (ca *accessor) SetExpireWhenNotSet(_ context.Context, key string, expire time.Duration) (result cache.CounterResultEnum) {
-	entry, exist := ca.getEntry(key)
+	entry, exist, _ := ca.getCounterEntry(key)
 	if !exist {
 		// 不存在计数器，返回修改无影响
 		return cache.CounterResultEnumNotEffective
 	}
+	if entry == nil {
+		// 计数器类型不匹配或转换失败，返回错误
+		return cache.CounterResultEnumFailed
+	}
+
 	if entry.GetExpireTime() == 0 {
 		// 如果存在计数器，但是没有设置过期时间，修改过期时间
+		entry.SetExpireTime(expire)
 		ca.update(key, entry)
 		return cache.CounterResultEnumSuccess
 	}
