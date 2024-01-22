@@ -4,10 +4,34 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alioth-center/infrastructure/cache"
+	"github.com/alioth-center/infrastructure/utils/values"
 	"math/rand"
+	"reflect"
 	"sync"
 	"time"
 )
+
+func getEntryWithType[T any](mp *accessor, wantType Type, key string) (result T, exist bool, expireTime time.Duration) {
+	rawEntry, isExist := mp.getEntry(key)
+	if !isExist {
+		// 如果不存在，返回空指针
+		return values.Nil[T](), false, 0
+	}
+	if rawEntry.Type() != wantType {
+		// 如果类型不匹配，返回空指针
+		return values.Nil[T](), true, rawEntry.GetExpireTime()
+	}
+
+	entry, convertSuccess := rawEntry.(T)
+	if !convertSuccess {
+		// 如果类型转换失败，返回空指针
+		return values.Nil[T](), true, rawEntry.GetExpireTime()
+	}
+
+	// 如果类型匹配，返回对应类型
+	return entry, true, rawEntry.GetExpireTime()
+}
 
 type accessor struct {
 	mtx sync.RWMutex
@@ -15,96 +39,209 @@ type accessor struct {
 	ec  chan struct{}
 }
 
-func (ca *accessor) Add(_ context.Context, key string, delta int64) (_ error) {
+func (ca *accessor) delete(key string) {
+	ca.mtx.Lock()
+	delete(ca.db, key)
+	ca.mtx.Unlock()
+}
+
+func (ca *accessor) get(key string) (result entry, exist bool) {
 	ca.mtx.RLock()
-	entry, exist := ca.db[key]
+	rawEntry, isExist := ca.db[key]
 	ca.mtx.RUnlock()
+	return rawEntry, isExist
+}
+
+func (ca *accessor) create(key string, value entry) {
+	ca.mtx.Lock()
+	ca.db[key] = value
+	ca.mtx.Unlock()
+}
+
+func (ca *accessor) update(key string, value entry) {
+	if _, exist := ca.get(key); !exist {
+		// 如果不存在，不应该更新
+		return
+	}
+
+	ca.mtx.Lock()
+	ca.db[key] = value
+	ca.mtx.Unlock()
+}
+
+func (ca *accessor) getEntry(key string) (result entry, exist bool) {
+	result, exist = ca.get(key)
 	if !exist {
-		entry = newCounterEntry(delta)
-		ca.mtx.Lock()
-		ca.db[key] = entry
-		ca.mtx.Unlock()
-	} else {
-		entry.(*counterEntry).Add(delta)
+		return nil, false
+	}
+	if result.IsExpired() {
+		ca.delete(key)
+		return nil, false
+	}
+	return result, true
+}
+
+func (ca *accessor) getCounterEntry(key string) (result *counterEntry, exist bool, expireTime time.Duration) {
+	return getEntryWithType[*counterEntry](ca, Int, key)
+}
+
+func (ca *accessor) getStringEntry(key string) (result *stringEntry, exist bool, expireTime time.Duration) {
+	return getEntryWithType[*stringEntry](ca, String, key)
+}
+
+func (ca *accessor) getSetEntry(key string) (result *setEntry, exist bool, expireTime time.Duration) {
+	return getEntryWithType[*setEntry](ca, Set, key)
+}
+
+func (ca *accessor) getHashEntry(key string) (result *hashEntry, exist bool, expireTime time.Duration) {
+	return getEntryWithType[*hashEntry](ca, Hash, key)
+}
+
+func (ca *accessor) copySenderToReceiver(senderPtr, receiverPtr any) error {
+	rv := reflect.ValueOf(receiverPtr)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		// 如果接收者不是指针，或者是空指针，返回错误
+		return fmt.Errorf("failed to copy sender to receiver: %w", NewReceiverTypeIncorrectError(reflect.TypeOf(receiverPtr).String(), rv.IsNil()))
 	}
 
-	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
-		return nil
-	}
-
+	rv.Elem().Set(reflect.ValueOf(senderPtr))
 	return nil
 }
 
-func (ca *accessor) Sub(_ context.Context, key string, delta int64) (_ error) {
-	return ca.Add(nil, key, -delta)
+func (ca *accessor) Increase(_ context.Context, key string, delta uint64) (result cache.CounterResultEnum) {
+	entry, exist, _ := ca.getCounterEntry(key)
+	if !exist {
+		// 如果不存在，创建一个新的计数器
+		newEntry := newCounterEntry(int64(delta))
+		ca.create(key, newEntry)
+		return cache.CounterResultEnum(delta)
+	}
+	if entry == nil {
+		// 计数器类型不匹配或转换失败，返回错误
+		return cache.CounterResultEnumFailed
+	}
+
+	// 如果存在，增加计数器的值
+	entry.Add(int64(delta))
+	ca.update(key, entry)
+	return cache.CounterResultEnum(entry.Value())
 }
 
-func (ca *accessor) Get(_ context.Context, key string) (value int64, _ error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+func (ca *accessor) IncreaseWithExpireWhenNotExist(_ context.Context, key string, delta uint64, expire time.Duration) (result cache.CounterResultEnum) {
+	entry, exist, _ := ca.getCounterEntry(key)
 	if !exist {
-		return 0, nil
+		// 如果不存在，创建一个新的计数器
+		newEntry := newCounterEntry(int64(delta))
+		newEntry.SetExpireTime(expire)
+		ca.create(key, newEntry)
+		return cache.CounterResultEnum(delta)
+	}
+	if entry == nil {
+		// 计数器类型不匹配或转换失败，返回错误
+		return cache.CounterResultEnumFailed
 	}
 
-	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
-		return 0, nil
+	// 存在计数器，直接增加值，不需要修改过期时间
+	entry.Add(int64(delta))
+	ca.update(key, entry)
+	return cache.CounterResultEnum(entry.Value())
+}
+
+func (ca *accessor) SetExpire(_ context.Context, key string, expire time.Duration) (result cache.CounterResultEnum) {
+	entry, exist, _ := ca.getCounterEntry(key)
+	if !exist {
+		// 不存在计数器，返回修改无影响
+		return cache.CounterResultEnumNotEffective
+	}
+	if entry == nil {
+		// 计数器类型不匹配或转换失败，返回错误
+		return cache.CounterResultEnumFailed
 	}
 
-	if entry.Type() != Int {
-		return 0, NewValueTypeNotMatchError(Int, entry.Type())
+	// 如果存在计数器，修改过期时间
+	entry.SetExpireTime(expire)
+	ca.update(key, entry)
+	return cache.CounterResultEnumSuccess
+}
+
+func (ca *accessor) SetExpireWhenNotSet(_ context.Context, key string, expire time.Duration) (result cache.CounterResultEnum) {
+	entry, exist, _ := ca.getCounterEntry(key)
+	if !exist {
+		// 不存在计数器，返回修改无影响
+		return cache.CounterResultEnumNotEffective
+	}
+	if entry == nil {
+		// 计数器类型不匹配或转换失败，返回错误
+		return cache.CounterResultEnumFailed
 	}
 
-	return entry.(*counterEntry).Value(), nil
+	if entry.GetExpireTime() == 0 {
+		// 如果存在计数器，但是没有设置过期时间，修改过期时间
+		entry.SetExpireTime(expire)
+		ca.update(key, entry)
+		return cache.CounterResultEnumSuccess
+	}
+
+	// 如果存在计数器，且已经设置过期时间，返回修改无影响
+	return cache.CounterResultEnumNotEffective
+}
+
+func (ca *accessor) ExpireImmediately(_ context.Context, key string) (result cache.CounterResultEnum) {
+	_, exist := ca.getEntry(key)
+	if !exist {
+		// 不存在计数器，返回修改无影响
+		return cache.CounterResultEnumNotEffective
+	}
+
+	// 如果存在计数器，立即删除
+	ca.delete(key)
+	return cache.CounterResultEnumSuccess
 }
 
 func (ca *accessor) ExistKey(_ context.Context, key string) (exist bool, err error) {
-	ca.mtx.RLock()
-	defer ca.mtx.RUnlock()
-	_, exist = ca.db[key]
-	return exist, nil
+	_, ext := ca.getEntry(key)
+	if !ext {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (ca *accessor) GetExpiredTime(_ context.Context, key string) (exist bool, expiredAt time.Time, err error) {
 	ca.mtx.RLock()
-	defer ca.mtx.RUnlock()
-	entry, isExist := ca.db[key]
-	if !isExist {
-		return false, time.Time{}, nil
-	} else {
-		return true, entry.GetExpiredAt(), nil
-	}
-}
-
-func (ca *accessor) Load(_ context.Context, key string) (exist bool, value string, err error) {
-	exist, _, value, _ = ca.LoadWithEX(nil, key)
-	return exist, value, nil
-}
-
-func (ca *accessor) LoadWithEX(_ context.Context, key string) (loaded bool, expiredTime time.Duration, value string, err error) {
-	ca.mtx.RLock()
 	entry, isExist := ca.db[key]
 	ca.mtx.RUnlock()
 	if !isExist {
-		// 如果不存在，直接返回
-		return false, 0, "", nil
+		return false, time.Time{}, nil
 	}
-
 	if entry.IsExpired() {
-		// 如果已经过期，删除后返回
-		_ = ca.Delete(nil, key)
-		return false, 0, "", nil
+		ca.mtx.Lock()
+		delete(ca.db, key)
+		ca.mtx.Unlock()
+		return false, time.Time{}, nil
 	}
 
-	if entry.Type() != String {
+	return true, entry.GetExpiredAt(), nil
+}
+
+func (ca *accessor) Load(_ context.Context, key string) (exist bool, value string, err error) {
+	exist, _, value, err = ca.LoadWithEX(nil, key)
+	return exist, value, err
+}
+
+func (ca *accessor) LoadWithEX(_ context.Context, key string) (loaded bool, expiredTime time.Duration, value string, err error) {
+	resultEntry, exist, expireTime := ca.getStringEntry(key)
+	if !exist {
+		// 如果不存在，返回空值
+		return false, 0, "", nil
+	}
+	if resultEntry == nil && exist {
 		// 如果类型不匹配，返回错误
-		return false, 0, "", NewValueTypeNotMatchError(String, entry.Type())
+		return true, expireTime, "", NewValueTypeNotMatchError(String, resultEntry.Type())
 	}
 
 	// 如果存在，且没有过期，返回值
-	return true, entry.GetExpiredAt().Sub(time.Now()), entry.(*stringEntry).Value(), nil
+	return true, resultEntry.GetExpireTime(), resultEntry.Value(), nil
 }
 
 func (ca *accessor) LoadJson(_ context.Context, key string, receiverPtr any) (exist bool, err error) {
@@ -121,24 +258,46 @@ func (ca *accessor) LoadJsonWithEX(_ context.Context, key string, receiverPtr an
 	unmarshalErr := json.Unmarshal([]byte(value), receiverPtr)
 	if unmarshalErr != nil {
 		return true, exTime, fmt.Errorf("load json failed for key %s: %w", key, unmarshalErr)
-	} else {
-		return true, exTime, nil
 	}
+
+	return true, exTime, nil
 }
 
 func (ca *accessor) Store(_ context.Context, key string, value string) (err error) {
-	ca.mtx.Lock()
-	ca.db[key] = newStringEntry(value)
-	ca.mtx.Unlock()
+	resultEntry, exist, _ := ca.getStringEntry(key)
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(String, resultEntry.Type())
+	}
+	if exist {
+		// 如果存在，更新值
+		ca.update(key, newStringEntry(value))
+		return nil
+	}
+
+	// 如果不存在，创建新的值
+	ca.create(key, newStringEntry(value))
 	return nil
 }
 
 func (ca *accessor) StoreEX(_ context.Context, key string, value string, expiration time.Duration) (err error) {
-	ca.mtx.Lock()
+	resultEntry, exist, _ := ca.getStringEntry(key)
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(String, resultEntry.Type())
+	}
+	if exist {
+		// 如果存在，更新值
+		entry := newStringEntry(value)
+		entry.SetExpireTime(expiration)
+		ca.update(key, entry)
+		return nil
+	}
+
+	// 如果不存在，创建新的值
 	entry := newStringEntry(value)
 	entry.SetExpireTime(expiration)
-	ca.db[key] = entry
-	ca.mtx.Unlock()
+	ca.create(key, entry)
 	return nil
 }
 
@@ -161,9 +320,7 @@ func (ca *accessor) StoreJsonEX(_ context.Context, key string, senderPtr any, ex
 }
 
 func (ca *accessor) Delete(_ context.Context, key string) (err error) {
-	ca.mtx.Lock()
-	delete(ca.db, key)
-	ca.mtx.Unlock()
+	ca.delete(key)
 	return nil
 }
 
@@ -190,160 +347,189 @@ func (ca *accessor) LoadAndDeleteJson(_ context.Context, key string, receivePtr 
 func (ca *accessor) LoadOrStore(_ context.Context, key string, storeValue string) (loaded bool, value string, err error) {
 	if exist, val, _ := ca.Load(nil, key); exist {
 		return true, val, nil
-	} else {
-		return false, storeValue, ca.Store(nil, key, storeValue)
 	}
+
+	return false, storeValue, ca.Store(nil, key, storeValue)
 }
 
-func (ca *accessor) LoadOrStoreEx(_ context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error) {
+func (ca *accessor) LoadOrStoreEX(_ context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error) {
 	if exist, val, _ := ca.Load(nil, key); exist {
 		return true, val, nil
-	} else {
-		return false, storeValue, ca.StoreEX(nil, key, storeValue, expiration)
 	}
+
+	return false, storeValue, ca.StoreEX(nil, key, storeValue, expiration)
 }
 
 func (ca *accessor) LoadOrStoreJson(_ context.Context, key string, senderPtr any, receiverPtr any) (loaded bool, err error) {
 	if exist, loadErr := ca.LoadJson(nil, key, receiverPtr); exist {
 		return true, loadErr
-	} else {
-		receiverPtr = senderPtr // nolint: ineffassign
-		return false, ca.StoreJson(nil, key, senderPtr)
 	}
+
+	copyErr := ca.copySenderToReceiver(senderPtr, receiverPtr)
+	if copyErr != nil {
+		// 如果拷贝失败，返回错误
+		return false, copyErr
+	}
+
+	return false, ca.StoreJson(nil, key, senderPtr)
 }
 
-func (ca *accessor) LoadOrStoreJsonEx(_ context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error) {
+func (ca *accessor) LoadOrStoreJsonEX(_ context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error) {
 	if exist, loadErr := ca.LoadJson(nil, key, receiverPtr); exist {
 		return true, loadErr
-	} else {
-		receiverPtr = senderPtr // nolint: ineffassign
-		return false, ca.StoreJsonEX(nil, key, senderPtr, expiration)
 	}
+
+	copyErr := ca.copySenderToReceiver(senderPtr, receiverPtr)
+	if copyErr != nil {
+		// 如果拷贝失败，返回错误
+		return false, copyErr
+	}
+
+	return false, ca.StoreJsonEX(nil, key, senderPtr, expiration)
 }
 
 func (ca *accessor) IsMember(_ context.Context, key string, member string) (isMember bool, err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+	resultEntry, exist, _ := ca.getSetEntry(key)
 	if !exist {
 		// 如果不存在，直接返回
 		return false, nil
 	}
-
-	if entry.IsExpired() {
-		// 如果已经过期，删除后返回
-		_ = ca.Delete(nil, key)
-		return false, nil
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return false, NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
 
-	if entry.Type() != Set {
-		// 类型不是set，返回错误
-		return false, NewValueTypeNotMatchError(Set, entry.Type())
-	}
-
-	return entry.(*setEntry).IsMember(member), nil
+	return resultEntry.IsMember(member), nil
 }
 
 func (ca *accessor) IsMembers(_ context.Context, key string, members ...string) (isMembers bool, err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+	if members == nil || len(members) == 0 {
+		// 如果没有元素，直接返回
+		return false, nil
+	}
+
+	resultEntry, exist, _ := ca.getSetEntry(key)
 	if !exist {
 		// 如果不存在，直接返回
 		return false, nil
 	}
-
-	if entry.IsExpired() {
-		// 如果已经过期，删除后返回
-		_ = ca.Delete(nil, key)
-		return false, nil
-	}
-
-	if entry.Type() != Set {
-		// 类型不是set，返回错误
-		return false, NewValueTypeNotMatchError(Set, entry.Type())
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return false, NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
 
 	for _, member := range members {
-		if !entry.(*setEntry).IsMember(member) {
+		if !resultEntry.IsMember(member) {
 			return false, nil
 		}
 	}
+
 	return true, nil
 }
 
 func (ca *accessor) AddMember(_ context.Context, key string, member string) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+	resultEntry, exist, _ := ca.getSetEntry(key)
 	if !exist {
-		ca.mtx.Lock()
-		entry = newSetEntry()
-		ca.db[key] = entry
-		ca.mtx.Unlock()
+		// 如果不存在，创建后添加
+		resultEntry = newSetEntry()
+		resultEntry.AddMember(member)
+		ca.create(key, resultEntry)
+		return nil
+	}
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
 
-	entry.(*setEntry).AddMember(member)
+	// 如果存在，添加元素
+	resultEntry.AddMember(member)
+	ca.update(key, resultEntry)
 	return nil
 }
 
 func (ca *accessor) AddMembers(_ context.Context, key string, members ...string) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
-	if !exist {
-		entry = newSetEntry()
-		ca.mtx.Lock()
-		ca.db[key] = entry
-		ca.mtx.Unlock()
+	if members == nil || len(members) == 0 {
+		// 如果没有元素，直接返回
+		return nil
 	}
 
-	entry.(*setEntry).AddMembers(members...)
+	resultEntry, exist, _ := ca.getSetEntry(key)
+	if !exist {
+		// 如果不存在，创建后添加
+		resultEntry = newSetEntry()
+		resultEntry.AddMembers(members...)
+		ca.create(key, resultEntry)
+		return nil
+	}
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(Set, resultEntry.Type())
+	}
+
+	resultEntry.AddMembers(members...)
+	ca.update(key, resultEntry)
 	return nil
 }
 
 func (ca *accessor) RemoveMember(_ context.Context, key string, member string) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+	resultEntry, exist, _ := ca.getSetEntry(key)
 	if !exist {
+		// 如果不存在，直接返回
 		return nil
 	}
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(Set, resultEntry.Type())
+	}
 
-	entry.(*setEntry).RemoveMember(member)
+	resultEntry.RemoveMember(member)
+	ca.update(key, resultEntry)
 	return nil
 }
 
 func (ca *accessor) GetMembers(_ context.Context, key string) (members []string, err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+	resultEntry, exist, _ := ca.getSetEntry(key)
 	if !exist {
+		// 如果不存在，直接返回
 		return []string{}, nil
 	}
+	if resultEntry == nil && exist {
+		// 如果类型不匹配，返回错误
+		return []string{}, NewValueTypeNotMatchError(Set, resultEntry.Type())
+	}
 
-	return entry.(*setEntry).Members(), nil
+	return resultEntry.Members(), nil
 }
 
 func (ca *accessor) GetRandomMember(_ context.Context, key string) (member string, err error) {
-	members, _ := ca.GetMembers(nil, key)
-	if len(members) > 0 {
-		n := rand.Intn(len(members))
-		return members[n], nil
-	} else {
-		return "", nil
+	members, getMembersErr := ca.GetMembers(nil, key)
+	if getMembersErr != nil {
+		return "", getMembersErr
 	}
+	if len(members) > 0 {
+		return members[rand.Intn(len(members))], nil
+	}
+
+	return "", nil
 }
 
 func (ca *accessor) GetRandomMembers(_ context.Context, key string, count int64) (members []string, err error) {
-	existMembers, _ := ca.GetMembers(nil, key)
+	if count <= 0 {
+		// 如果需要的元素个数小于等于0，直接返回
+		return []string{}, nil
+	}
+
+	existMembers, getMembersErr := ca.GetMembers(nil, key)
+	if getMembersErr != nil {
+		return []string{}, getMembersErr
+	}
 	length := int64(len(existMembers))
 	if length <= count {
 		// 如果得到的元素小于要求个数，全部返回
 		return existMembers, nil
 	}
 
-	if length > count*10 {
+	if length > count*10 || length <= 10 {
 		// 如果元素个数远大于需要的个数，采取随机取数的方法
 		randomSet := map[int]string{}
 		for i := int64(0); i < count; {
@@ -363,64 +549,49 @@ func (ca *accessor) GetRandomMembers(_ context.Context, key string, count int64)
 			members = append(members, s)
 		}
 		return members, nil
-	} else {
-		// 获取大量元素采取乱序抽取的方式
-		rand.Shuffle(int(length), func(i, j int) { existMembers[i], existMembers[j] = existMembers[j], existMembers[i] })
-		return existMembers[:count], nil
 	}
+
+	// 获取大量元素采取乱序抽取的方式
+	rand.Shuffle(int(length), func(i, j int) { existMembers[i], existMembers[j] = existMembers[j], existMembers[i] })
+	return existMembers[:count], nil
 }
 
 func (ca *accessor) HGetValue(_ context.Context, key string, field string) (exist bool, value string, err error) {
-	ca.mtx.RLock()
-	entry, isExist := ca.db[key]
-	ca.mtx.RUnlock()
+	resultEntry, isExist, _ := ca.getHashEntry(key)
 	if !isExist {
-		// 不存在hash的key，直接返回
+		// 如果不存在hash的key，直接返回
 		return false, "", nil
 	}
-
-	if entry.IsExpired() {
-		// 如果已经过期，删除后返回
-		_ = ca.Delete(nil, key)
-		return false, "", nil
+	if resultEntry == nil && isExist {
+		// 如果类型不匹配，返回错误
+		return true, "", NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
 
-	if entry.Type() != Hash {
-		// 如果entry的类型不正确，返回
-		return false, "", NewValueTypeNotMatchError(Hash, entry.Type())
-	}
-
-	value, exist = entry.(*hashEntry).GetField(field)
-	return exist, value, nil
+	value, _ = resultEntry.GetField(field)
+	return true, value, nil
 }
 
 func (ca *accessor) HGetValues(_ context.Context, key string, fields ...string) (resultMap map[string]string, err error) {
-	ca.mtx.RLock()
-	entry, isExist := ca.db[key]
-	ca.mtx.RUnlock()
+	resultEntry, isExist, _ := ca.getHashEntry(key)
 	if !isExist {
-		// 不存在hash的key，直接返回
+		// 如果不存在hash的key，直接返回
 		return map[string]string{}, nil
 	}
-
-	if entry.IsExpired() {
-		// 如果已经过期，删除后返回
-		_ = ca.Delete(nil, key)
-		return map[string]string{}, nil
+	if resultEntry == nil && isExist {
+		// 如果类型不匹配，返回错误
+		return map[string]string{}, NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
 
-	if entry.Type() != Hash {
-		// 如果entry的类型不正确，返回
-		return map[string]string{}, NewValueTypeNotMatchError(Hash, entry.Type())
-	}
-
-	return entry.(*hashEntry).GetFields(fields...), nil
+	return resultEntry.GetFields(fields...), nil
 }
 
 func (ca *accessor) HGetJson(_ context.Context, key string, field string, receiverPtr any) (exist bool, err error) {
-	isExist, value, _ := ca.HGetValue(nil, key, field)
+	isExist, value, getValueErr := ca.HGetValue(nil, key, field)
 	if !isExist {
 		return false, nil
+	}
+	if getValueErr != nil {
+		return true, getValueErr
 	}
 
 	if unmarshalErr := json.Unmarshal([]byte(value), receiverPtr); unmarshalErr != nil {
@@ -431,33 +602,29 @@ func (ca *accessor) HGetJson(_ context.Context, key string, field string, receiv
 }
 
 func (ca *accessor) HGetAll(_ context.Context, key string) (resultMap map[string]string, err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
-	if !exist {
-		// 如果不存在，直接返回
+	resultEntry, isExist, _ := ca.getHashEntry(key)
+	if !isExist {
+		// 如果不存在hash的key，直接返回
 		return map[string]string{}, nil
 	}
-
-	if entry.IsExpired() {
-		// 如果已经过期，删除后返回
-		_ = ca.Delete(nil, key)
-		return map[string]string{}, nil
+	if resultEntry == nil && isExist {
+		// 如果类型不匹配，返回错误
+		return map[string]string{}, NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
 
-	if entry.Type() != Hash {
-		// 如果entry的类型不正确，返回
-		return map[string]string{}, NewValueTypeNotMatchError(Hash, entry.Type())
-	}
-
-	return entry.(*hashEntry).GetAllFields(), nil
+	return resultEntry.GetAllFields(), nil
 }
 
 func (ca *accessor) HGetAllJson(_ context.Context, key string, receiverPtr any) (err error) {
-	result, _ := ca.HGetAll(nil, key)
-	if buffer, marshalErr := json.Marshal(&result); marshalErr != nil {
+	result, getErr := ca.HGetAll(nil, key)
+	if getErr != nil {
+		return getErr
+	}
+	buffer, marshalErr := json.Marshal(&result)
+	if marshalErr != nil {
 		return fmt.Errorf("marshal hash key %s json data: %w", key, marshalErr)
-	} else if unmarshalErr := json.Unmarshal(buffer, receiverPtr); unmarshalErr != nil {
+	}
+	if unmarshalErr := json.Unmarshal(buffer, receiverPtr); unmarshalErr != nil {
 		return fmt.Errorf("unmarshal hash key %s json data: %w", key, unmarshalErr)
 	}
 
@@ -465,71 +632,59 @@ func (ca *accessor) HGetAllJson(_ context.Context, key string, receiverPtr any) 
 }
 
 func (ca *accessor) HSetValue(_ context.Context, key string, field string, value string) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
-	if !exist {
-		entry = newHashEntry()
-		ca.mtx.Lock()
-		ca.db[key] = entry
-		ca.mtx.Unlock()
-	}
-
-	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
+	resultEntry, isExist, _ := ca.getHashEntry(key)
+	if !isExist {
+		// 如果不存在hash的key，创建后添加
+		resultEntry = newHashEntry()
+		resultEntry.AddField(field, value)
+		ca.create(key, resultEntry)
 		return nil
 	}
-
-	if entry.Type() != Hash {
-		return NewValueTypeNotMatchError(Hash, entry.Type())
+	if resultEntry == nil && isExist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
 
-	entry.(*hashEntry).AddField(field, value)
+	// 如果存在，添加元素
+	resultEntry.AddField(field, value)
+	ca.update(key, resultEntry)
 	return nil
 }
 
 func (ca *accessor) HSetValues(_ context.Context, key string, values map[string]string) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
-	if !exist {
-		entry = newHashEntry()
-		ca.mtx.Lock()
-		ca.db[key] = entry
-		ca.mtx.Unlock()
-	}
-
-	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
+	resultEntry, isExist, _ := ca.getHashEntry(key)
+	if !isExist {
+		// 如果不存在hash的key，创建后添加
+		resultEntry = newHashEntry()
+		resultEntry.AddFields(values)
+		ca.create(key, resultEntry)
 		return nil
 	}
-
-	if entry.Type() != Hash {
-		return NewValueTypeNotMatchError(Hash, entry.Type())
+	if resultEntry == nil && isExist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
 
-	entry.(*hashEntry).AddFields(values)
+	// 如果存在，添加元素
+	resultEntry.AddFields(values)
+	ca.update(key, resultEntry)
 	return nil
 }
 
 func (ca *accessor) HRemoveValue(_ context.Context, key string, field string) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
-	if !exist {
+	resultEntry, isExist, _ := ca.getHashEntry(key)
+	if !isExist {
+		// 如果不存在hash的key，直接返回
 		return nil
 	}
-
-	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
-		return nil
+	if resultEntry == nil && isExist {
+		// 如果类型不匹配，返回错误
+		return NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
 
-	if entry.Type() != Hash {
-		return NewValueTypeNotMatchError(Hash, entry.Type())
-	}
-
-	entry.(*hashEntry).RemoveField(field)
+	// 如果存在，移除元素
+	resultEntry.RemoveField(field)
+	ca.update(key, resultEntry)
 	return nil
 }
 
@@ -555,19 +710,13 @@ func (ca *accessor) HRemoveValues(_ context.Context, key string, fields ...strin
 }
 
 func (ca *accessor) Expire(_ context.Context, key string, expire time.Duration) (err error) {
-	ca.mtx.RLock()
-	entry, exist := ca.db[key]
-	ca.mtx.RUnlock()
+	entry, exist := ca.getEntry(key)
 	if !exist {
 		return nil
 	}
 
-	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
-		return nil
-	}
-
 	entry.SetExpireTime(expire)
+	ca.update(key, entry)
 	return nil
 }
 

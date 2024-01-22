@@ -20,9 +20,9 @@ type Cache interface {
 	LoadAndDelete(ctx context.Context, key string) (loaded bool, value string, err error)
 	LoadAndDeleteJson(ctx context.Context, key string, receivePtr any) (loaded bool, err error)
 	LoadOrStore(ctx context.Context, key string, storeValue string) (loaded bool, value string, err error)
-	LoadOrStoreEx(ctx context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error)
+	LoadOrStoreEX(ctx context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error)
 	LoadOrStoreJson(ctx context.Context, key string, senderPtr any, receiverPtr any) (loaded bool, err error)
-	LoadOrStoreJsonEx(ctx context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error)
+	LoadOrStoreJsonEX(ctx context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error)
 	IsMember(ctx context.Context, key string, member string) (isMember bool, err error)
 	IsMembers(ctx context.Context, key string, members ...string) (isMembers bool, err error)
 	AddMember(ctx context.Context, key string, member string) (err error)
@@ -40,13 +40,5 @@ type Cache interface {
 	HSetValues(ctx context.Context, key string, values map[string]string) (err error)
 	HRemoveValue(ctx context.Context, key string, field string) (err error)
 	HRemoveValues(ctx context.Context, key string, fields ...string) (err error)
-	Expire(ctx context.Context, key string, expire time.Duration) (err error)
-}
-
-type Counter interface {
-	Add(ctx context.Context, key string, delta int64) (err error)
-	Sub(ctx context.Context, key string, delta int64) (err error)
-	Get(ctx context.Context, key string) (value int64, err error)
-	ExistKey(ctx context.Context, key string) (exist bool, err error)
 	Expire(ctx context.Context, key string, expire time.Duration) (err error)
 }

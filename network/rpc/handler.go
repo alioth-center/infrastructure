@@ -115,19 +115,15 @@ func RequestLimiterHandler[request any, response any](rpd, rpm, rps int) func(ct
 
 		return func(ip string) bool {
 			key := keyBuilder(ip, limitType)
-			if exist, _ := counter.ExistKey(nil, key); exist {
-				// 如果存在，将本次请求计数加1，如果计数超过rps，拦截
-				_ = counter.Add(nil, key, 1)
-				if count, _ := counter.Get(nil, key); int(count) >= limit {
-					return false
-				}
-
+			rpu := counter.IncreaseWithExpireWhenNotExist(nil, key, 1, expire)
+			if rpu == cache.CounterResultEnumFailed || rpu == cache.CounterResultEnumNotEffective {
+				// 我们内部计数器出错，默认不限制
 				return true
 			}
-
-			// 如果不存在，将本次请求计数加1，设置过期时间为expire
-			_ = counter.Add(nil, key, 1)
-			_ = counter.Expire(nil, key, expire)
+			if rpu.GetValue() > limit {
+				// 如果超过限制，则限制
+				return false
+			}
 			return true
 		}
 	}

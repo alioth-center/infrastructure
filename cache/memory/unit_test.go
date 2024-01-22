@@ -7,18 +7,25 @@ import (
 )
 
 func TestMemoryCache(t *testing.T) {
-	cache := NewMemoryCache(Config{
+	impl := NewMemoryCache(Config{
 		EnableInitiativeClean: true,
 		CleanIntervalSecond:   1,
-		MaxCleanMicroSecond:   10000,
-		MaxCleanPercentage:    1,
+		MaxCleanMicroSecond:   100,
+		MaxCleanPercentage:    10,
 	})
 
-	for i := 0; i < 10086; i++ {
-		go cache.StoreEX(nil, strconv.Itoa(i), "", time.Second+time.Duration(i)*time.Millisecond)
-	}
+	RunCacheTestCases(t, impl)
+}
 
-	time.Sleep(time.Second * 5)
+func TestMemoryCounter(t *testing.T) {
+	impl := NewMemoryCounter(Config{
+		EnableInitiativeClean: true,
+		CleanIntervalSecond:   1,
+		MaxCleanMicroSecond:   100,
+		MaxCleanPercentage:    10,
+	})
+
+	RunCounterTestCases(t, impl)
 }
 
 func BenchmarkMemoryCache(b *testing.B) {

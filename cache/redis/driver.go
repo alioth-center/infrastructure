@@ -23,7 +23,7 @@ type Config struct {
 	KeySeparator  string `json:"key_separator,omitempty" yaml:"key_separator,omitempty" xml:"key_separator,omitempty"`
 }
 
-func NewRedisCache(cfg Config) (rds cache.Cache, err error) {
+func newRedisClient(cfg Config) (rds *accessor, err error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
 		Username:     cfg.Username,
@@ -39,7 +39,7 @@ func NewRedisCache(cfg Config) (rds cache.Cache, err error) {
 
 	_, pingErr := client.Ping(context.Background()).Result()
 	if pingErr != nil {
-		return values.Nil[cache.Cache](), fmt.Errorf("failed to connect redis server %s: %w", cfg.Address, pingErr)
+		return values.Nil[*accessor](), fmt.Errorf("failed to connect redis server %s: %w", cfg.Address, pingErr)
 	}
 
 	// 初始化成功，需要注册退出函数
@@ -55,4 +55,12 @@ func NewRedisCache(cfg Config) (rds cache.Cache, err error) {
 			redisKeySeparator:   cfg.KeySeparator,
 		},
 	}, nil
+}
+
+func NewRedisCache(cfg Config) (rds cache.Cache, err error) {
+	return newRedisClient(cfg)
+}
+
+func NewRedisCounter(cfg Config) (rds cache.Counter, err error) {
+	return newRedisClient(cfg)
 }
