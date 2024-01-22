@@ -26,7 +26,7 @@ func TestRedisCounter(t *testing.T) {
 	}
 
 	impl, initErr := NewRedisCounter(Config{
-		Address: "localhost:6399",
+		Address: "localhost:6379",
 	})
 	if initErr != nil {
 		t.Fatal(initErr)
