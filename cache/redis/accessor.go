@@ -30,6 +30,8 @@ func (ra *accessor) Increase(ctx context.Context, key string, delta uint64) (res
 	resultNum, executeErr := ra.db.IncrBy(ctx, ra.kb.BuildKey(key), int64(delta)).Result()
 	if executeErr != nil && !errors.Is(executeErr, redis.Nil) {
 		return cache.CounterResultEnumFailed
+	} else if errors.Is(executeErr, redis.Nil) {
+		return cache.CounterResultEnumNotEffective
 	}
 
 	return cache.CounterResultEnum(resultNum)
