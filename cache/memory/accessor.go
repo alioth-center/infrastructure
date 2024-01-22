@@ -59,14 +59,14 @@ func (ca *accessor) create(key string, value entry) {
 }
 
 func (ca *accessor) update(key string, value entry) {
-	ca.mtx.RLock()
-	defer ca.mtx.RUnlock()
 	if _, exist := ca.get(key); !exist {
 		// 如果不存在，不应该更新
 		return
 	}
 
+	ca.mtx.Lock()
 	ca.db[key] = value
+	ca.mtx.Unlock()
 }
 
 func (ca *accessor) getEntry(key string) (result entry, exist bool) {

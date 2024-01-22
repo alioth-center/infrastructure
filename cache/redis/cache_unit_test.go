@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/alioth-center/infrastructure/cache"
 	"testing"
@@ -1003,6 +1004,25 @@ func StoreJsonFunction(impl cache.Cache) func(t *testing.T) {
 			}
 			if receiver.Key != key || receiver.Value != key {
 				t.Errorf("StoreJson:NotExpired case failed: incorrect value")
+			}
+		})
+
+		// 存储一个Json错误的样例
+		t.Run("StoreJson:JsonError", func(t *testing.T) {
+			type jsonErrorStruct struct {
+				Key   string   `json:"key"`
+				Value chan int `json:"value"`
+			}
+
+			key := "StoreJson:JsonError"
+			value := jsonErrorStruct{Key: key, Value: make(chan int)}
+			storeErr := impl.StoreJson(context.Background(), key, value)
+			if storeErr == nil {
+				t.Errorf("StoreJson:JsonError case failed: want error but not")
+			}
+			_, wantErr := json.Marshal(value)
+			if !errors.As(storeErr, &wantErr) {
+				t.Errorf("StoreJson:JsonError case failed: want error %v but got %v", wantErr, storeErr)
 			}
 		})
 	}

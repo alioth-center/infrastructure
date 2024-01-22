@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/alioth-center/infrastructure/cache"
+	"strings"
 	"testing"
 	"time"
 )
@@ -183,6 +184,11 @@ type TestCase struct {
 type testStruct struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type jsonErrorStruct struct {
+	Key   string   `json:"key"`
+	Value chan int `json:"value"`
 }
 
 func ExistKeyTestFunction(impl cache.Cache) func(t *testing.T) {
@@ -1011,6 +1017,27 @@ func StoreJsonFunction(impl cache.Cache) func(t *testing.T) {
 				t.Errorf("StoreJson:NotExpired case failed: incorrect value")
 			}
 		})
+
+		// 存储一个Json错误的样例
+		t.Run("StoreJson:JsonError", func(t *testing.T) {
+			key := "StoreJson:JsonError"
+			value := jsonErrorStruct{Key: key, Value: make(chan int)}
+			storeErr := impl.StoreJson(context.Background(), key, value)
+			if storeErr == nil {
+				t.Errorf("StoreJson:JsonError case failed: expected error but got none")
+			}
+
+			// 检查错误类型是否为 *json.UnsupportedTypeError，这是 json.Marshal 在遇到无法处理的类型时返回的错误类型
+			var jsonErr *json.UnsupportedTypeError
+			if !errors.As(storeErr, &jsonErr) {
+				t.Errorf("StoreJson:JsonError case failed: incorrect error type")
+			}
+
+			// 或者检查错误字符串是否包含特定的消息
+			if !strings.Contains(storeErr.Error(), "json: unsupported type") {
+				t.Errorf("StoreJson:JsonError case failed: incorrect error message")
+			}
+		})
 	}
 }
 
@@ -1655,6 +1682,84 @@ func LoadOrStoreJsonFunction(impl cache.Cache) func(t *testing.T) {
 			}
 			if checkExpireTime != 0 {
 				t.Errorf("LoadOrStoreJson:Exist case failed: incorrect expired time")
+			}
+		})
+
+		// 存储一个json错误的样例
+		t.Run("LoadOrStoreJson:JsonError", func(t *testing.T) {
+			key := "LoadOrStoreJson:JsonError"
+			value := jsonErrorStruct{Key: key, Value: make(chan int)}
+
+			var receiver jsonErrorStruct
+			loaded, loadErr := impl.LoadOrStoreJson(context.Background(), key, value, &receiver)
+			if loadErr == nil {
+				t.Errorf("LoadOrStoreJson:JsonError case failed: want error")
+			}
+			if loaded {
+				t.Errorf("LoadOrStoreJson:JsonError case failed: key exist, want not exist")
+			}
+			// 检查错误类型是否为 *json.UnsupportedTypeError，这是 json.Marshal 在遇到无法处理的类型时返回的错误类型
+			var jsonErr *json.UnsupportedTypeError
+			if !errors.As(loadErr, &jsonErr) {
+				t.Errorf("StoreJson:JsonError case failed: incorrect error type")
+			}
+
+			// 或者检查错误字符串是否包含特定的消息
+			if !strings.Contains(loadErr.Error(), "json: unsupported type") {
+				t.Errorf("StoreJson:JsonError case failed: incorrect error message")
+			}
+		})
+
+		// 获取一个json错误的样例
+		t.Run("LoadOrStoreJson:LoadJsonError", func(t *testing.T) {
+			key := "LoadOrStoreJson:LoadJsonError"
+			value := testStruct{Key: key, Value: key}
+			jsonBytes, marshalErr := json.Marshal(value)
+			if marshalErr != nil {
+				t.Errorf("LoadOrStoreJson:LoadJsonError case failed when marshaling value: %v", marshalErr.Error())
+			}
+
+			jsonStrings := string(jsonBytes[:len(jsonBytes)/2])
+
+			storeErr := impl.Store(context.Background(), key, jsonStrings)
+			if storeErr != nil {
+				t.Errorf("LoadOrStoreJson:LoadJsonError case failed when storing key: %v", storeErr.Error())
+			}
+
+			var receiver testStruct
+			loaded, loadErr := impl.LoadOrStoreJson(context.Background(), key, &value, &receiver)
+			if loadErr == nil {
+				t.Errorf("LoadOrStoreJson:LoadJsonError case failed: want error")
+			}
+			if !loaded {
+				t.Errorf("LoadOrStoreJson:LoadJsonError case failed: key not exist, want exist")
+			}
+			var jsonErr *json.SyntaxError
+			if !errors.As(loadErr, &jsonErr) {
+				t.Errorf("LoadOrStoreJson:LoadJsonError case failed: incorrect error type: %+v", loadErr)
+			}
+		})
+
+		// 获取一个类型错误的样例
+		t.Run("LoadOrStoreJson:LoadTypeError", func(t *testing.T) {
+			key := "LoadOrStoreJson:LoadTypeError"
+			value := testStruct{Key: key, Value: key}
+			storeErr := impl.StoreJson(context.Background(), key, value)
+			if storeErr != nil {
+				t.Errorf("LoadOrStoreJson:LoadTypeError case failed when storing key: %v", storeErr.Error())
+			}
+
+			var receiver *jsonErrorStruct = nil
+			loaded, loadErr := impl.LoadOrStoreJson(context.Background(), key, &value, receiver)
+			if loadErr == nil {
+				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: want error")
+			}
+			if !loaded {
+				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: key not exist, want exist")
+			}
+			var receiverTypeError *ReceiverTypeIncorrectError
+			if !errors.As(loadErr, &receiverTypeError) {
+				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: incorrect error type")
 			}
 		})
 	}
