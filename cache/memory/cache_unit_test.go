@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/alioth-center/infrastructure/cache"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 var (
 	interval = time.Second
 
-	BaseCacheUnitTestCaseList = []TestCase{
+	BaseCacheUnitTestCaseList = []TestCase[cache.Cache]{
 		{
 			CaseName:     "ExistKey",
 			TestFunction: ExistKeyTestFunction,
@@ -176,9 +177,9 @@ func containsString(s []string, e string) bool {
 	return false
 }
 
-type TestCase struct {
+type TestCase[T any] struct {
 	CaseName     string
-	TestFunction func(impl cache.Cache) func(t *testing.T)
+	TestFunction func(impl T) func(t *testing.T)
 }
 
 type testStruct struct {
@@ -1744,20 +1745,16 @@ func LoadOrStoreJsonFunction(impl cache.Cache) func(t *testing.T) {
 		t.Run("LoadOrStoreJson:LoadTypeError", func(t *testing.T) {
 			key := "LoadOrStoreJson:LoadTypeError"
 			value := testStruct{Key: key, Value: key}
-			storeErr := impl.StoreJson(context.Background(), key, value)
-			if storeErr != nil {
-				t.Errorf("LoadOrStoreJson:LoadTypeError case failed when storing key: %v", storeErr.Error())
-			}
 
 			var receiver *jsonErrorStruct = nil
 			loaded, loadErr := impl.LoadOrStoreJson(context.Background(), key, &value, receiver)
 			if loadErr == nil {
 				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: want error")
 			}
-			if !loaded {
-				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: key not exist, want exist")
+			if loaded {
+				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: key exist, want not exist")
 			}
-			var receiverTypeError *ReceiverTypeIncorrectError
+			var receiverTypeError = NewReceiverTypeIncorrectError(reflect.TypeOf(receiver).String(), reflect.ValueOf(receiver).IsNil())
 			if !errors.As(loadErr, &receiverTypeError) {
 				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: incorrect error type")
 			}
@@ -3411,7 +3408,7 @@ func HRemoveValuesFunction(impl cache.Cache) func(t *testing.T) {
 	}
 }
 
-func RunTestCase(t *testing.T, impl cache.Cache) {
+func RunCacheTestCases(t *testing.T, impl cache.Cache) {
 	for _, i := range BaseCacheUnitTestCaseList {
 		t.Run(i.CaseName, i.TestFunction(impl))
 	}

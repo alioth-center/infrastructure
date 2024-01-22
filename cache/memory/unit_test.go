@@ -14,7 +14,18 @@ func TestMemoryCache(t *testing.T) {
 		MaxCleanPercentage:    10,
 	})
 
-	RunTestCase(t, impl)
+	RunCacheTestCases(t, impl)
+}
+
+func TestMemoryCounter(t *testing.T) {
+	impl := NewMemoryCounter(Config{
+		EnableInitiativeClean: true,
+		CleanIntervalSecond:   1,
+		MaxCleanMicroSecond:   100,
+		MaxCleanPercentage:    10,
+	})
+
+	RunCounterTestCases(t, impl)
 }
 
 func BenchmarkMemoryCache(b *testing.B) {
