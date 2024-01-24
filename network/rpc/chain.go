@@ -1,15 +1,13 @@
 package rpc
 
-import "github.com/alioth-center/infrastructure/logger"
-
 type Chain[request any, response any] []Handler[request, response]
 
-func (c Chain[request, response]) AddHandler(h ...Handler[request, response]) Chain[request, response] {
-	return append(c, h...)
+func (c Chain[request, response]) AddHandlerFront(h ...Handler[request, response]) Chain[request, response] {
+	return append(h, c...)
 }
 
-func (c Chain[request, response]) AddFrontHandler(h ...Handler[request, response]) Chain[request, response] {
-	return append(h, c...)
+func (c Chain[request, response]) AddHandlerBack(h ...Handler[request, response]) Chain[request, response] {
+	return append(c, h...)
 }
 
 func (c Chain[request, response]) Run(ctx *Context[request, response]) {
@@ -20,32 +18,15 @@ func (c Chain[request, response]) Run(ctx *Context[request, response]) {
 
 func NewChain[request any, response any](handlers ...Handler[request, response]) Chain[request, response] {
 	if handlers == nil {
-		handlers = make([]Handler[request, response], 0)
+		return []Handler[request, response]{}
 	}
-	return handlers
-}
 
-func DefaultChain[request any, response any](logger logger.Logger, serviceName string, handlerName string, handlers ...Handler[request, response]) Chain[request, response] {
-	if handlers == nil {
-		handlers = make([]Handler[request, response], 0)
+	chain := make(Chain[request, response], 0, len(handlers))
+	for _, handler := range handlers {
+		if handler != nil {
+			chain = append(chain, handler)
+		}
 	}
-	return NewChain[request, response](
-		RecoveryHandler[request, response](logger, serviceName, handlerName),
-		LogInputAndOutputHandler[request, response](logger, serviceName, handlerName),
-	).AddHandler(
-		handlers...,
-	)
-}
 
-func LimitedDefaultChain[request any, response any](logger logger.Logger, serviceName string, handlerName string, rpd, rpm, rps int, handlers ...Handler[request, response]) Chain[request, response] {
-	if handlers == nil {
-		handlers = make([]Handler[request, response], 0)
-	}
-	return NewChain[request, response](
-		RequestLimiterHandler[request, response](rpd, rpm, rps),
-		RecoveryHandler[request, response](logger, serviceName, handlerName),
-		LogInputAndOutputHandler[request, response](logger, serviceName, handlerName),
-	).AddHandler(
-		handlers...,
-	)
+	return chain
 }
