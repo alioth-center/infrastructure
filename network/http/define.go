@@ -14,6 +14,46 @@ const (
 	PATCH   Method = "PATCH"
 )
 
+type MethodCode = int32
+
+const (
+	CodeGet MethodCode = 1 << iota
+	CodePost
+	CodeOptions
+	CodeHead
+	CodePut
+	CodeDelete
+	CodeTrace
+	CodeConnect
+	CodePatch
+)
+
+var (
+	MethodMap = map[Method]MethodCode{
+		GET:     CodeGet,
+		POST:    CodePost,
+		OPTIONS: CodeOptions,
+		HEAD:    CodeHead,
+		PUT:     CodePut,
+		DELETE:  CodeDelete,
+		TRACE:   CodeTrace,
+		CONNECT: CodeConnect,
+		PATCH:   CodePatch,
+	}
+
+	MethodCodeMap = map[MethodCode]Method{
+		CodeGet:     GET,
+		CodePost:    POST,
+		CodeOptions: OPTIONS,
+		CodeHead:    HEAD,
+		CodePut:     PUT,
+		CodeDelete:  DELETE,
+		CodeTrace:   TRACE,
+		CodeConnect: CONNECT,
+		CodePatch:   PATCH,
+	}
+)
+
 type UserAgent = string
 
 const (
