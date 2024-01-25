@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -101,7 +100,10 @@ func (r *response) BindJsonBody(receiver any) (err error) {
 		return json.NewDecoder(bytes.NewBuffer(r.bd)).Decode(receiver)
 	}
 
-	return fmt.Errorf("content type is not json: %s", contentType)
+	return ContentTypeMismatchError{
+		Expected: ContentTypeJson,
+		Actual:   contentType,
+	}
 }
 
 func (r *response) BindXmlBody(receiver any) (err error) {
@@ -114,7 +116,10 @@ func (r *response) BindXmlBody(receiver any) (err error) {
 		return xml.NewDecoder(bytes.NewBuffer(r.bd)).Decode(receiver)
 	}
 
-	return fmt.Errorf("content type is not xml: %s", contentType)
+	return ContentTypeMismatchError{
+		Expected: ContentTypeTextXml,
+		Actual:   contentType,
+	}
 }
 
 func (r *response) Result() (status int, body []byte, err error) {

@@ -1,5 +1,7 @@
 package http
 
+import "github.com/alioth-center/infrastructure/utils/values"
+
 type UnsupportedContentTypeError struct {
 	ContentType string
 }
@@ -62,4 +64,13 @@ type NecessaryCookieMissingError struct {
 
 func (e NecessaryCookieMissingError) Error() string {
 	return "necessary cookie missing: " + e.Cookie
+}
+
+type ContentTypeMismatchError struct {
+	Expected string
+	Actual   string
+}
+
+func (e ContentTypeMismatchError) Error() string {
+	return values.BuildStrings("content type mismatch, expected: ", e.Expected, ", actual: ", e.Actual)
 }
