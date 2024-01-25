@@ -3,7 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"encoding/xml"
 	"io"
 	"net/http"
 	"strings"
@@ -14,12 +14,14 @@ type Response interface {
 	Result() (status int, body []byte, err error)
 	StringResult() (status int, body string, err error)
 	BindJsonResult(receiver any) (status int, err error)
+	BindXmlResult(receiver any) (status int, err error)
 	GetHeader(key string, defaultVal ...string) (val string)
 	GetBearerToken() (token string)
 	GetCookie(cookieName string) (ck *http.Cookie)
 	GetStatusCode() int
 	GetBody() (body []byte)
 	BindJsonBody(receiver any) (err error)
+	BindXmlBody(receiver any) (err error)
 }
 
 type response struct {
@@ -94,10 +96,29 @@ func (r *response) BindJsonBody(receiver any) (err error) {
 	}
 
 	contentType := r.r.Header.Get("Content-Type")
-	if contentType == "application/json" || contentType == "" {
+	if strings.Contains(strings.ToLower(contentType), "json") || contentType == "" {
 		return json.NewDecoder(bytes.NewBuffer(r.bd)).Decode(receiver)
-	} else {
-		return fmt.Errorf("content type is not json: %s", contentType)
+	}
+
+	return ContentTypeMismatchError{
+		Expected: ContentTypeJson,
+		Actual:   contentType,
+	}
+}
+
+func (r *response) BindXmlBody(receiver any) (err error) {
+	if r.e != nil {
+		return r.e
+	}
+
+	contentType := r.r.Header.Get("Content-Type")
+	if strings.Contains(strings.ToLower(contentType), "xml") || contentType == "" {
+		return xml.NewDecoder(bytes.NewBuffer(r.bd)).Decode(receiver)
+	}
+
+	return ContentTypeMismatchError{
+		Expected: ContentTypeTextXml,
+		Actual:   contentType,
 	}
 }
 
@@ -113,7 +134,15 @@ func (r *response) BindJsonResult(receiver any) (status int, err error) {
 	return r.GetStatusCode(), r.BindJsonBody(receiver)
 }
 
+func (r *response) BindXmlResult(receiver any) (status int, err error) {
+	return r.GetStatusCode(), r.BindXmlBody(receiver)
+}
+
 func NewResponse(r *http.Response, e error) Response {
+	if r == nil {
+		return &response{r: nil, e: e, bd: []byte{}, cks: nil}
+	}
+
 	body, _ := io.ReadAll(r.Body)
 	return &response{r: r, e: e, bd: body, cks: nil}
 }

@@ -42,3 +42,120 @@ func BuildStringsWithTemplate(template string, args ...string) string {
 
 	return template
 }
+
+func StringToInt[T ~int](raw string, defaultValue T) T {
+	if raw == "" {
+		return defaultValue
+	}
+
+	result, err := strconv.Atoi(raw)
+	if err != nil {
+		return defaultValue
+	}
+
+	return T(result)
+}
+
+func StringToUint[T ~uint](raw string, defaultValue T) T {
+	if raw == "" {
+		return defaultValue
+	}
+
+	result, err := strconv.Atoi(raw)
+	if err != nil {
+		return defaultValue
+	}
+
+	return T(result)
+}
+
+func StringToFloat64[T ~float64](raw string, defaultValue T) T {
+	if raw == "" {
+		return defaultValue
+	}
+
+	result, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return defaultValue
+	}
+
+	return T(result)
+}
+
+func StringToBool[T ~bool](raw string, defaultValue T) T {
+	if raw == "" {
+		return defaultValue
+	}
+
+	result, err := strconv.ParseBool(raw)
+	if err != nil {
+		return defaultValue
+	}
+
+	return T(result)
+}
+
+func StringToStringPtr[T ~string](raw string) *T {
+	if raw == "" {
+		return nil
+	}
+
+	result := T(raw)
+	return &result
+}
+
+func StringToIntPtr[T ~int](raw string) *T {
+	if raw == "" {
+		return nil
+	}
+
+	result, err := strconv.Atoi(raw)
+	if err != nil {
+		return nil
+	}
+
+	resultT := T(result)
+	return &resultT
+}
+
+func StringToUintPtr[T ~uint](raw string) *T {
+	if raw == "" {
+		return nil
+	}
+
+	result, err := strconv.Atoi(raw)
+	if err != nil {
+		return nil
+	}
+
+	resultT := T(result)
+	return &resultT
+}
+
+func StringToFloat64Ptr[T ~float64](raw string) *T {
+	if raw == "" {
+		return nil
+	}
+
+	result, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return nil
+	}
+
+	resultT := T(result)
+	return &resultT
+}
+
+func StringToBoolPtr[T ~bool](raw string) *T {
+	if raw == "" {
+		return nil
+	}
+
+	result, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil
+	}
+
+	resultT := T(result)
+	return &resultT
+}
