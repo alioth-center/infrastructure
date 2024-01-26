@@ -9,14 +9,14 @@ import (
 	"fmt"
 )
 
-// EncryptMessageWithAES 使用 AES 加密算法加密消息
+// AesEncrypt 使用 AES 加密算法加密消息
 //   - message: 明文消息
 //   - secret: 密钥，长度必须是 16、24 或 32 位
 //   - encrypted: 加密后的消息
 //   - err: 错误信息
 //
 // 没有出错重试机制，出错直接返回 err
-func EncryptMessageWithAES(message string, secret string) (encrypted string, err error) {
+func AesEncrypt(message string, secret string) (encrypted string, err error) {
 	if block, buildAesBlockErr := aes.NewCipher([]byte(secret)); buildAesBlockErr != nil {
 		return "", buildAesBlockErr
 	} else {
@@ -34,14 +34,14 @@ func EncryptMessageWithAES(message string, secret string) (encrypted string, err
 	}
 }
 
-// DecryptMessageWithAES 使用 AES 加密算法解密消息
+// AesDecrypt 使用 AES 加密算法解密消息
 //   - encrypted: 加密后的消息
 //   - secret: 密钥，长度必须是 16、24 或 32 位
 //   - decrypted: 解密后的消息
 //   - err: 错误信息
 //
 // 没有出错重试机制，出错直接返回 err
-func DecryptMessageWithAES(encrypted string, secret string) (decrypted string, err error) {
+func AesDecrypt(encrypted string, secret string) (decrypted string, err error) {
 	if block, buildAesBlockErr := aes.NewCipher([]byte(secret)); buildAesBlockErr != nil {
 		return "", buildAesBlockErr
 	} else {
