@@ -13,7 +13,21 @@ type ConcurrencyResult[T any] struct {
 
 type Promise[T any] chan ConcurrencyResult[T]
 
-// RecoverErr 将捕获到的 panic 转换为 error，必须在 defer 中使用
+// RecoverErr recover panic to error, must be used in defer
+// example:
+//
+//	func main() {
+//		defer func() {
+//			if err := RecoverErr(recover()); err != nil {
+//				fmt.Println(err)
+//			}
+//		}()
+//
+//		panic("test")
+//	}
+//
+// then
+// output: test
 func RecoverErr(e any) error {
 	if e == nil {
 		return nil
