@@ -1,9 +1,11 @@
 package concurrency
 
 import (
+	"bytes"
+	"encoding/binary"
+	"hash/fnv"
 	"modernc.org/mathutil"
 	"sync"
-	"unsafe"
 )
 
 // Map is a thread-safe map
@@ -191,20 +193,15 @@ func NewMap[K comparable, V any]() Map[K, V] {
 	}
 }
 
-// hashFunction is a hash function for hashMap, use
+// hashFunction is a hash function for hashMap, use hash/fnv to hash key
 func hashFunction[T comparable](key T) (hash uint64) {
-	gc := &key
-	start := uintptr(unsafe.Pointer(gc))
-	offset := unsafe.Sizeof(key)
-	sizeOfByte := unsafe.Sizeof(byte(0))
+	buf := new(bytes.Buffer)
+	_ = binary.Write(buf, binary.LittleEndian, key) // nolint:errcheck
 
-	hashSum := uint64(0)
-	for ptr := start; ptr < start+offset; ptr += sizeOfByte {
-		b := *(*byte)(unsafe.Pointer(ptr))
-		hashSum += uint64(b)
-		hashSum = uint64(b) + (hashSum << 6) + (hashSum << 16) - hashSum
-	}
-	return hashSum
+	h := fnv.New64a()
+	_, _ = h.Write(buf.Bytes()) // nolint:errcheck
+
+	return h.Sum64()
 }
 
 // hashMap is a thread-safe map with hash function
