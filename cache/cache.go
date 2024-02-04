@@ -6,6 +6,7 @@ import (
 )
 
 type Cache interface {
+	DriverName() string
 	ExistKey(ctx context.Context, key string) (exist bool, err error)
 	GetExpiredTime(ctx context.Context, key string) (exist bool, expiredAt time.Time, err error)
 	Load(ctx context.Context, key string) (exist bool, value string, err error)

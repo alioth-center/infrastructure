@@ -14,6 +14,7 @@ require (
 	gorm.io/driver/mysql v1.5.2
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5
+	modernc.org/mathutil v1.6.0
 )
 
 require (
@@ -58,7 +59,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231106174013-bbf56f31fb17 // indirect
 	google.golang.org/protobuf v1.32.0 // indirect
 	modernc.org/libc v1.30.0 // indirect
-	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/sqlite v1.27.0 // indirect
 )

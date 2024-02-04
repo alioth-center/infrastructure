@@ -13,6 +13,7 @@ import (
 )
 
 type Request interface {
+	Clone() Request
 	SetUrl(path string) Request
 	SetMethod(method string) Request
 	SetBearerToken(token string) Request
@@ -23,6 +24,7 @@ type Request interface {
 	SetMultiPartBodyWithErrorHandler(multipartField, multipartName string, multiWriter io.Reader, others map[string]string, handler func(err error) (ignore bool)) Request
 	SetMultiPartBody(multipartField, multipartName string, multiWriter io.Reader, others map[string]string) Request
 	SetCookie(cookieKey, cookieValue string) Request
+	SetContext(ctx context.Context) Request
 	build() (req *http.Request, err error)
 }
 
@@ -33,6 +35,17 @@ type request struct {
 	headers map[string]string
 	cookies map[string]string
 	body    io.Reader
+}
+
+func (r *request) Clone() Request {
+	return &request{
+		ctx:     r.ctx,
+		method:  r.method,
+		path:    r.path,
+		headers: r.headers,
+		cookies: r.cookies,
+		body:    r.body,
+	}
 }
 
 func (r *request) SetUrl(path string) Request {

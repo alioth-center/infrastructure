@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"fmt"
 	"github.com/alioth-center/infrastructure/trace"
 	"testing"
 )
@@ -31,4 +32,10 @@ func TestSqliteDb(t *testing.T) {
 	t.Log("query error:", sqlite.GetOneWithCtx(ctx, &instance, "value = ?", "test"))
 	t.Log("query result:", instance)
 	t.Log("pick error:", sqlite.PickOneWithCtx(ctx, &instance, "value = ?", "test"))
+
+	t.Log(sqlite.QueryRaw(&instance, fmt.Sprintf("select * from test_table where value = '%s'", "'; insert into test_table(value) values('test_inject'); --")))
+
+	var values []table
+	t.Log(sqlite.GetAll(&values, ""))
+	t.Log(values)
 }

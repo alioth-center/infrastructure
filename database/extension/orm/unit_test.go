@@ -26,13 +26,24 @@ func TestOrmExtension(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	ext := NewExtension(db)
-	extMethods := ext.InitializeExtension(db)
-	_ = extMethods.ExecuteGormFunction(func(db *gorm.DB) *gorm.DB {
+	ext := NewExtension().InitializeExtension(db)
+	_ = ext.ExecuteGormFunction(func(db *gorm.DB) *gorm.DB {
 		return db.Create(&table{Value: "test"})
 	})
 
 	var tb table
-	_ = extMethods.PickOne(&tb, "value = ?", "test")
+	_ = ext.PickOne(&tb, "value = ?", "test")
 	t.Logf("pick result: %v", tb)
+
+	dto := &table{Value: "test"}
+	ext.ExtMethods().GetGorm().Transaction(func(tx *gorm.DB) error {
+		err := tx.Create(dto).Error
+		if err != nil {
+			return err
+		}
+
+		t.Log("transaction dto:", dto)
+
+		return nil
+	})
 }

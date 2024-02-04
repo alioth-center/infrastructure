@@ -8,12 +8,12 @@ import (
 
 func TestEncoding(t *testing.T) {
 	secret := "1234567890123456"
-	encrypted, ee := EncryptMessageWithAES("i love u", secret)
+	encrypted, ee := AesEncrypt("i love u", secret)
 	if ee != nil {
 		t.Error(ee)
 	}
 
-	decrypted, de := DecryptMessageWithAES(encrypted, secret)
+	decrypted, de := AesDecrypt(encrypted, secret)
 	if de != nil {
 		t.Error(de)
 	}
@@ -110,6 +110,52 @@ func TestHashMD5(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			t.Log("hash md5:", HashEntryMD5(entry))
+		}
+	})
+}
+
+func TestRsa(t *testing.T) {
+	t.Run("RsaEncrypt:Success", func(t *testing.T) {
+		pri, pub, err := RsaKeyGenerate(256)
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log("private key:", pri)
+		t.Log("public key:", pub)
+
+		encrypted, ee := RsaEncrypt(pub, "i love u")
+		if ee != nil {
+			t.Error(ee)
+		}
+
+		decrypted, de := RsaDecrypt(pri, encrypted)
+		if de != nil {
+			t.Error(de)
+		}
+
+		if decrypted != "i love u" {
+			t.Error("decrypted message not match")
+		}
+	})
+
+	t.Run("RsaEncrypt:NoKey", func(t *testing.T) {
+		pri, pub, err := RsaKeyGenerate(256)
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Log("private key:", pri)
+		t.Log("public key:", pub)
+
+		encrypted, ee := RsaEncrypt("", "i love u")
+		if ee == nil {
+			t.Error("want error, but got nil")
+		}
+
+		_, de := RsaDecrypt("", encrypted)
+		if de == nil {
+			t.Error("want error, but got nil")
 		}
 	})
 }

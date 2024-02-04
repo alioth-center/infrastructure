@@ -108,6 +108,10 @@ func (ca *accessor) copySenderToReceiver(senderPtr, receiverPtr any) error {
 	return nil
 }
 
+func (ca *accessor) DriverName() string {
+	return DriverName
+}
+
 func (ca *accessor) Increase(_ context.Context, key string, delta uint64) (result cache.CounterResultEnum) {
 	entry, exist, _ := ca.getCounterEntry(key)
 	if !exist {

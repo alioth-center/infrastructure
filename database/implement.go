@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"github.com/alioth-center/infrastructure/logger"
 	"gorm.io/gorm"
 	"time"
@@ -35,6 +34,14 @@ func (b *BaseExtMethodGroup) Exec(cmd func(db *gorm.DB) *gorm.DB) error {
 
 func (b *BaseExtMethodGroup) ExecCtx(ctx context.Context, cmd func(db *gorm.DB) *gorm.DB) error {
 	return b.core.exec(cmd, ctx)
+}
+
+func (b *BaseExtMethodGroup) Transaction(cmd func(tx *gorm.DB) error) error {
+	return b.core.execTransaction(cmd)
+}
+
+func (b *BaseExtMethodGroup) TransactionCtx(ctx context.Context, cmd func(tx *gorm.DB) error) error {
+	return b.core.execTransaction(cmd, ctx)
 }
 
 func (s *BaseDatabaseImplement) Init(_ Options) error {
@@ -92,9 +99,13 @@ func (s *BaseDatabaseImplement) Migrate(models ...any) error {
 	return migrateErr
 }
 
+func (s *BaseDatabaseImplement) logSql(command func(tx *gorm.DB) *gorm.DB) (sql string) {
+	return s.Db.ToSQL(command)
+}
+
 func (s *BaseDatabaseImplement) exec(command func(tx *gorm.DB) *gorm.DB, ctx ...context.Context) error {
-	var db *gorm.DB
 	var trace context.Context
+	var db *gorm.DB
 	if len(ctx) != 1 {
 		db = s.Db.Session(&gorm.Session{})
 		trace = nil
@@ -111,12 +122,36 @@ func (s *BaseDatabaseImplement) exec(command func(tx *gorm.DB) *gorm.DB, ctx ...
 		db = s.Db.Session(&gorm.Session{}).WithContext(trace)
 	}
 
-	sqlCommand := s.Db.ToSQL(command)
-	s.Logger.Debug(logger.NewFields(trace).WithMessage("sql executed").WithData(sqlCommand))
-
 	if err := db.Transaction(func(tx *gorm.DB) error { return command(tx).Error }); err != nil {
-		err = fmt.Errorf("sql execution failed: %w", err)
-		s.Logger.Error(logger.NewFields(trace).WithMessage(err.Error()).WithData(sqlCommand))
+		sqlCommand := s.logSql(command)
+		execErr := NewExecuteSqlError(sqlCommand, err)
+		s.Logger.Error(logger.NewFields(trace).WithMessage("sql command execute failed").WithData(execErr))
+		return execErr
+	}
+
+	return nil
+}
+
+func (s *BaseDatabaseImplement) execTransaction(command func(tx *gorm.DB) error, ctx ...context.Context) error {
+	var trace context.Context
+	var db *gorm.DB
+	if len(ctx) != 1 {
+		db = s.Db.Session(&gorm.Session{})
+		trace = nil
+	} else if ctx[0] == nil {
+		db = s.Db.Session(&gorm.Session{})
+		trace = nil
+	} else if s.Timeout > 0 {
+		timeout, cancel := context.WithTimeout(ctx[0], s.Timeout)
+		trace = timeout
+		defer cancel()
+		db = s.Db.Session(&gorm.Session{}).WithContext(trace)
+	} else {
+		trace = ctx[0]
+		db = s.Db.Session(&gorm.Session{}).WithContext(trace)
+	}
+
+	if err := db.Transaction(command); err != nil {
 		return err
 	}
 
@@ -216,6 +251,25 @@ func (s *BaseDatabaseImplement) QueryRaw(receiver any, sql string, args ...any) 
 	})
 }
 
+func (s *BaseDatabaseImplement) ExecRawsWithTransaction(sql []Template) error {
+	return s.execTransaction(func(tx *gorm.DB) error {
+		for _, item := range sql {
+			raw, buildRaw := item.Prepare()
+			if buildRaw != nil {
+				s.Logger.Error(logger.NewFields().WithMessage("sql transaction build raw sql failed").WithData(buildRaw))
+			}
+
+			if err := tx.Exec(raw).Error; err != nil {
+				execErr := NewExecuteSqlError(raw, err)
+				s.Logger.Error(logger.NewFields().WithMessage("sql transaction execute failed").WithData(execErr))
+				return execErr
+			}
+		}
+
+		return nil
+	})
+}
+
 func (s *BaseDatabaseImplement) HasWithCtx(ctx context.Context, table, query string, args ...any) (exist bool, err error) {
 	var count int64
 	err = s.exec(func(tx *gorm.DB) *gorm.DB {
@@ -303,6 +357,30 @@ func (s *BaseDatabaseImplement) QueryRawWithCtx(ctx context.Context, receiver an
 	}, ctx)
 }
 
+func (s *BaseDatabaseImplement) ExecRawsWithTransactionCtx(ctx context.Context, sql []Template) error {
+	return s.execTransaction(func(tx *gorm.DB) error {
+		for _, item := range sql {
+			raw, buildRaw := item.Prepare()
+			if buildRaw != nil {
+				s.Logger.Error(logger.NewFields(ctx).WithMessage("sql transaction build raw sql failed").WithData(buildRaw))
+				return buildRaw
+			}
+
+			if err := tx.Exec(raw).Error; err != nil {
+				execErr := NewExecuteSqlError(raw, err)
+				s.Logger.Error(logger.NewFields(ctx).WithMessage("sql transaction execute failed").WithData(execErr))
+				return execErr
+			}
+		}
+
+		return nil
+	}, ctx)
+}
+
 func (s *BaseDatabaseImplement) ExtMethods() ExtMethods {
 	return &BaseExtMethodGroup{core: s}
+}
+
+func (s *BaseDatabaseImplement) SetLogger(logger logger.Logger) {
+	s.Logger = logger
 }
