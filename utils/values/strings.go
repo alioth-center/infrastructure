@@ -23,7 +23,26 @@ func BuildStrings(parts ...string) string {
 //
 //	BuildStringsWithJoin("/", "a", "b", "c") -> "a/b/c"
 func BuildStringsWithJoin(sep string, parts ...string) string {
+	if parts == nil || len(parts) == 0 {
+		return ""
+	}
+
 	return strings.Join(parts, sep)
+}
+
+// BuildStringsWithJoinIgnoreEmpty use strings.Join to build string, all empty string in parts will be ignored
+// example:
+//
+//	BuildStringsWithJoinIgnoreEmpty("/", "a", "", "b", "c", "") -> "a/b/c"
+func BuildStringsWithJoinIgnoreEmpty(sep string, parts ...string) string {
+	realParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part != "" {
+			realParts = append(realParts, part)
+		}
+	}
+
+	return BuildStringsWithJoin(sep, realParts...)
 }
 
 // BuildStringsWithReplacement 构建字符串，使用strings.Builder，同时替换字符串
