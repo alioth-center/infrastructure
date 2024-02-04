@@ -6,3 +6,6 @@
 
 # codecov生成文件
 coverage.txt
+
+# 本地调试日志文件
+*.log
