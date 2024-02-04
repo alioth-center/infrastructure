@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const DriverName = "memory"
+
 type Config struct {
 	EnableInitiativeClean bool `json:"enable_initiative_clean,omitempty" yaml:"enable_initiative_clean,omitempty" xml:"enable_initiative_clean,omitempty"`
 	CleanIntervalSecond   int  `json:"clean_interval_second,omitempty" yaml:"clean_interval_second,omitempty" xml:"clean_interval_second,omitempty"`

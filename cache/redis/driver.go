@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const DriverName = "redis"
+
 type Config struct {
 	Address       string `json:"address,omitempty" yaml:"address,omitempty" xml:"address,omitempty"`
 	Username      string `json:"username,omitempty" yaml:"username,omitempty" xml:"username,omitempty"`

@@ -26,6 +26,10 @@ func (ra *accessor) copySenderToReceiver(key string, senderPtr, receiverPtr any)
 	return nil
 }
 
+func (ra *accessor) DriverName() string {
+	return DriverName
+}
+
 func (ra *accessor) Increase(ctx context.Context, key string, delta uint64) (result cache.CounterResultEnum) {
 	resultNum, executeErr := ra.db.IncrBy(ctx, ra.kb.BuildKey(key), int64(delta)).Result()
 	if executeErr != nil && !errors.Is(executeErr, redis.Nil) {
