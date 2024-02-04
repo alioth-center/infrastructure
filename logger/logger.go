@@ -201,3 +201,23 @@ func newLoggerWithOptions(options Options) Logger {
 func NewLoggerWithConfig(cfg Config) Logger {
 	return newLoggerWithOptions(convertConfigToOptions(cfg))
 }
+
+func NewLoggerWithCustomWriter(stdout, stderr Writer, closable bool, formatter Marshaller, level Level) Logger {
+	l := &logger{}
+	if closable {
+		exit.Register(func(_ string) string {
+			stdout.Close()
+			stderr.Close()
+			return "logger stopped"
+		}, "logger")
+	}
+
+	l.init(Options{
+		LogLevel:     level,
+		Marshaller:   formatter,
+		StdoutWriter: stdout,
+		StderrWriter: stderr,
+	})
+
+	return l
+}
