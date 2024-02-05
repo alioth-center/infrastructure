@@ -8,20 +8,33 @@ import (
 var (
 	isSetLocal = false
 
-	Zero  TimeZone = LocationLondon // 零时区
-	Local TimeZone = Zero           // 默认时区，零时区
+	Zero  = LocationLondon // 零时区
+	Local = Zero           // 默认时区，零时区
 )
 
+// SetLocal set timezone as Local timezone
+// example:
+//
+//	err := timezone.SetLocal(timezone.LocationBeijing)
 func SetLocal(timezone TimeZone) (err error) {
+	if Local == timezone {
+		// if Local is already set to timezone, return nil
+		return nil
+	}
+
+	if _, exist := timezoneData[timezone]; !exist {
+		// if timezone is not exist, return error
+		return errors.NewInvalidTimezoneError(string(timezone))
+	}
+
 	if !isSetLocal {
+		// if Local is not set, set it to timezone
 		Local = timezone
 		isSetLocal = true
 		return nil
-	} else if Local == timezone {
-		return nil
-	} else {
-		return errors.NewLocalTimezoneAlreadySetError()
 	}
+
+	return errors.NewLocalTimezoneAlreadySetError()
 }
 
 type TimeZone string
@@ -62,6 +75,40 @@ const (
 	LocationBern         TimeZone = "Europe/Bern"
 	LocationZurich       TimeZone = "Europe/Zurich"
 	LocationKeiv         TimeZone = "Europe/Keiv"
+
+	LocationUTC           TimeZone = "UTC"
+	LocationUTCEast1      TimeZone = "UTC+1"
+	LocationUTCEast2      TimeZone = "UTC+2"
+	LocationUTCEast3      TimeZone = "UTC+3"
+	LocationUTCEast3Dot5  TimeZone = "UTC+3.5"
+	LocationUTCEast4      TimeZone = "UTC+4"
+	LocationUTCEast4Dot5  TimeZone = "UTC+4.5"
+	LocationUTCEast5      TimeZone = "UTC+5"
+	LocationUTCEast5Dot5  TimeZone = "UTC+5.5"
+	LocationUTCEast5Dot75 TimeZone = "UTC+5.75"
+	LocationUTCEast6      TimeZone = "UTC+6"
+	LocationUTCEast7      TimeZone = "UTC+7"
+	LocationUTCEast8      TimeZone = "UTC+8"
+	LocationUTCEast9      TimeZone = "UTC+9"
+	LocationUTCEast9Dot5  TimeZone = "UTC+9.5"
+	LocationUTCEast10     TimeZone = "UTC+10"
+	LocationUTCEast10Dot5 TimeZone = "UTC+10.5"
+	LocationUTCEast11     TimeZone = "UTC+11"
+	LocationUTCEast12     TimeZone = "UTC+12"
+	LocationUTCEast13     TimeZone = "UTC+13"
+	LocationUTCEast14     TimeZone = "UTC+14"
+	LocationUTCWest1      TimeZone = "UTC-1"
+	LocationUTCWest2      TimeZone = "UTC-2"
+	LocationUTCWest3      TimeZone = "UTC-3"
+	LocationUTCWest4      TimeZone = "UTC-4"
+	LocationUTCWest5      TimeZone = "UTC-5"
+	LocationUTCWest6      TimeZone = "UTC-6"
+	LocationUTCWest7      TimeZone = "UTC-7"
+	LocationUTCWest8      TimeZone = "UTC-8"
+	LocationUTCWest9      TimeZone = "UTC-9"
+	LocationUTCWest10     TimeZone = "UTC-10"
+	LocationUTCWest11     TimeZone = "UTC-11"
+	LocationUTCWest12     TimeZone = "UTC-12"
 )
 
 var (
@@ -101,41 +148,239 @@ var (
 		LocationBern:         time.FixedZone("Europe/Bern", 1*60*60),
 		LocationZurich:       time.FixedZone("Europe/Zurich", 1*60*60),
 		LocationKeiv:         time.FixedZone("Europe/Keiv", 2*60*60),
+
+		LocationUTC:           time.UTC,
+		LocationUTCEast1:      time.FixedZone("UTC+1", 1*60*60),
+		LocationUTCEast2:      time.FixedZone("UTC+2", 2*60*60),
+		LocationUTCEast3:      time.FixedZone("UTC+3", 3*60*60),
+		LocationUTCEast3Dot5:  time.FixedZone("UTC+3.5", 3*60*60+30*60),
+		LocationUTCEast4:      time.FixedZone("UTC+4", 4*60*60),
+		LocationUTCEast4Dot5:  time.FixedZone("UTC+4.5", 4*60*60+30*60),
+		LocationUTCEast5:      time.FixedZone("UTC+5", 5*60*60),
+		LocationUTCEast5Dot5:  time.FixedZone("UTC+5.5", 5*60*60+30*60),
+		LocationUTCEast5Dot75: time.FixedZone("UTC+5.75", 5*60*60+45*60),
+		LocationUTCEast6:      time.FixedZone("UTC+6", 6*60*60),
+		LocationUTCEast7:      time.FixedZone("UTC+7", 7*60*60),
+		LocationUTCEast8:      time.FixedZone("UTC+8", 8*60*60),
+		LocationUTCEast9:      time.FixedZone("UTC+9", 9*60*60),
+		LocationUTCEast9Dot5:  time.FixedZone("UTC+9.5", 9*60*60+30*60),
+		LocationUTCEast10:     time.FixedZone("UTC+10", 10*60*60),
+		LocationUTCEast10Dot5: time.FixedZone("UTC+10.5", 10*60*60+30*60),
+		LocationUTCEast11:     time.FixedZone("UTC+11", 11*60*60),
+		LocationUTCEast12:     time.FixedZone("UTC+12", 12*60*60),
+		LocationUTCEast13:     time.FixedZone("UTC+13", 13*60*60),
+		LocationUTCEast14:     time.FixedZone("UTC+14", 14*60*60),
+		LocationUTCWest1:      time.FixedZone("UTC-1", -1*60*60),
+		LocationUTCWest2:      time.FixedZone("UTC-2", -2*60*60),
+		LocationUTCWest3:      time.FixedZone("UTC-3", -3*60*60),
+		LocationUTCWest4:      time.FixedZone("UTC-4", -4*60*60),
+		LocationUTCWest5:      time.FixedZone("UTC-5", -5*60*60),
+		LocationUTCWest6:      time.FixedZone("UTC-6", -6*60*60),
+		LocationUTCWest7:      time.FixedZone("UTC-7", -7*60*60),
+		LocationUTCWest8:      time.FixedZone("UTC-8", -8*60*60),
+		LocationUTCWest9:      time.FixedZone("UTC-9", -9*60*60),
+		LocationUTCWest10:     time.FixedZone("UTC-10", -10*60*60),
+		LocationUTCWest11:     time.FixedZone("UTC-11", -11*60*60),
+		LocationUTCWest12:     time.FixedZone("UTC-12", -12*60*60),
 	}
 )
 
-func LocalTimeNow() time.Time {
+// GetFixedTimeZone returns fixed timezone, if timezone not exist, use Zero timezone
+func GetFixedTimeZone(zone TimeZone) *time.Location {
+	if _, exist := timezoneData[zone]; !exist {
+		zone = LocationUTC
+	}
+
+	return timezoneData[zone]
+}
+
+// NowInLocalTime return current time in Local timezone, if Local not set, use Zero timezone
+func NowInLocalTime() time.Time {
 	return time.Now().In(timezoneData[Local])
 }
 
-func ZeroTimeNow() time.Time {
+// NowInZeroTime return current time in Zero timezone
+func NowInZeroTime() time.Time {
 	return time.Now().In(timezoneData[Zero])
 }
 
-func TimeInLocalUnix(t time.Time) int64 {
-	return t.In(timezoneData[Local]).Unix()
+// NowInTimezone return current time in specified timezone, if timezone not exist, use Zero timezone
+func NowInTimezone(location TimeZone) time.Time {
+	if _, exist := timezoneData[location]; !exist {
+		return NowInZeroTime()
+	}
+
+	return time.Now().In(timezoneData[location])
 }
 
-func TimeInLocationUnix(t time.Time, location TimeZone) int64 {
-	return t.In(timezoneData[location]).Unix()
+// NowInLocalTimeUnix return current timestamp with unix format in Local timezone, if Local not set, use Zero timezone
+func NowInLocalTimeUnix() int64 {
+	return NowInLocalTime().Unix()
 }
 
-func TimeInZeroUnix(t time.Time) int64 {
-	return t.In(timezoneData[Zero]).Unix()
+// NowInZeroTimeUnix return current timestamp with unix format in Zero timezone
+func NowInZeroTimeUnix() int64 {
+	return NowInZeroTime().Unix()
 }
 
-func TimestampInLocal(timestamp int64) time.Time {
+// NowInTimezoneUnix return current timestamp with unix format in specified timezone, if timezone not exist, use Zero timezone
+func NowInTimezoneUnix(location TimeZone) int64 {
+	return NowInTimezone(location).Unix()
+}
+
+// NowInLocalTimeUnixMilli return current timestamp with unix millisecond format in Local timezone, if Local not set, use Zero timezone
+func NowInLocalTimeUnixMilli() int64 {
+	return NowInLocalTime().UnixMilli()
+}
+
+// NowInZeroTimeUnixMilli return current timestamp with unix millisecond format in Zero timezone
+func NowInZeroTimeUnixMilli() int64 {
+	return NowInZeroTime().UnixMilli()
+}
+
+// NowInTimezoneUnixMilli return current timestamp with unix millisecond format in specified timezone, if timezone not exist, use Zero timezone
+func NowInTimezoneUnixMilli(location TimeZone) int64 {
+	return NowInTimezone(location).UnixMilli()
+}
+
+// NowInLocalTimeUnixMicro return current timestamp with unix microsecond format in Local timezone, if Local not set, use Zero timezone
+func NowInLocalTimeUnixMicro() int64 {
+	return NowInLocalTime().UnixMicro()
+}
+
+// NowInZeroTimeUnixMicro return current timestamp with unix microsecond format in Zero timezone
+func NowInZeroTimeUnixMicro() int64 {
+	return NowInZeroTime().UnixMicro()
+}
+
+// NowInTimezoneUnixMicro return current timestamp with unix microsecond format in specified timezone, if timezone not exist, use Zero timezone
+func NowInTimezoneUnixMicro(location TimeZone) int64 {
+	return NowInTimezone(location).UnixMicro()
+}
+
+// NowInLocalTimeUnixNano return current timestamp with unix nanosecond format in Local timezone, if Local not set, use Zero timezone
+func NowInLocalTimeUnixNano() int64 {
+	return NowInLocalTime().UnixNano()
+}
+
+// NowInZeroTimeUnixNano return current timestamp with unix nanosecond format in Zero timezone
+func NowInZeroTimeUnixNano() int64 {
+	return NowInZeroTime().UnixNano()
+}
+
+// NowInTimezoneUnixNano return current timestamp with unix nanosecond format in specified timezone, if timezone not exist, use Zero timezone
+func NowInTimezoneUnixNano(location TimeZone) int64 {
+	return NowInTimezone(location).UnixNano()
+}
+
+// UnixTimestampInLocal return time in Local timezone with unix format
+func UnixTimestampInLocal(timestamp int64) time.Time {
 	return time.Unix(timestamp, 0).In(timezoneData[Local])
 }
 
-func TimestampInZero(timestamp int64) time.Time {
+// UnixTimestampInZero return time in Zero timezone with unix format
+func UnixTimestampInZero(timestamp int64) time.Time {
 	return time.Unix(timestamp, 0).In(timezoneData[Zero])
 }
 
-func TimeStampInLocation(timestamp int64, location TimeZone) time.Time {
+// UnixTimestampInTimezone return time in specified timezone with unix format, if timezone not exist, use Zero timezone
+func UnixTimestampInTimezone(timestamp int64, location TimeZone) time.Time {
+	if _, exist := timezoneData[location]; !exist {
+		return time.Unix(timestamp, 0).In(timezoneData[Zero])
+	}
+
 	return time.Unix(timestamp, 0).In(timezoneData[location])
 }
 
-func FixedTimestampInLocal(timestamp int64, location TimeZone) time.Time {
-	return TimeStampInLocation(timestamp, location).In(timezoneData[Local])
+// UnixMilliTimestampInLocal return time in Local timezone with unix millisecond format
+func UnixMilliTimestampInLocal(timestamp int64) time.Time {
+	return time.UnixMilli(timestamp).In(timezoneData[Local])
+}
+
+// UnixMilliTimestampInZero return time in Zero timezone with unix millisecond format
+func UnixMilliTimestampInZero(timestamp int64) time.Time {
+	return time.UnixMilli(timestamp).In(timezoneData[Zero])
+}
+
+// UnixMilliTimestampInTimezone return time in specified timezone with unix millisecond format, if timezone not exist, use Zero timezone
+func UnixMilliTimestampInTimezone(timestamp int64, location TimeZone) time.Time {
+	if _, exist := timezoneData[location]; !exist {
+		return time.UnixMilli(timestamp).In(timezoneData[Zero])
+	}
+
+	return time.UnixMilli(timestamp).In(timezoneData[location])
+}
+
+// UnixMicroTimestampInLocal return time in Local timezone with unix microsecond format
+func UnixMicroTimestampInLocal(timestamp int64) time.Time {
+	return time.UnixMicro(timestamp).In(timezoneData[Local])
+}
+
+// UnixMicroTimestampInZero return time in Zero timezone with unix microsecond format
+func UnixMicroTimestampInZero(timestamp int64) time.Time {
+	return time.UnixMicro(timestamp).In(timezoneData[Zero])
+}
+
+// UnixMicroTimestampInTimezone return time in specified timezone with unix microsecond format, if timezone not exist, use Zero timezone
+func UnixMicroTimestampInTimezone(timestamp int64, location TimeZone) time.Time {
+	if _, exist := timezoneData[location]; !exist {
+		return time.UnixMicro(timestamp).In(timezoneData[Zero])
+	}
+
+	return time.UnixMicro(timestamp).In(timezoneData[location])
+}
+
+// UnixNanoTimestampInLocal return time in Local timezone with unix nanosecond format
+func UnixNanoTimestampInLocal(timestamp int64) time.Time {
+	return time.Unix(timestamp/1e9, (timestamp%1e9)*1e3).In(timezoneData[Local])
+}
+
+// UnixNanoTimestampInZero return time in Zero timezone with unix nanosecond format
+func UnixNanoTimestampInZero(timestamp int64) time.Time {
+	return time.Unix(timestamp/1e9, (timestamp%1e9)*1e3).In(timezoneData[Zero])
+}
+
+// UnixNanoTimestampInTimezone return time in specified timezone with unix nanosecond format, if timezone not exist, use Zero timezone
+func UnixNanoTimestampInTimezone(timestamp int64, location TimeZone) time.Time {
+	if _, exist := timezoneData[location]; !exist {
+		return time.Unix(timestamp/1e9, (timestamp%1e9)*1e3).In(timezoneData[Zero])
+	}
+
+	return time.Unix(timestamp/1e9, (timestamp%1e9)*1e3).In(timezoneData[location])
+}
+
+// FixedTimestampUnixInZero return time in Zero timezone with unix format timestamp from specified timezone
+func FixedTimestampUnixInZero(timestamp int64, fixedLocation TimeZone) time.Time {
+	if _, exist := timezoneData[fixedLocation]; !exist {
+		return time.Unix(timestamp, 0).In(timezoneData[Zero])
+	}
+
+	return time.Unix(timestamp, 0).In(timezoneData[fixedLocation]).In(timezoneData[Zero])
+}
+
+// FixedTimestampUnixMilliInZero return time in Zero timezone with unix millisecond format timestamp from specified timezone
+func FixedTimestampUnixMilliInZero(timestamp int64, fixedLocation TimeZone) int64 {
+	if _, exist := timezoneData[fixedLocation]; !exist {
+		return time.UnixMilli(timestamp).In(timezoneData[Zero]).UnixMilli()
+	}
+
+	return time.UnixMilli(timestamp).In(timezoneData[fixedLocation]).In(timezoneData[Zero]).UnixMilli()
+}
+
+// FixedTimestampUnixMicroInZero return time in Zero timezone with unix microsecond format timestamp from specified timezone
+func FixedTimestampUnixMicroInZero(timestamp int64, fixedLocation TimeZone) int64 {
+	if _, exist := timezoneData[fixedLocation]; !exist {
+		return time.UnixMicro(timestamp).In(timezoneData[Zero]).UnixMicro()
+	}
+
+	return time.UnixMicro(timestamp).In(timezoneData[fixedLocation]).In(timezoneData[Zero]).UnixMicro()
+}
+
+// FixedTimestampUnixNanoInZero return time in Zero timezone with unix nanosecond format timestamp from specified timezone
+func FixedTimestampUnixNanoInZero(timestamp int64, fixedLocation TimeZone) int64 {
+	if _, exist := timezoneData[fixedLocation]; !exist {
+		return time.Unix(timestamp/1e9, (timestamp%1e9)*1e3).In(timezoneData[Zero]).UnixNano()
+	}
+
+	return time.Unix(timestamp/1e9, (timestamp%1e9)*1e3).In(timezoneData[fixedLocation]).In(timezoneData[Zero]).UnixNano()
 }
