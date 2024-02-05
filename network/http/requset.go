@@ -172,7 +172,7 @@ func (r *request) build() (req *http.Request, err error) {
 
 func NewRequest() Request {
 	return &request{
-		ctx:     trace.NewContextWithTraceID(),
+		ctx:     trace.NewContext(),
 		method:  "",
 		path:    &url.URL{},
 		headers: map[string]string{},
