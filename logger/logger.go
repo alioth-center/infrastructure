@@ -19,7 +19,6 @@ type Options struct {
 }
 
 type Logger interface {
-	init(options Options)
 	Debug(fields Fields)
 	Info(fields Fields)
 	Warn(fields Fields)
@@ -66,7 +65,7 @@ func (l *logger) init(options Options) {
 }
 
 func (l *logger) marshalFieldsToBytes(fields Fields) (data []byte) {
-	d, _ := marshalEntry(fields.export(), l.options.Marshaller)
+	d, _ := marshalEntry(fields.Export(), l.options.Marshaller)
 	return d
 }
 

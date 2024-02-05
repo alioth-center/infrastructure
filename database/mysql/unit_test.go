@@ -30,7 +30,7 @@ func TestMysqlDb(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	ctx := trace.NewContextWithTraceID()
+	ctx := trace.NewContext()
 	result := []map[string]any{}
 	qe := mysql.QueryRawWithCtx(ctx, &result, "select * from test_db.test_table limit 10")
 	if qe != nil {

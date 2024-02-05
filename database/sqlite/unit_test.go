@@ -21,7 +21,7 @@ func TestSqliteDb(t *testing.T) {
 		Debug:         true,
 		TimeoutSecond: 1,
 	}
-	ctx := trace.NewContextWithTraceID()
+	ctx := trace.NewContext()
 	sqlite, e := NewSqliteDb(opt, &table{})
 	if e != nil {
 		t.Fatal(e)

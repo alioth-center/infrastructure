@@ -18,25 +18,25 @@ func TestLog(t *testing.T) {
 
 	t.Run("JsonLog", func(t *testing.T) {
 		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.export(), JsonMarshaller)
+		bytesOfLog, _ := marshalEntry(f.Export(), JsonMarshaller)
 		t.Log(string(bytesOfLog))
 	})
 
 	t.Run("TextLog", func(t *testing.T) {
 		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.export(), TextMarshaller)
+		bytesOfLog, _ := marshalEntry(f.Export(), TextMarshaller)
 		t.Log(string(bytesOfLog))
 	})
 
 	t.Run("CsvLog", func(t *testing.T) {
 		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.export(), CsvMarshaller)
+		bytesOfLog, _ := marshalEntry(f.Export(), CsvMarshaller)
 		t.Log(string(bytesOfLog))
 	})
 
 	t.Run("TsvLog", func(t *testing.T) {
 		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.export(), TsvMarshaller)
+		bytesOfLog, _ := marshalEntry(f.Export(), TsvMarshaller)
 		t.Log(string(bytesOfLog))
 	})
 }
@@ -54,7 +54,7 @@ func TestConsoleWriter(t *testing.T) {
 		Age:  114,
 	})
 
-	wb, _ := marshalEntry(NewFields(context.Background()).WithBaseFields(base).export(), JsonMarshaller)
+	wb, _ := marshalEntry(NewFields(context.Background()).WithBaseFields(base).Export(), JsonMarshaller)
 	cw.Write(wb)
 	cw.Write(wb)
 	cw.Write(wb)
