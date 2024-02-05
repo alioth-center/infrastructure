@@ -56,7 +56,7 @@ type Entry struct {
 
 type Fields interface {
 	init(ctx context.Context) Fields
-	export() *Entry
+	Export() *Entry
 	WithTraceID(traceID string) Fields
 	WithMessage(message string) Fields
 	WithData(data any) Fields
@@ -110,7 +110,7 @@ func (f *fields) init(ctx context.Context) Fields {
 }
 
 // export 导出日志字段
-func (f *fields) export() *Entry {
+func (f *fields) Export() *Entry {
 	traceID, ctx := trace.GetTraceID(f.ctx)
 	f.ctx = ctx
 
@@ -182,7 +182,7 @@ func (f *fields) WithCallTime(callTime time.Time) Fields {
 
 // WithBaseFields 从基础字段中复制基础字段，需要在调用链的开始处调用，否则会被覆盖
 func (f *fields) WithBaseFields(base Fields) Fields {
-	entry := base.export()
+	entry := base.Export()
 	f.level = Level(entry.Level)
 	f.service = entry.Service
 	f.message = entry.Message
@@ -196,5 +196,18 @@ func NewFields(ctx ...context.Context) Fields {
 		return (&fields{}).init(ctx[0])
 	} else {
 		return (&fields{}).init(nil)
+	}
+}
+
+func NewFieldsFromEntry(entry *Entry) Fields {
+	return &fields{
+		ctx:      trace.NewContextWithTid(entry.TraceID),
+		level:    Level(entry.Level),
+		file:     entry.File,
+		service:  entry.Service,
+		message:  entry.Message,
+		data:     entry.Data,
+		extra:    entry.Extra,
+		callTime: entry.CallTime,
 	}
 }
