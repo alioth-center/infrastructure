@@ -231,3 +231,82 @@ func StringToBoolPtr[T ~bool](raw string) *T {
 	resultT := T(result)
 	return &resultT
 }
+
+type StringTemplate struct {
+	template  []rune
+	arguments map[string]string
+}
+
+func (t *StringTemplate) findVariable(start int, endSignals map[rune]bool) (variable string, end int) {
+	index, length := start, len(t.template)
+	for index < length && !endSignals[t.template[index]] {
+		if index-start > 32 {
+			// variable name too long
+			return "", 0
+		}
+
+		index++
+	}
+
+	if index == length {
+		// did not find the endSignal
+		return "", 0
+	}
+
+	return string(t.template[start:index]), index
+}
+
+func (t *StringTemplate) Parse() string {
+	builder, length := strings.Builder{}, len(t.template)
+	builder.Grow(length)
+	endSignals := map[rune]bool{'$': true, '}': true, ']': true, ':': true}
+
+	for index := 0; index < length; {
+		current := t.template[index]
+		switch current {
+		case '$', '{', '[', ':':
+			// cases: $variable_name$, {variable_name}, [variable_name], :variable_name:
+			if index+1 < length {
+				// only check the next character when it exists
+				variable, end := t.findVariable(index+1, endSignals)
+				if end == 0 || variable == "" {
+					// not found the endSignal, write the current character and continue
+					builder.WriteRune(current)
+					index++
+					continue
+				}
+
+				argument, exist := t.arguments[variable]
+				// found the endSignal but argument not given, write the current character and continue
+				if !exist {
+					builder.WriteRune(current)
+					index++
+					continue
+				}
+
+				// found the endSignal and argument, replace the variable with the argument
+				builder.WriteString(argument)
+				index = end + 1
+				continue
+			}
+
+			// do not have more than one character, write the current character and continue
+			builder.WriteRune(current)
+			index++
+		default:
+			// normal character, write the current character and continue
+			builder.WriteRune(current)
+			index++
+		}
+	}
+
+	return builder.String()
+}
+
+func NewStringTemplate(template string, arguments map[string]string) *StringTemplate {
+	if arguments == nil {
+		arguments = map[string]string{}
+	}
+
+	return &StringTemplate{template: []rune(template), arguments: arguments}
+}
