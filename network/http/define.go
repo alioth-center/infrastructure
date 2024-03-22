@@ -57,22 +57,26 @@ var (
 type UserAgent = string
 
 const (
-	Curl      UserAgent = "curl/7.64.1"
-	Postman   UserAgent = "PostmanRuntime/7.26.8"
-	ChromeOSX UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-	Safari    UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15"
-	Firefox   UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/119.0"
+	Curl         UserAgent = "curl/7.64.1"
+	Postman      UserAgent = "PostmanRuntime/7.26.8"
+	ChromeOSX    UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+	Safari       UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15"
+	Firefox      UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/119.0"
+	AliothClient UserAgent = "alioth-http-client/1.0.0"
 )
 
 type ContentType = string
 
 const (
 	ContentTypeJson       ContentType = "application/json"
+	ContentTypeXml        ContentType = "application/xml"
+	ContentTypeYaml       ContentType = "application/yaml"
 	ContentTypeForm       ContentType = "application/x-www-form-urlencoded"
 	ContentTypeFileStream ContentType = "application/octet-stream"
 	ContentTypeMultipart  ContentType = "multipart/form-data"
 	ContentTypeTextPlain  ContentType = "text/plain"
 	ContentTypeTextHtml   ContentType = "text/html"
+	ContentTypeTextJson   ContentType = "text/json"
 	ContentTypeTextXml    ContentType = "text/xml"
 	ContentTypeTextYaml   ContentType = "text/yaml"
 	ContentTypeTextCsv    ContentType = "text/csv"
@@ -147,3 +151,27 @@ const (
 	StatusNotExtended           Status = 510
 	StatusNetworkAuthentication Status = 511
 )
+
+type FrameworkErrorCode = int
+
+const (
+	ErrorCodeMissingRequiredQuery  FrameworkErrorCode = 4001
+	ErrorCodeMissingRequiredParam  FrameworkErrorCode = 4002
+	ErrorCodeMissingRequiredHeader FrameworkErrorCode = 4003
+	ErrorCodeMissingRequiredCookie FrameworkErrorCode = 4004
+	ErrorCodeInvalidRequestBody    FrameworkErrorCode = 4005
+	ErrorCodeBadRequestBody        FrameworkErrorCode = 4006
+
+	ErrorCodeMethodNotSupported FrameworkErrorCode = 4051
+	ErrorCodeMethodNotAllowed   FrameworkErrorCode = 4052
+
+	ErrorCodeInternalErrorOccurred FrameworkErrorCode = 5001
+	ErrorCodePanicErrorRecovered   FrameworkErrorCode = 5002
+)
+
+type FrameworkResponse struct {
+	ErrorCode    int    `json:"error_code"`
+	ErrorMessage string `json:"error_message"`
+	RequestID    string `json:"request_id"`
+	Data         any    `json:"data,omitempty"`
+}

@@ -2,11 +2,11 @@ package http
 
 import (
 	"github.com/alioth-center/infrastructure/trace"
+	"github.com/alioth-center/infrastructure/utils/concurrency"
 	"github.com/alioth-center/infrastructure/utils/values"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -137,15 +137,14 @@ type ResponseProcessor[response any] func(resp response, status int, err error) 
 //		// do something
 //	}
 type EndPoint[request any, response any] struct {
-	router            Router
-	requestProcessor  RequestProcessor[request]
-	responseProcessor ResponseProcessor[response]
-	chain             Chain[request, response]
-	allowMethods      methodList
-	parsingHeaders    map[string]bool
-	parsingQueries    map[string]bool
-	parsingParams     map[string]bool
-	parsingCookies    map[string]bool
+	router         Router
+	chain          Chain[request, response]
+	allowMethods   methodList
+	parsingHeaders map[string]bool
+	parsingQueries map[string]bool
+	parsingParams  map[string]bool
+	parsingCookies map[string]bool
+	preprocessors  []EndpointPreprocessor[request, response]
 }
 
 func (ep *EndPoint[request, response]) bindRouter(base *gin.RouterGroup) {
@@ -180,140 +179,6 @@ func (ep *EndPoint[request, response]) bindRouter(base *gin.RouterGroup) {
 
 func (ep *EndPoint[request, response]) fullRouterPath() string {
 	return ep.router.FullRouterPath()
-}
-
-func (ep *EndPoint[request, response]) preprocessRequestMethod(ctx *gin.Context) (checked bool, status int, err error) {
-	existMethod, allowMethod := ep.allowMethods.isAllowed(ctx.Request.Method)
-	if !existMethod {
-		ctx.AbortWithStatusJSON(http.StatusMethodNotAllowed, values.Nil[response]())
-		status, err = http.StatusMethodNotAllowed, UnsupportedMethodError{ctx.Request.Method}
-		return false, status, err
-	}
-	if !allowMethod {
-		ctx.AbortWithStatusJSON(http.StatusMethodNotAllowed, values.Nil[response]())
-		status, err = http.StatusMethodNotAllowed, MethodNotAllowedError{ctx.Request.Method}
-		return false, status, err
-	}
-
-	return true, http.StatusOK, nil
-}
-
-func (ep *EndPoint[request, response]) preprocessRequestHeader(ctx *gin.Context) (checked bool, headers Params, status int, err error) {
-	checked, headers, status, err = true, map[string]string{}, http.StatusOK, nil
-	for key, necessary := range ep.parsingHeaders {
-		if necessary && ctx.GetHeader(key) == "" {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, values.Nil[response]())
-			checked, status, err = false, http.StatusBadRequest, NecessaryHeaderMissingError{key}
-		}
-
-		headers[key] = ctx.GetHeader(key)
-	}
-
-	return checked, headers, status, err
-}
-
-func (ep *EndPoint[request, response]) preprocessNormalRequestHeader(ctx *gin.Context) (headers RequestHeader) {
-	headers = RequestHeader{
-		Accept:         ctx.GetHeader("Accept"),
-		AcceptEncoding: ctx.GetHeader("Accept-Encoding"),
-		AcceptLanguage: ctx.GetHeader("Accept-Language"),
-		UserAgent:      ctx.GetHeader("User-Agent"),
-		ContentType:    ctx.GetHeader("Content-Type"),
-		ContentLength:  values.StringToInt(ctx.GetHeader("Content-Length"), 0),
-		Origin:         ctx.GetHeader("Origin"),
-		Referer:        ctx.GetHeader("Referer"),
-		Authorization:  ctx.GetHeader("Authorization"),
-		ApiKey:         ctx.GetHeader("X-API-Key"),
-	}
-
-	return headers
-}
-
-func (ep *EndPoint[request, response]) preprocessRequestQuery(ctx *gin.Context) (checked bool, queries Params, status int, err error) {
-	checked, queries, status, err = true, map[string]string{}, http.StatusOK, nil
-	for key, necessary := range ep.parsingQueries {
-		value := ctx.Query(key)
-		if necessary && value == "" {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, values.Nil[response]())
-			checked, status, err = false, http.StatusBadRequest, NecessaryQueryMissingError{key}
-		}
-
-		queries[key] = value
-	}
-
-	return checked, queries, status, err
-}
-
-func (ep *EndPoint[request, response]) preprocessRequestParam(ctx *gin.Context) (checked bool, params Params, status int, err error) {
-	checked, params, status, err = true, map[string]string{}, http.StatusOK, nil
-	for key, necessary := range ep.parsingParams {
-		value := ctx.Param(key)
-		if strings.HasPrefix(value, "/") {
-			value = value[1:]
-		}
-		if strings.HasSuffix(value, "/") {
-			value = value[:len(value)-1]
-		}
-
-		if necessary && value == "" {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, values.Nil[response]())
-			checked, status, err = false, http.StatusBadRequest, NecessaryQueryMissingError{key}
-		}
-
-		params[key] = value
-	}
-
-	return checked, params, status, err
-}
-
-func (ep *EndPoint[request, response]) preprocessRequestCookie(ctx *gin.Context) (checked bool, cookies Params, status int, err error) {
-	checked, cookies, status, err = true, map[string]string{}, http.StatusOK, nil
-	for key, necessary := range ep.parsingCookies {
-		value, err := ctx.Cookie(key)
-		if necessary && err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, values.Nil[response]())
-			checked, status, err = false, http.StatusBadRequest, NecessaryCookieMissingError{key}
-		}
-
-		cookies[key] = value
-	}
-
-	return checked, cookies, status, err
-}
-
-func (ep *EndPoint[request, response]) preprocessRequestBody(ctx *gin.Context) (req request, status int, err error) {
-	preprocessor := ep.requestProcessor
-	if preprocessor == nil {
-		preprocessor = defaultRequestProcessor[request]
-	}
-
-	req, err = preprocessor(ctx.Request)
-	if err != nil {
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, values.Nil[response]())
-		return values.Nil[request](), http.StatusBadRequest, err
-	}
-
-	return req, http.StatusOK, nil
-}
-
-func (ep *EndPoint[request, response]) SetRequestProcessor(processor RequestProcessor[request]) {
-	if processor == nil {
-		processor = func(raw *http.Request) (request, error) {
-			return values.Nil[request](), nil
-		}
-	}
-
-	ep.requestProcessor = processor
-}
-
-func (ep *EndPoint[request, response]) SetResponseProcessor(processor ResponseProcessor[response]) {
-	if processor == nil {
-		processor = func(resp response, status int, err error) (response, int, error) {
-			return resp, http.StatusOK, nil
-		}
-	}
-
-	ep.responseProcessor = processor
 }
 
 func (ep *EndPoint[request, response]) SetHandlerChain(chain Chain[request, response]) {
@@ -357,105 +222,49 @@ func (ep *EndPoint[request, response]) AddParsingCookies(key string, necessary b
 }
 
 func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
-	var (
-		finalResponse   response
-		finalStatusCode int
-		finalError      error
-		finalHeaders    Params = map[string]string{}
-		finalCookies    []Cookie
-	)
-
-	defer func() {
-		preprocessor := ep.responseProcessor
-		if preprocessor == nil {
-			preprocessor = defaultResponseProcessor[response]
-		}
-
-		// preprocessing http response
-		resp, status, err := preprocessor(finalResponse, finalStatusCode, finalError)
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusInternalServerError, resp)
-			return
-		}
-
-		for key, value := range finalHeaders {
-			ctx.Header(key, value)
-		}
-		for _, cookie := range finalCookies {
-			ctx.SetCookie(cookie.Name, cookie.Value, cookie.MaxAge, cookie.Path, cookie.Domain, cookie.Secure, cookie.HttpOnly)
-		}
-		ctx.JSON(status, resp)
-	}()
-
-	var (
-		headerParams Params = map[string]string{}
-		queryParams  Params = map[string]string{}
-		pathParams   Params = map[string]string{}
-		extraParams  Params = map[string]string{}
-		cookieParams Params = map[string]string{}
-		normalHeader RequestHeader
-		bodyPayload  request
-	)
-
 	// attach extra params
-	tid, tracedCtx := trace.GetTraceID(ctx)
+	extraParams := Params{}
+	tid, tracedCtx := trace.TransformContext(ctx)
 	extraParams[TraceIDKey] = tid
 	extraParams[RemoteIPKey] = ctx.ClientIP()
 	extraParams[RequestTimeKey] = values.Int64ToString(time.Now().UnixMilli())
 
-	// preprocessing http request
-	if checked, status, err := ep.preprocessRequestMethod(ctx); !checked {
-		finalResponse, finalStatusCode, finalError = values.Nil[response](), status, err
-		return
-	}
-	if checked, headers, status, err := ep.preprocessRequestHeader(ctx); !checked {
-		finalResponse, finalStatusCode, finalError = values.Nil[response](), status, err
-		return
-	} else {
-		headerParams = headers
-	}
-	if checked, queries, status, err := ep.preprocessRequestQuery(ctx); !checked {
-		finalResponse, finalStatusCode, finalError = values.Nil[response](), status, err
-		return
-	} else {
-		queryParams = queries
-	}
-	if checked, params, status, err := ep.preprocessRequestParam(ctx); !checked {
-		finalResponse, finalStatusCode, finalError = values.Nil[response](), status, err
-		return
-	} else {
-		pathParams = params
-	}
-	if checked, cookies, status, err := ep.preprocessRequestCookie(ctx); !checked {
-		finalResponse, finalStatusCode, finalError = values.Nil[response](), status, err
-		return
-	} else {
-		cookieParams = cookies
-	}
-	if req, status, err := ep.preprocessRequestBody(ctx); err != nil {
-		finalResponse, finalStatusCode, finalError = values.Nil[response](), status, err
-		return
-	} else {
-		bodyPayload = req
-	}
-	normalHeader = ep.preprocessNormalRequestHeader(ctx)
+	defer func() {
+		if recovered := concurrency.RecoverErr(recover()); recovered != nil {
+			errResponse := &FrameworkResponse{
+				ErrorCode:    ErrorCodeInternalErrorOccurred,
+				ErrorMessage: values.BuildStrings("internal error: ", recovered.Error()),
+				RequestID:    tid,
+			}
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errResponse)
+			return
+		}
+	}()
 
-	// init context
-	context := NewContext[request, response](
-		WithContext[request, response](tracedCtx),
-		WithQueryParams[request, response](queryParams),
-		WithPathParams[request, response](pathParams),
-		WithHeaderParams[request, response](headerParams),
-		WithExtraParams[request, response](extraParams),
-		WithCookieParams[request, response](cookieParams),
-		WithRawRequest[request, response](ctx.Request),
-		WithRequest[request, response](bodyPayload),
-		WithRequestHeader[request, response](normalHeader),
-	)
+	// init context and preprocess
+	context := NewContext[request, response](WithContext[request, response](tracedCtx), WithExtraParams[request, response](extraParams))
+	preprocessors := DefaultPreprocessors[request, response]()
+	if len(ep.preprocessors) > 0 {
+		preprocessors = ep.preprocessors
+	}
+	for _, preprocessor := range preprocessors {
+		preprocessor(ep, ctx, context.(PreprocessedContext[request, response]))
+	}
+	if ctx.IsAborted() {
+		return
+	}
 
+	// execute endpoint handler chain
 	ep.chain.Execute(context)
-	finalResponse, finalStatusCode, finalError, finalHeaders, finalCookies =
-		context.Response(), context.StatusCode(), context.Error(), context.ResponseHeaders(), context.ResponseSetCookies()
+
+	// set response
+	for key, value := range context.ResponseHeaders() {
+		ctx.Header(key, value)
+	}
+	for _, cookie := range context.ResponseSetCookies() {
+		ctx.SetCookie(cookie.Name, cookie.Value, cookie.MaxAge, cookie.Path, cookie.Domain, cookie.Secure, cookie.HttpOnly)
+	}
+	ctx.JSON(context.StatusCode(), context.Response())
 }
 
 // EndPointOptions is the options for EndPoint.
@@ -569,27 +378,9 @@ func WithCookieOpts[request any, response any](cookies map[string]bool) EndPoint
 	}
 }
 
-// WithRequestProcessorOpts sets the request processor for EndPoint, nil is allowed, but it will not work.
-// example:
-//
-//	ep := NewEndPointWithOpts[request, response](
-//		WithRequestProcessorOpts[request, response](processor),
-//	)
-func WithRequestProcessorOpts[request any, response any](processor RequestProcessor[request]) EndPointOptions[request, response] {
+func WithCustomPreprocessors[request any, response any](preprocessors ...EndpointPreprocessor[request, response]) EndPointOptions[request, response] {
 	return func(ep *EndPoint[request, response]) {
-		ep.SetRequestProcessor(processor)
-	}
-}
-
-// WithResponseProcessorOpts sets the response processor for EndPoint, nil is allowed, but it will not work.
-// example:
-//
-//	ep := NewEndPointWithOpts[request, response](
-//		WithResponseProcessorOpts[request, response](processor),
-//	)
-func WithResponseProcessorOpts[request any, response any](processor ResponseProcessor[response]) EndPointOptions[request, response] {
-	return func(ep *EndPoint[request, response]) {
-		ep.SetResponseProcessor(processor)
+		ep.preprocessors = preprocessors
 	}
 }
 
