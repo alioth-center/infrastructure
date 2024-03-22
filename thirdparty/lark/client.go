@@ -61,7 +61,7 @@ func (c *client) buildTextMessage(ctx context.Context, receiver Receiver, text s
 	textMessage.WriteString(escapePayload(text))
 	textMessage.WriteString(`"}`)
 
-	traceId, newCtx := trace.GetTraceID(ctx)
+	traceId, newCtx := trace.TransformContext(ctx)
 	message := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(getLarkReceiverIdType(receiver.Type)).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
@@ -76,7 +76,7 @@ func (c *client) buildTextMessage(ctx context.Context, receiver Receiver, text s
 }
 
 func (c *client) buildMarkdownMessage(ctx context.Context, receiver Receiver, markdownHeader, markdownContent string, theme LarkMarkdownMessageTheme) (context.Context, *larkim.CreateMessageReq, error) {
-	traceId, newCtx := trace.GetTraceID(ctx)
+	traceId, newCtx := trace.TransformContext(ctx)
 
 	header := larkcard.NewMessageCardHeader().
 		Template(getLarkMarkdownMessageTheme(theme)).
@@ -110,7 +110,7 @@ func (c *client) buildMarkdownMessage(ctx context.Context, receiver Receiver, ma
 }
 
 func (c *client) buildImageMessage(ctx context.Context, receiver Receiver, imageKey string) (context.Context, *larkim.CreateMessageReq) {
-	traceId, newCtx := trace.GetTraceID(ctx)
+	traceId, newCtx := trace.TransformContext(ctx)
 	payload := map[string]string{"image_key": imageKey}
 	content, _ := json.Marshal(payload)
 	message := larkim.NewCreateMessageReqBuilder().
@@ -127,7 +127,7 @@ func (c *client) buildImageMessage(ctx context.Context, receiver Receiver, image
 }
 
 func (c *client) buildAudioMessage(ctx context.Context, receiver Receiver, audioKey string) (context.Context, *larkim.CreateMessageReq) {
-	traceId, newCtx := trace.GetTraceID(ctx)
+	traceId, newCtx := trace.TransformContext(ctx)
 	payload := map[string]string{"file_key": audioKey}
 	content, _ := json.Marshal(payload)
 	message := larkim.NewCreateMessageReqBuilder().

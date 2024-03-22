@@ -2,147 +2,105 @@ package http
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"encoding/xml"
 	"io"
 	"net/http"
-	"strings"
 )
 
-type Response interface {
-	Error() error
-	Result() (status int, body []byte, err error)
-	StringResult() (status int, body string, err error)
-	BindJsonResult(receiver any) (status int, err error)
-	BindXmlResult(receiver any) (status int, err error)
-	GetHeader(key string, defaultVal ...string) (val string)
-	GetBearerToken() (token string)
-	GetCookie(cookieName string) (ck *http.Cookie)
-	GetStatusCode() int
-	GetBody() (body []byte)
-	BindJsonBody(receiver any) (err error)
-	BindXmlBody(receiver any) (err error)
+// ResponseParser is used to parse a http response.
+type ResponseParser interface {
+	RawResponse() *http.Response
+	RawRequest() *http.Request
+	RawBody() []byte
+	Context() context.Context
+	Status() (code int, message string)
+	BindJson(receiver any) (bindErr error)
+	BindXml(receiver any) (bindErr error)
+	BindCustom(receiver any, decoder func(reader io.Reader, receiver any) error) (bindErr error)
+	BindHeader(fields ...string) (header map[string][]string)
+	BindCookie(fields ...string) (cookies map[string]*http.Cookie)
 }
 
-type response struct {
-	cks map[string]*http.Cookie
-	bd  []byte
-	r   *http.Response
-	e   error
+type simpleParser struct {
+	raw *http.Response
+	buf *bytes.Buffer
+
+	headers map[string][]string
+	cookies map[string]*http.Cookie
 }
 
-func (r *response) Error() error {
-	return r.e
+func (p *simpleParser) RawResponse() *http.Response {
+	return p.raw
 }
 
-func (r *response) GetHeader(key string, defaultVal ...string) (val string) {
-	if r.e != nil {
-		return ""
-	}
-
-	if v := r.r.Header.Get(key); v != "" {
-		return v
-	}
-
-	if len(defaultVal) > 0 {
-		return defaultVal[0]
-	}
-
-	return ""
+func (p *simpleParser) RawRequest() *http.Request {
+	return p.raw.Request
 }
 
-func (r *response) GetBearerToken() (token string) {
-	if r.e != nil {
-		return ""
-	}
-
-	return strings.TrimPrefix(r.GetHeader("Authorization"), "Bearer ")
+func (p *simpleParser) RawBody() []byte {
+	return p.buf.Bytes()
 }
 
-func (r *response) GetCookie(cookieName string) (ck *http.Cookie) {
-	if r.e != nil {
-		return nil
-	}
-
-	if r.cks == nil {
-		r.cks = map[string]*http.Cookie{}
-		for _, cookie := range r.r.Cookies() {
-			r.cks[cookie.Name] = cookie
-		}
-	}
-
-	return r.cks[cookieName]
+func (p *simpleParser) Context() context.Context {
+	return p.raw.Request.Context()
 }
 
-func (r *response) GetStatusCode() int {
-	if r.e != nil {
-		return -1
-	}
-
-	return r.r.StatusCode
+func (p *simpleParser) Status() (code int, message string) {
+	return p.raw.StatusCode, p.raw.Status
 }
 
-func (r *response) GetBody() (body []byte) {
-	if r.e != nil {
-		return []byte{}
-	}
-
-	return r.bd
+func (p *simpleParser) BindJson(receiver any) (bindErr error) {
+	return json.NewDecoder(p.buf).Decode(receiver)
 }
 
-func (r *response) BindJsonBody(receiver any) (err error) {
-	if r.e != nil {
-		return r.e
-	}
-
-	contentType := r.r.Header.Get("Content-Type")
-	if strings.Contains(strings.ToLower(contentType), "json") || contentType == "" {
-		return json.NewDecoder(bytes.NewBuffer(r.bd)).Decode(receiver)
-	}
-
-	return ContentTypeMismatchError{
-		Expected: ContentTypeJson,
-		Actual:   contentType,
-	}
+func (p *simpleParser) BindXml(receiver any) (bindErr error) {
+	return xml.NewDecoder(p.buf).Decode(receiver)
 }
 
-func (r *response) BindXmlBody(receiver any) (err error) {
-	if r.e != nil {
-		return r.e
+func (p *simpleParser) BindCustom(receiver any, decoder func(reader io.Reader, receiver any) error) (bindErr error) {
+	return decoder(p.buf, receiver)
+}
+
+func (p *simpleParser) BindHeader(fields ...string) (header map[string][]string) {
+	header = map[string][]string{}
+	for _, field := range fields {
+		header[field] = p.headers[field]
 	}
 
-	contentType := r.r.Header.Get("Content-Type")
-	if strings.Contains(strings.ToLower(contentType), "xml") || contentType == "" {
-		return xml.NewDecoder(bytes.NewBuffer(r.bd)).Decode(receiver)
+	return header
+}
+
+func (p *simpleParser) BindCookie(fields ...string) (cookies map[string]*http.Cookie) {
+	cookies = map[string]*http.Cookie{}
+	for _, field := range fields {
+		cookies[field] = p.cookies[field]
 	}
 
-	return ContentTypeMismatchError{
-		Expected: ContentTypeTextXml,
-		Actual:   contentType,
-	}
+	return cookies
 }
 
-func (r *response) Result() (status int, body []byte, err error) {
-	return r.GetStatusCode(), r.GetBody(), r.Error()
-}
-
-func (r *response) StringResult() (status int, body string, err error) {
-	return r.GetStatusCode(), string(r.GetBody()), r.Error()
-}
-
-func (r *response) BindJsonResult(receiver any) (status int, err error) {
-	return r.GetStatusCode(), r.BindJsonBody(receiver)
-}
-
-func (r *response) BindXmlResult(receiver any) (status int, err error) {
-	return r.GetStatusCode(), r.BindXmlBody(receiver)
-}
-
-func NewResponse(r *http.Response, e error) Response {
-	if r == nil {
-		return &response{r: nil, e: e, bd: []byte{}, cks: nil}
+func NewSimpleResponseParser(r *http.Response) ResponseParser {
+	// read response body
+	buf := &bytes.Buffer{}
+	if r != nil && r.Body != nil {
+		payloadBytes, _ := io.ReadAll(r.Body)
+		buf.Write(payloadBytes)
+		r.Body = io.NopCloser(bytes.NewReader(payloadBytes))
 	}
 
-	body, _ := io.ReadAll(r.Body)
-	return &response{r: r, e: e, bd: body, cks: nil}
+	// read response headers
+	cookies := map[string]*http.Cookie{}
+	for _, cookie := range r.Cookies() {
+		cookies[cookie.Name] = cookie
+	}
+
+	// return response parser
+	return &simpleParser{
+		raw:     r,
+		buf:     buf,
+		headers: r.Header,
+		cookies: cookies,
+	}
 }
