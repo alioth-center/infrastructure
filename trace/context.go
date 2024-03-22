@@ -75,6 +75,16 @@ func ForkContext(ctx context.Context) (forked context.Context) {
 	return NewContextWithTid(tid)
 }
 
+// ForkContextWithOpts create a new traced context from an existed context which carries the values in fields
+func ForkContextWithOpts(ctx context.Context, fields ...string) (forked context.Context) {
+	forked = ForkContext(ctx)
+	for _, field := range fields {
+		forked = context.WithValue(forked, field, ctx.Value(field))
+	}
+
+	return forked
+}
+
 // NewContextWithTraceID 从 context.Background 生成一个新的 context，并附加 trace_id
 //
 // Deprecated: use NewContext instead
@@ -82,13 +92,12 @@ func NewContextWithTraceID() context.Context {
 	return NewContext()
 }
 
-// NewContext build a new context with trace_id
+// NewContext build a new context with trace id.
 func NewContext() context.Context {
-	_, ctx := AttachTraceID(context.Background())
-	return ctx
+	return NewContextWithTid(uuid.NewString())
 }
 
-// NewContextWithTid build a new context with existed trace_id
+// NewContextWithTid build a new context with existed trace id.
 func NewContextWithTid(traceID string) context.Context {
 	return context.WithValue(context.Background(), traceIDKey, traceID)
 }

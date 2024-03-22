@@ -11,7 +11,7 @@ func (c Chain[request, response]) AddHandlerBack(h ...Handler[request, response]
 }
 
 func (c Chain[request, response]) Run(ctx *Context[request, response]) {
-	ctx.h = c
+	ctx.hc = c
 	ctx.idx = -1
 	ctx.Next()
 }
