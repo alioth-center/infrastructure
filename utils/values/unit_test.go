@@ -1,6 +1,9 @@
 package values
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func TestString(t *testing.T) {
 	t.Run("BuildStrings", func(t *testing.T) {
@@ -100,7 +103,7 @@ func TestString(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			result := StringToInt("fuck you", 123)
-			if result != 0 {
+			if result != 123 {
 				t.Errorf("StringToInt() = %v, want %v", result, 123)
 			}
 		})
@@ -123,7 +126,7 @@ func TestString(t *testing.T) {
 
 		t.Run("Error", func(t *testing.T) {
 			result := StringToUint("fuck you", uint(123))
-			if result != 0 {
+			if result != 123 {
 				t.Errorf("StringToUint() = %v, want %v", result, 123)
 			}
 		})
@@ -301,47 +304,187 @@ func TestString(t *testing.T) {
 
 	t.Run("StringTemplate", func(t *testing.T) {
 		t.Run("Normal", func(t *testing.T) {
-			tmp := NewStringTemplate("dear {name}, i am :me:", map[string]string{
-				"name": "name1",
-				"me":   "name2",
+			tmp := NewStringTemplateWithMap("hello ${template_1}, i am ${template_2}, nice to meet $[template_3], and ${template_4}", map[string]string{
+				"template_1": "value_1",
+				"template_2": "value_2",
+				"template_3": "value_3",
+				"template_4": "value_4",
 			})
-			if tmp.Parse() != "dear name1, i am name2" {
-				t.Errorf("StringTemplate.Parse() = %v, want %v", tmp.Parse(), "dear name1, i am name2")
-			}
+
+			want := "hello value_1, i am value_2, nice to meet value_3, and value_4"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("Include Not ASCII", func(t *testing.T) {
+			tmp := NewStringTemplateWithMap("你好 ${template_1}, 我是 ${template_2}, nice to meet $[template_3], and $[template_4]", map[string]string{
+				"template_1": "世界",
+				"template_2": "value_2",
+				"template_3": "value_3",
+				"template_4": "value_4",
+			})
+
+			want := "你好 世界, 我是 value_2, nice to meet value_3, and value_4"
+			assert.Equal(t, want, tmp.Parse())
 		})
 
 		t.Run("LongVariableName", func(t *testing.T) {
-			tmp := NewStringTemplate("hello, {1234567890123456789012345678901234567890}", map[string]string{
-				"1234567890123456789012345678901234567890": "world",
+			tmp := NewStringTemplateWithMap("hello, ${this_is_a_very_very_very_very_very_very_very_very_very_looooooooooong_template}", map[string]string{
+				"this_is_a_very_very_very_very_very_very_very_very_very_looooooooooong_template": "value",
 			})
-			if tmp.Parse() != "hello, {1234567890123456789012345678901234567890}" {
-				t.Errorf("StringTemplate.Parse() = %v, want %v", tmp.Parse(), "hello, {1234567890123456789012345678901234567890}")
-			}
+
+			want := "hello, value"
+			assert.Equal(t, want, tmp.Parse())
 		})
 
-		t.Run("EndSignal", func(t *testing.T) {
-			tmp := NewStringTemplate("hello, {who}! {", map[string]string{
-				"who": "world",
+		t.Run("EndWithSignal", func(t *testing.T) {
+			tmp := NewStringTemplateWithMap("hello, ${template}! {", map[string]string{
+				"template": "value",
 			})
-			if tmp.Parse() != "hello, world! {" {
-				t.Errorf("StringTemplate.Parse() = %v, want %v", tmp.Parse(), "hello, world! {")
-			}
+
+			want := "hello, value! {"
+			assert.Equal(t, want, tmp.Parse())
 		})
 
 		t.Run("SignalNotFound", func(t *testing.T) {
-			tmp := NewStringTemplate("hello, {who!", map[string]string{
-				"who": "world",
+			tmp := NewStringTemplateWithMap("hello, $template!", map[string]string{
+				"tempalte": "value",
 			})
-			if tmp.Parse() != "hello, {who!" {
-				t.Errorf("StringTemplate.Parse() = %v, want %v", tmp.Parse(), "hello, {who!")
-			}
+
+			want := "hello, $template!"
+			assert.Equal(t, want, tmp.Parse())
 		})
 
 		t.Run("VariableNotExist", func(t *testing.T) {
-			tmp := NewStringTemplate("hello, {who}!", nil)
-			if tmp.Parse() != "hello, {who}!" {
-				t.Errorf("StringTemplate.Parse() = %v, want %v", tmp.Parse(), "hello, {who}!")
+			tmp := NewStringTemplateWithMap("hello, ${template_1}! nice to meet ${template_2}", map[string]string{
+				"template_1": "value",
+			})
+
+			want := "hello, value! nice to meet ${template_2}"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("NilArguments", func(t *testing.T) {
+			tmp := NewStringTemplateWithMap("hello, ${template_1}! nice to meet ${template_2}", nil)
+
+			want := "hello, ${template_1}! nice to meet ${template_2}"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("Mismatch Signals", func(t *testing.T) {
+			tmp := NewStringTemplateWithMap("hello ${template_1], i am $[template_2}", map[string]string{
+				"template_1": "value_1",
+				"template_2": "value_2",
+			})
+
+			want := "hello ${template_1], i am $[template_2}"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("CustomSignal", func(t *testing.T) {
+			tmp := NewStringTemplateWithCustomSignals("hello $<template_1>, i am ${template_2}, nice to meet $[template_3], and $[template_4]",
+				map[string]string{
+					"template_1": "value_1",
+					"template_2": "value_2",
+					"template_3": "value_3",
+					"template_4": "value_4",
+				}, "<", ">",
+			)
+
+			want := "hello value_1, i am ${template_2}, nice to meet $[template_3], and $[template_4]"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("CustomSignalButEmpty", func(t *testing.T) {
+			tmp := NewStringTemplateWithCustomSignals("hello ${template_1}, i am ${template_2}, nice to meet $[template_3], and $[template_4]",
+				map[string]string{
+					"template_1": "value_1",
+					"template_2": "value_2",
+					"template_3": "value_3",
+					"template_4": "value_4",
+				}, "", "",
+			)
+
+			want := "hello value_1, i am value_2, nice to meet value_3, and value_4"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("TemplateWithStructure", func(t *testing.T) {
+			type testStruct struct {
+				Template1 string `cpc:"key:template_1"`
+				Template2 string `cpc:"key:template_2,omitempty"`
+				Template3 string `cpc:"key:template_3,default:hello"`
 			}
+
+			tmp := NewStringTemplate("hello ${template_1}, i am ${template_2}, i say ${template_3}", &testStruct{
+				Template1: "value_1",
+			})
+			want := "hello value_1, i am ${template_2}, i say hello"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("TemplateWithStructureButGiveNil", func(t *testing.T) {
+			tmp := NewStringTemplate("hello ${template_1}, i am ${template_2}, i say {template_3}", nil)
+			want := "hello ${template_1}, i am ${template_2}, i say {template_3}"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("TemplateWithEmbeddingStructure", func(t *testing.T) {
+			type embeddingStruct struct {
+				Template1 string `cpc:"key:template_1"`
+			}
+
+			type testStruct struct {
+				Template1 string           `cpc:"key:template_1"`
+				Template2 string           `cpc:"key:template_2,omitempty"`
+				Template3 string           `cpc:"key:template_3,default:hello"`
+				SubStruct *embeddingStruct `cpc:"key:sub_struct"`
+			}
+
+			tmp := NewStringTemplate("hello ${template_1}, i am ${template_2}, i say ${template_3}, and i have ${sub_struct.template_1}", &testStruct{
+				Template1: "value_1",
+				SubStruct: &embeddingStruct{
+					Template1: "pencil",
+				},
+			})
+			want := "hello value_1, i am ${template_2}, i say hello, and i have pencil"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("TemplateWithEmbeddingStructureButGiveNil", func(t *testing.T) {
+			type embeddingStruct struct {
+				Template1 string `cpc:"key:template_1"`
+			}
+
+			type testStruct struct {
+				Template1 string           `cpc:"key:template_1"`
+				Template2 string           `cpc:"key:template_2,omitempty"`
+				Template3 string           `cpc:"key:template_3,default:hello"`
+				SubStruct *embeddingStruct `cpc:"key:sub_struct"`
+			}
+
+			tmp := NewStringTemplate("hello ${template_1}, i am ${template_2}, i say ${template_3}, and i have ${sub_struct.template_1}", &testStruct{
+				Template1: "value_1",
+				SubStruct: nil,
+			})
+			want := "hello value_1, i am ${template_2}, i say hello, and i have ${sub_struct.template_1}"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("TemplateWithStructureButGiveMap", func(t *testing.T) {
+			tmp := NewStringTemplate("hello ${template_1}, i am ${template_2}, i say ${template_3}", map[string]string{
+				"template_1": "value_1",
+				"template_3": "hello",
+			})
+			want := "hello value_1, i am ${template_2}, i say hello"
+			assert.Equal(t, want, tmp.Parse())
+		})
+
+		t.Run("TemplateWithStructureButGiveNilMap", func(t *testing.T) {
+			var mp map[string]string = nil
+			var m any = mp
+			tmp := NewStringTemplate("hello ${template_1}, i am ${template_2}, i say ${template_3}", m)
+			want := "hello ${template_1}, i am ${template_2}, i say ${template_3}"
+			assert.Equal(t, want, tmp.Parse())
 		})
 	})
 }
@@ -705,6 +848,57 @@ func TestArray(t *testing.T) {
 			rev := ReverseArray(arr)
 			if rev == nil || len(rev) != 0 {
 				t.Errorf("ReverseArray = %v, want %v", rev, arr)
+			}
+		})
+	})
+}
+
+func TestReflect(t *testing.T) {
+	t.Run("CheckStruct", func(t *testing.T) {
+		t.Run("CheckSuccess", func(t *testing.T) {
+			type successStruct struct {
+				Name string         `vc:"key:name,required"`
+				Age  int            `vc:"key:age,required"`
+				st   *successStruct `vc:"key:st"`
+			}
+
+			s := &successStruct{
+				Name: "test",
+				Age:  18,
+				st: &successStruct{
+					Name: "test2",
+					Age:  19,
+					st:   nil,
+				},
+			}
+
+			if CheckStruct(s) != "" {
+				t.Errorf("CheckStruct() = %v, want %v", CheckStruct(s), "")
+			}
+		})
+
+		t.Run("CheckFailed", func(t *testing.T) {
+			type subStruct struct {
+				Name string `vc:"key:name,required"`
+				Age  int    `vc:"key:age"`
+			}
+
+			type failedStruct struct {
+				Name string    `vc:"key:name_u,required"`
+				Age  int       `vc:"key:age_u,required"`
+				st   subStruct `vc:"key:sub"`
+			}
+
+			f := &failedStruct{
+				Name: "1",
+				Age:  18,
+				st: subStruct{
+					Age: 1,
+				},
+			}
+
+			if CheckStruct(f) != "sub.name" {
+				t.Errorf("CheckStruct() = %v, want %v", CheckStruct(f), "st.name")
 			}
 		})
 	})
