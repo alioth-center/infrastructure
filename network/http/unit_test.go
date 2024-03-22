@@ -2,7 +2,8 @@ package http
 
 import (
 	"bytes"
-	"errors"
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/trace"
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
@@ -10,34 +11,115 @@ import (
 	"time"
 )
 
-func TestHttpCall(t *testing.T) {
-	type request struct {
-		Msg string `json:"msg"`
-		Val int64  `json:"val"`
+func TestHttpClient(t *testing.T) {
+	type Request struct {
+		Msg string `json:"msg" xml:"msg"`
+		Val int64  `json:"val" xml:"val"`
 	}
-	type back struct {
-		Json request `json:"json"`
-	}
-
-	responseData, parseErr := ParseJsonResponse[back](NewClient().ExecuteRequest(NewRequest().
-		SetUrl("https://echo.apifox.com/post").
-		SetMethod(POST).
-		SetUserAgent(Curl).
-		SetJsonBody(&request{Msg: "HelloWorld", Val: time.Now().Unix()}).
-		SetAccept(ContentTypeJson),
-	))
-
-	if parseErr != nil {
-		t.Fatal(parseErr)
+	type Back struct {
+		Json Request `json:"json" xml:"json"`
 	}
 
-	t.Logf("%+v", responseData)
+	t.Run("RequestBuilder", func(t *testing.T) {
+		builder := NewRequestBuilder().
+			WithContext(trace.NewContext()).
+			WithMethod(POST).
+			WithPath("https://echo.apifox.com/post").
+			WithPathFormat("https://echo.apifox.com/post?args1=%v", 1).
+			WithPathTemplate("https://${hostname}/post?args1=$[args1]", map[string]string{"hostname": "echo.apifox.com", "args1": "1"}).
+			WithQuery("args2", "2").
+			WithHeader("testH", "testV").
+			WithCookie("testC", "testV").
+			WithBody(bytes.NewBufferString("test")).
+			WithJsonBody(Request{Msg: "test", Val: 1}).
+			WithUserAgent(AliothClient).
+			WithBearerToken("114514").
+			WithAccept(ContentTypeJson).
+			WithContentType(ContentTypeJson).
+			Clone()
+
+		client := NewSimpleClient()
+		res, err := client.ExecuteRequest(builder)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		receiver := map[string]any{}
+		t.Log(res.BindJson(&receiver))
+		t.Log(receiver)
+	})
+
+	t.Run("ResponseParser", func(t *testing.T) {
+		client := NewSimpleClient()
+		response, err := client.ExecuteRequest(NewRequestBuilder().
+			WithPath("https://echo.apifox.com/post").
+			WithMethod(POST).
+			WithJsonBody(Request{Msg: "test", Val: 1}),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		response.RawResponse()
+		response.RawRequest()
+		response.RawBody()
+		response.Context()
+		response.Status()
+		t.Log(response.BindJson(&Back{}))
+		t.Log(response.BindHeader("Content-Type"))
+		t.Log(response.BindCookie("testC"))
+		t.Log(response.BindCustom(map[string]any{}, func(reader io.Reader, receiver any) error {
+			return nil
+		}))
+		t.Log(response.BindXml(&map[string]any{}))
+	})
+
+	t.Run("LoggerClient", func(t *testing.T) {
+		client := NewLoggerClient(logger.Default())
+		//client := NewSimpleClient()
+		response, err := client.ExecuteRequest(NewRequestBuilder().
+			WithPath("https://echo.apifox.com/post?fuck=you").
+			WithMethod(POST).
+			WithJsonBody(map[string]string{"fuck": "you"}).
+			WithHeader("Content-Type", ContentTypeJson).
+			WithAccept(ContentTypeJson),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		receiver := map[string]any{}
+		t.Log(response.BindJson(&receiver))
+		t.Log(receiver)
+	})
+
+	t.Run("MockClient", func(t *testing.T) {
+		client := NewMockClientWithLogger(logger.Default(), &MockOptions{
+			Trigger: func(req *http.Request) bool { return true },
+			Handler: func(req *http.Request) *http.Response {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(bytes.NewBufferString(`{"msg":"hello"}`)),
+					Request:    req,
+				}
+			},
+		})
+
+		response, err := ParseJsonResponse[map[string]any](
+			client.ExecuteRequest(NewRequestBuilder().WithPath("https://fuck.yo")),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log(response)
+	})
 }
 
 func TestHttpServer(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	type Request struct {
-		Msg string `json:"msg"`
+		Msg string `json:"msg" vc:"key:msg,required"`
 	}
 	type Response struct {
 		Msg string `json:"msg"`
@@ -82,190 +164,24 @@ func TestHttpServer(t *testing.T) {
 
 	// 等待服务启动
 	time.Sleep(time.Millisecond * 100)
-	responseData, parseErr := ParseJsonResponse[Response](NewClient().ExecuteRequest(NewRequest().
-		SetUrl("http://localhost:8080/test/echo/sunist?admin=1").
-		SetMethod(POST).
-		SetUserAgent(Curl).
-		SetCookie("test", "test").
-		SetJsonBody(&Request{Msg: "HelloWorld"}),
-	))
 
-	if parseErr != nil {
-		t.Fatal(parseErr)
+	response, executeErr := NewLoggerClient(logger.Default()).ExecuteRequest(
+		NewRequestBuilder().
+			WithPath("http://localhost:8080/test/echo/sunist").
+			WithQuery("admin", "1").
+			WithMethod(POST).
+			WithCookie("test", "test").
+			WithHeader("Authorization", ContentTypeJson).
+			WithJsonBody(&Request{Msg: ""}),
+	)
+	if executeErr != nil {
+		t.Fatal(executeErr)
 	}
-	if responseData.Msg != "sunistHelloWorld" {
-		t.Errorf("response data is not expected: %+v", responseData)
-	}
+
+	receiver := FrameworkResponse{}
+	t.Log(response.RawResponse().StatusCode)
+	t.Log(response.BindJson(&receiver))
+	t.Log(receiver)
 
 	ex <- struct{}{}
-}
-
-func TestParsingError(t *testing.T) {
-	t.Run("ParsingError:JsonError", func(t *testing.T) {
-		resp := NewResponse(nil, errors.New("test error"))
-		if _, err := ParseJsonResponse[struct{}](resp); err == nil {
-			t.Errorf("parsing error should be occurred")
-		}
-	})
-
-	t.Run("ParsingError:XmlError", func(t *testing.T) {
-		resp := NewResponse(nil, errors.New("test error"))
-		if _, err := ParseXmlResponse[struct{}](resp); err == nil {
-			t.Errorf("parsing error should be occurred")
-		}
-	})
-}
-
-func TestResponseError(t *testing.T) {
-	t.Run("ResponseError:NotJson", func(t *testing.T) {
-		contentBytes := []byte("<html><body>test</body></html>")
-		httpResp := http.Response{
-			StatusCode:    http.StatusOK,
-			Header:        http.Header{"Content-Type": []string{"text/html; charset=utf-8"}},
-			Body:          io.NopCloser(bytes.NewBuffer(contentBytes)),
-			ContentLength: int64(len(contentBytes)),
-		}
-
-		resp := NewResponse(&httpResp, nil)
-		_, err := ParseJsonResponse[struct{}](resp)
-		if err == nil {
-			t.Errorf("parsing error should be occurred")
-		}
-		wantErr := ContentTypeMismatchError{
-			Expected: ContentTypeJson,
-			Actual:   "text/html; charset=utf-8",
-		}
-		if !errors.As(err, &wantErr) {
-			t.Errorf("error is not expected: %+v", resp.Error())
-		}
-	})
-
-	t.Run("ResponseError:NotXml", func(t *testing.T) {
-		contentBytes := []byte("<html><body>test</body></html>")
-		httpResp := http.Response{
-			StatusCode:    http.StatusOK,
-			Header:        http.Header{"Content-Type": []string{"text/html; charset=utf-8"}},
-			Body:          io.NopCloser(bytes.NewBuffer(contentBytes)),
-			ContentLength: int64(len(contentBytes)),
-		}
-
-		resp := NewResponse(&httpResp, nil)
-		_, err := ParseXmlResponse[struct{}](resp)
-		if err == nil {
-			t.Errorf("parsing error should be occurred")
-		}
-		wantErr := ContentTypeMismatchError{
-			Expected: ContentTypeTextXml,
-			Actual:   "text/html; charset=utf-8",
-		}
-		if !errors.As(err, &wantErr) {
-			t.Errorf("error is not expected: %+v", err)
-		}
-	})
-}
-
-func TestResponseBind(t *testing.T) {
-	t.Run("ResponseBind:Json", func(t *testing.T) {
-		contentBytes := []byte("{\"msg\":\"test\"}")
-		httpResp := http.Response{
-			StatusCode:    http.StatusOK,
-			Header:        http.Header{"Content-Type": []string{"application/json; charset=utf-8"}},
-			Body:          io.NopCloser(bytes.NewBuffer(contentBytes)),
-			ContentLength: int64(len(contentBytes)),
-		}
-
-		resp := NewResponse(&httpResp, nil)
-		var data struct {
-			Msg string `json:"msg"`
-		}
-
-		status, err := resp.BindJsonResult(&data)
-		if err != nil {
-			t.Errorf("parsing error should not be occurred: %+v", err)
-		}
-		if data.Msg != "test" {
-			t.Errorf("data is not expected: %+v", data)
-		}
-		if status != StatusOK {
-			t.Errorf("status code is not expected: %+v", status)
-		}
-	})
-
-	t.Run("ResponseBind:Xml", func(t *testing.T) {
-		contentBytes := []byte("<xml><msg>test</msg></xml>")
-		httpResp := http.Response{
-			StatusCode:    http.StatusOK,
-			Header:        http.Header{"Content-Type": []string{"application/xml; charset=utf-8"}},
-			Body:          io.NopCloser(bytes.NewBuffer(contentBytes)),
-			ContentLength: int64(len(contentBytes)),
-		}
-
-		resp := NewResponse(&httpResp, nil)
-		var data struct {
-			Msg string `xml:"msg"`
-		}
-
-		status, err := resp.BindXmlResult(&data)
-		if err != nil {
-			t.Errorf("parsing error should not be occurred: %+v", err)
-		}
-		if data.Msg != "test" {
-			t.Errorf("data is not expected: %+v", data)
-		}
-		if status != StatusOK {
-			t.Errorf("status code is not expected: %+v", status)
-		}
-	})
-}
-
-func TestResponseGet(t *testing.T) {
-	httpResp := http.Response{
-		StatusCode: http.StatusOK,
-		Header: http.Header{
-			"Content-Type":  []string{"application/json; charset=utf-8"},
-			"Set-Cookie":    []string{"test=test"},
-			"Authorization": []string{"Bearer test"},
-			"Custom":        []string{"test"},
-		},
-		Body: io.NopCloser(bytes.NewBuffer([]byte("{\"msg\":\"test\"}"))),
-	}
-	resp := NewResponse(&httpResp, nil)
-
-	status := resp.GetStatusCode()
-	if status != StatusOK {
-		t.Errorf("status code is not expected: %+v", status)
-	}
-	auth := resp.GetBearerToken()
-	if auth != "test" {
-		t.Errorf("auth is not expected: %+v", auth)
-	}
-	cookie := resp.GetCookie("test")
-	if cookie == nil {
-		t.Errorf("cookie is not expected: %+v", cookie)
-	}
-	if cookie.Value != "test" {
-		t.Errorf("cookie value is not expected: %+v", cookie)
-	}
-	header := resp.GetHeader("Custom")
-	if header != "test" {
-		t.Errorf("header is not expected: %+v", header)
-	}
-	body := resp.GetBody()
-	if string(body) != "{\"msg\":\"test\"}" {
-		t.Errorf("body is not expected: %+v", string(body))
-	}
-	if resp.Error() != nil {
-		t.Errorf("error is not expected: %+v", resp.Error())
-	}
-
-	resultStatus, stringBody, err := resp.StringResult()
-	if err != nil {
-		t.Errorf("error is not expected: %+v", err)
-	}
-	if resultStatus != StatusOK {
-		t.Errorf("status code is not expected: %+v", resultStatus)
-	}
-	if stringBody != "{\"msg\":\"test\"}" {
-		t.Errorf("body is not expected: %+v", stringBody)
-	}
 }

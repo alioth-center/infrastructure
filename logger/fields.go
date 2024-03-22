@@ -111,7 +111,7 @@ func (f *fields) init(ctx context.Context) Fields {
 
 // export 导出日志字段
 func (f *fields) Export() *Entry {
-	traceID, ctx := trace.GetTraceID(f.ctx)
+	traceID, ctx := trace.TransformContext(f.ctx)
 	f.ctx = ctx
 
 	return &Entry{

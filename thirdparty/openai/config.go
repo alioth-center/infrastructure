@@ -40,28 +40,27 @@ const (
 	defaultBaseUrl = "https://api.openai.com/v1"
 
 	// defaultUserAgent 默认的user-agent
-	defaultUserAgent = "alioth-center/http-client v1.2.1"
+	defaultUserAgent = http.AliothClient
 )
 
 var (
-
 	// defaultEndpoints 默认的endpoint
 	defaultEndpoints = map[EndpointEnum]string{
 		EndpointEnumListModel:             "models",
-		EndpointEnumRetrieveModel:         "models/{:model:}",
+		EndpointEnumRetrieveModel:         "models/{model}",
 		EndpointEnumCreateImage:           "images/generations",
 		EndpointEnumCompleteChat:          "chat/completions",
 		EndpointEnumCreateSpeech:          "audio/speech",
 		EndpointEnumCreateTranscription:   "audio/transcriptions",
 		EndpointEnumCompleteModeration:    "moderations",
 		EndpointEnumCreateFineTuningJob:   "fine_tuning/jobs",
-		EndpointEnumRetrieveFineTuningJob: "fine_tuning/jobs/{:id:}",
+		EndpointEnumRetrieveFineTuningJob: "fine_tuning/jobs/{id}",
 		EndpointEnumListFineTuningJobs:    "fine_tuning/jobs",
-		EndpointEnumCancelFineTuningJob:   "fine_tuning/jobs/{:id:}/cancel",
+		EndpointEnumCancelFineTuningJob:   "fine_tuning/jobs/{id}/cancel",
 		EndpointEnumUploadFile:            "files",
 		EndpointEnumListFiles:             "files",
-		EndpointEnumRetrieveFile:          "files/{:id:}",
-		EndpointEnumDeleteFile:            "files/{:id:}",
+		EndpointEnumRetrieveFile:          "files/{id}",
+		EndpointEnumDeleteFile:            "files/{id}",
 	}
 )
 
@@ -96,28 +95,22 @@ func (c Config) getUserAgent() string {
 	}
 }
 
-func (c Config) buildBaseRequest(endpoint EndpointEnum, injectUrlFunction ...func(original string) (result string)) http.Request {
-	baseRequest := http.NewRequest()
+func (c Config) buildBaseRequest(endpoint EndpointEnum, args ...string) http.RequestBuilder {
+	baseRequest := http.NewRequestBuilder().WithHeader("User-Agent", c.getUserAgent()).WithBearerToken(c.ApiKey)
 
 	if c.BetaFeatures != "" {
 		// 如果设置了beta_features，则注入beta_features
-		baseRequest.SetHeader("OpenAI-Beta", c.BetaFeatures)
+		baseRequest.WithHeader("OpenAI-Beta", c.BetaFeatures)
 	}
 
-	if injectUrlFunction == nil || len(injectUrlFunction) == 0 {
-		// 如果没有注入函数，则直接使用默认的url
-		return baseRequest.
-			SetUrl(c.getRequestUrl(endpoint)).
-			SetHeader("Authorization", "Bearer "+c.ApiKey)
-	} else if injectUrlFunction[0] == nil {
-		// 如果注入函数为nil，则直接使用默认的url
-		return baseRequest.
-			SetUrl(c.getRequestUrl(endpoint)).
-			SetHeader("Authorization", "Bearer "+c.ApiKey)
-	} else {
-		// 如果注入函数不为nil，则使用注入函数注入url
-		return baseRequest.
-			SetUrl(injectUrlFunction[0](c.getRequestUrl(endpoint))).
-			SetHeader("Authorization", "Bearer "+c.ApiKey)
+	if args != nil && len(args) > 0 && len(args)%2 == 0 {
+		templates := map[string]string{}
+		for i := 0; i < len(args); i += 2 {
+			templates[args[i]] = args[i+1]
+		}
+
+		return baseRequest.WithPathTemplate(c.getRequestUrl(endpoint), templates)
 	}
+
+	return baseRequest.WithPath(c.getRequestUrl(endpoint))
 }

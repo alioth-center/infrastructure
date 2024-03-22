@@ -7,6 +7,18 @@ import (
 	"time"
 )
 
+type PreprocessedContext[request any, response any] interface {
+	context.Context
+	SetQueryParams(params Params)
+	SetPathParams(params Params)
+	SetHeaderParams(params Params)
+	SetCookieParams(params Params)
+	SetExtraParams(params Params)
+	SetRawRequest(raw *http.Request)
+	SetRequest(req request)
+	SetRequestHeader(headers RequestHeader)
+}
+
 type Context[request any, response any] interface {
 	context.Context
 
@@ -129,15 +141,15 @@ type Context[request any, response any] interface {
 	//	}
 	ExtraParams() Params
 
-	// SetExtraParams sets the extra params.
+	// SetExtraParam sets the extra param.
 	// example:
 	//
 	//	func handler(ctx Context[request, response]) {
 	//		// do something
-	//		ctx.SetExtraParams("key", "value")
+	//		ctx.SetExtraParam("key", "value")
 	//		// do something with params
 	//	}
-	SetExtraParams(key string, value string)
+	SetExtraParam(key string, value string)
 
 	// Request returns the processed request.
 	// example:
@@ -280,6 +292,38 @@ func (c *acContext[request, response]) setHandlers(chain Chain[request, response
 	c.h = chain
 }
 
+func (c *acContext[request, response]) SetQueryParams(params Params) {
+	c.queryParams = params
+}
+
+func (c *acContext[request, response]) SetPathParams(params Params) {
+	c.pathParams = params
+}
+
+func (c *acContext[request, response]) SetHeaderParams(params Params) {
+	c.headerParams = params
+}
+
+func (c *acContext[request, response]) SetCookieParams(params Params) {
+	c.cookieParams = params
+}
+
+func (c *acContext[request, response]) SetExtraParams(params Params) {
+	c.extraParams = params
+}
+
+func (c *acContext[request, response]) SetRawRequest(raw *http.Request) {
+	c.raw = raw
+}
+
+func (c *acContext[request, response]) SetRequest(req request) {
+	c.req = req
+}
+
+func (c *acContext[request, response]) SetRequestHeader(headers RequestHeader) {
+	c.headers = headers
+}
+
 func (c *acContext[request, response]) Next() {
 	c.idx++
 	for c.idx < len(c.h) {
@@ -336,7 +380,7 @@ func (c *acContext[request, response]) ExtraParams() Params {
 	return c.extraParams
 }
 
-func (c *acContext[request, response]) SetExtraParams(key string, value string) {
+func (c *acContext[request, response]) SetExtraParam(key string, value string) {
 	if c.extraParams == nil {
 		c.extraParams = Params{}
 	}
