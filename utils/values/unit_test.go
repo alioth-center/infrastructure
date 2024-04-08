@@ -851,6 +851,85 @@ func TestArray(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("Contains", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5}
+		if !ContainsArray(arr, 3) {
+			t.Errorf("ContainsArray() = %v, want %v", ContainsArray(arr, 3), true)
+		}
+	})
+
+	t.Run("Unique", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5, 1, 2, 3, 4, 5}
+		unique := []int{1, 2, 3, 4, 5}
+		if len(UniqueArray(arr)) != len(unique) {
+			t.Errorf("UniqueArray() = %v, want %v", len(UniqueArray(arr)), len(unique))
+		}
+
+		for i, v := range UniqueArray(arr) {
+			if unique[i] != v {
+				t.Errorf("UniqueArray[%d] = %v, want %v", i, v, unique[i])
+			}
+		}
+	})
+
+	t.Run("Remove", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5}
+		removed := []int{1, 2, 3, 5}
+		for i, v := range RemoveArray(arr, 3, 4) {
+			if removed[i] != v {
+				t.Errorf("RemoveArray[%d] = %v, want %v", i, v, removed[i])
+			}
+		}
+	})
+
+	t.Run("Index", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5}
+		if IndexArray(arr, 3) != 2 {
+			t.Errorf("IndexArray() = %v, want %v", IndexArray(arr, 3), 2)
+		}
+	})
+
+	t.Run("Shuffle", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+		clone := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+		shuffled := ShuffleArray(arr, 0, len(arr))
+		if len(shuffled) != len(arr) {
+			t.Errorf("ShuffleArray() = %v, want %v", len(shuffled), len(arr))
+		}
+
+		same := true
+		for i, v := range shuffled {
+			if v != clone[i] {
+				same = false
+				break
+			}
+		}
+
+		if same {
+			t.Errorf("ShuffleArray() = %v, want not %v", shuffled, clone)
+		}
+	})
+
+	t.Run("Merge", func(t *testing.T) {
+		arr1 := []int{1, 2, 3, 4, 5}
+		arr2 := []int{6, 7, 8, 9, 10}
+		arr3 := []int{11, 12, 13, 14, 15}
+		merged := MergeArrays(arr1, arr2, arr3)
+		if len(merged) != 15 {
+			t.Errorf("MergeArrays() = %v, want %v", len(merged), 15)
+		}
+
+		for i, v := range merged {
+			if i < 5 && v != arr1[i] {
+				t.Errorf("MergeArrays[%d] = %v, want %v", i, v, arr1[i])
+			} else if i >= 5 && i < 10 && v != arr2[i-5] {
+				t.Errorf("MergeArrays[%d] = %v, want %v", i, v, arr2[i-5])
+			} else if i >= 10 && v != arr3[i-10] {
+				t.Errorf("MergeArrays[%d] = %v, want %v", i, v, arr3[i-10])
+			}
+		}
+	})
 }
 
 func TestReflect(t *testing.T) {
@@ -901,5 +980,17 @@ func TestReflect(t *testing.T) {
 				t.Errorf("CheckStruct() = %v, want %v", CheckStruct(f), "st.name")
 			}
 		})
+	})
+}
+
+func TestUnsafe(t *testing.T) {
+	t.Run("StringToByte", func(t *testing.T) {
+		UnsafeStringToBytes("")
+		UnsafeStringToBytes("114514")
+	})
+
+	t.Run("ByteToString", func(t *testing.T) {
+		UnsafeBytesToString([]byte{})
+		UnsafeBytesToString([]byte("114514"))
 	})
 }

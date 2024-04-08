@@ -22,9 +22,8 @@ const (
 )
 
 type checkTagConfig struct {
-	key        string
-	required   bool
-	sourceType string
+	key      string
+	required bool
 }
 
 func parseCheckTag(tag string) *checkTagConfig {
@@ -179,12 +178,12 @@ func structToMap(prefix string, value reflect.Value, m map[string]string) {
 			}
 
 			// 处理omitempty标签
-			if cpc.omitEmpty && isEmptyValue(fieldValue) {
+			if cpc.omitEmpty && fieldValue.IsZero() {
 				continue
 			}
 
 			// 如果转换后的值为空，并且有默认值，则使用默认值
-			if isEmptyValue(fieldValue) && cpc.defaultValue != "" {
+			if fieldValue.IsZero() && cpc.defaultValue != "" {
 				convertedValue = cpc.defaultValue
 			}
 
@@ -209,26 +208,6 @@ func convertFieldValueToString(fieldValue reflect.Value) (string, bool) {
 		return strconv.FormatUint(fieldValue.Uint(), 10), true
 	default:
 		return "", false
-	}
-}
-
-// isEmptyValue 函数检查字段值是否为空
-func isEmptyValue(v reflect.Value) bool {
-	switch v.Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return v.Len() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Ptr:
-		return v.IsNil()
-	default:
-		return false
 	}
 }
 
