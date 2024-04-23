@@ -5,7 +5,6 @@ import (
 	"github.com/alioth-center/infrastructure/utils/concurrency"
 	"github.com/alioth-center/infrastructure/utils/values"
 	"github.com/gin-gonic/gin"
-	"io"
 	"net/http"
 	"time"
 )
@@ -82,39 +81,33 @@ func (p Params) GetBool(key string) bool {
 	return values.StringToBool(p[key], false)
 }
 
-func defaultRequestProcessor[request any](raw *http.Request) (request, error) {
-	payloads, readErr := io.ReadAll(raw.Body)
-	if readErr != nil {
-		return values.Nil[request](), readErr
-	}
-
-	if len(payloads) == 0 {
-		return values.Nil[request](), nil
-	}
-
-	contentType := raw.Header.Get("Content-Type")
-	req, err := defaultPayloadProcessor[request](contentType, payloads, nil)
-	if err != nil {
-		return values.Nil[request](), err
-	}
-
-	return req, nil
-}
-
-func defaultResponseProcessor[response any](resp response, status int, err error) (response, int, error) {
-	return resp, status, err
-}
-
 type EndPointInterface interface {
-	bindRouter(base *gin.RouterGroup)
-	fullRouterPath() string
+	bindRouter(base *gin.RouterGroup, father Router)
 }
 
-type RequestProcessor[request any] func(raw *http.Request) (request, error)
+type EndpointGroup struct {
+	groupUrl  string
+	endpoints []EndPointInterface
+}
 
-type ResponseProcessor[response any] func(resp response, status int, err error) (response, int, error)
+func (e *EndpointGroup) bindRouter(base *gin.RouterGroup, father Router) {
+	sub := father.Group(e.groupUrl)
+	sub.Extend(father)
+	for i := range e.endpoints {
+		e.endpoints[i].bindRouter(base, sub)
+	}
+}
+
+func (e *EndpointGroup) AddEndPoints(endpoints ...EndPointInterface) {
+	if len(endpoints) == 0 {
+		return
+	}
+
+	e.endpoints = append(e.endpoints, endpoints...)
+}
 
 // EndPoint is the interface for http endpoint.
+//
 // example:
 //
 //	ep := NewBasicEndPoint[request, response](http.GET, router, chain)
@@ -136,6 +129,16 @@ type ResponseProcessor[response any] func(resp response, status int, err error) 
 //
 //		// do something
 //	}
+//
+// or using the builder like:
+//
+//	ep := NewEndPointBuilder[request, response]().
+//		SetAllowMethods(http.GET, http.POST).
+//		SetNecessaryParams("name").
+//		SetAdditionalQueries("id").
+//		SetAdditionalHeaders("Content-Type").
+//		SetAdditionalCookies("session").
+//		Build()
 type EndPoint[request any, response any] struct {
 	router         Router
 	chain          Chain[request, response]
@@ -147,12 +150,17 @@ type EndPoint[request any, response any] struct {
 	preprocessors  []EndpointPreprocessor[request, response]
 }
 
-func (ep *EndPoint[request, response]) bindRouter(base *gin.RouterGroup) {
-	if base == nil || ep.router == nil {
+func (ep *EndPoint[request, response]) bindRouter(router *gin.RouterGroup, base Router) {
+	// no routers to bind, do nothing
+	if router == nil || ep.router == nil {
 		return
 	}
 
+	// try to bind father router
+	ep.router.Extend(base)
 	routerPath := ep.router.FullRouterPath()
+
+	// final router path fix, must begin with a slash and end without a slash
 	if routerPath == "" {
 		routerPath = "/"
 	}
@@ -160,25 +168,21 @@ func (ep *EndPoint[request, response]) bindRouter(base *gin.RouterGroup) {
 	for _, method := range ep.allowMethods.allowedMethods() {
 		switch method {
 		case http.MethodGet:
-			base.GET(routerPath, ep.Serve)
+			router.GET(routerPath, ep.Serve)
 		case http.MethodPost:
-			base.POST(routerPath, ep.Serve)
+			router.POST(routerPath, ep.Serve)
 		case http.MethodPut:
-			base.PUT(routerPath, ep.Serve)
+			router.PUT(routerPath, ep.Serve)
 		case http.MethodDelete:
-			base.DELETE(routerPath, ep.Serve)
+			router.DELETE(routerPath, ep.Serve)
 		case http.MethodPatch:
-			base.PATCH(routerPath, ep.Serve)
+			router.PATCH(routerPath, ep.Serve)
 		case http.MethodHead:
-			base.HEAD(routerPath, ep.Serve)
+			router.HEAD(routerPath, ep.Serve)
 		case http.MethodOptions:
-			base.OPTIONS(routerPath, ep.Serve)
+			router.OPTIONS(routerPath, ep.Serve)
 		}
 	}
-}
-
-func (ep *EndPoint[request, response]) fullRouterPath() string {
-	return ep.router.FullRouterPath()
 }
 
 func (ep *EndPoint[request, response]) SetHandlerChain(chain Chain[request, response]) {
@@ -431,4 +435,163 @@ func NewBasicEndPoint[request any, response any](method Method, router Router, c
 		WithRouterOpts[request, response](router),
 		WithChainOpts[request, response](chain),
 	)
+}
+
+type EndPointBuilder[request, response any] struct {
+	options []EndPointOptions[request, response]
+}
+
+// SetAllowMethods sets the allowed methods for EndPoint.
+//
+// example:
+//
+//	ep := NewEndPointBuilder[request, response]().
+//		SetAllowMethods(http.GET, http.POST, http.PUT, http.DELETE, http.PATCH).
+//		Build()
+func (eb *EndPointBuilder[request, response]) SetAllowMethods(methods ...Method) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithAllowedMethodsOpts[request, response](methods...))
+	return eb
+}
+
+// SetNecessaryParams sets the necessary params for EndPoint.
+//
+// example:
+//
+//	ep := NewEndPointBuilder[request, response]().
+//		SetNecessaryParams("name").
+//		Build()
+func (eb *EndPointBuilder[request, response]) SetNecessaryParams(params ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range params {
+		args[params[i]] = true
+	}
+	eb.options = append(eb.options, WithParamOpts[request, response](args))
+	return eb
+}
+
+// SetAdditionalParams sets the additional params for EndPoint.
+//
+// example:
+//
+//	ep := NewEndPointBuilder[request, response]().
+//		SetAdditionalParams("name").
+//		Build()
+func (eb *EndPointBuilder[request, response]) SetAdditionalParams(params ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range params {
+		args[params[i]] = false
+	}
+	eb.options = append(eb.options, WithParamOpts[request, response](args))
+	return eb
+}
+
+// SetParams sets the params for EndPoint.
+//
+// example:
+//
+//	ep := NewEndPointBuilder[request, response]().
+//		SetParams(map[string]bool{"name": true}).
+//		Build()
+func (eb *EndPointBuilder[request, response]) SetParams(params map[string]bool) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithParamOpts[request, response](params))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetNecessaryQueries(queries ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range queries {
+		args[queries[i]] = true
+	}
+	eb.options = append(eb.options, WithQueryOpts[request, response](args))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetAdditionalQueries(queries ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range queries {
+		args[queries[i]] = false
+	}
+	eb.options = append(eb.options, WithQueryOpts[request, response](args))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetQueries(queries map[string]bool) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithQueryOpts[request, response](queries))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetNecessaryHeaders(headers ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range headers {
+		args[headers[i]] = true
+	}
+	eb.options = append(eb.options, WithHeaderOpts[request, response](args))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetAdditionalHeaders(headers ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range headers {
+		args[headers[i]] = false
+	}
+	eb.options = append(eb.options, WithHeaderOpts[request, response](args))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetHeaders(headers map[string]bool) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithHeaderOpts[request, response](headers))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetNecessaryCookies(cookies ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range cookies {
+		args[cookies[i]] = true
+	}
+	eb.options = append(eb.options, WithCookieOpts[request, response](args))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetAdditionalCookies(cookies ...string) *EndPointBuilder[request, response] {
+	args := map[string]bool{}
+	for i := range cookies {
+		args[cookies[i]] = false
+	}
+	eb.options = append(eb.options, WithCookieOpts[request, response](args))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetCookies(cookies map[string]bool) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithCookieOpts[request, response](cookies))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetRouter(router Router) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithRouterOpts[request, response](router))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetHandlerChain(chain Chain[request, response]) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithChainOpts[request, response](chain))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetCustomPreprocessors(preprocessors ...EndpointPreprocessor[request, response]) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithCustomPreprocessors[request, response](preprocessors...))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) Build() *EndPoint[request, response] {
+	return NewEndPointWithOpts[request, response](eb.options...)
+}
+
+func NewEndPointBuilder[request, response any]() *EndPointBuilder[request, response] {
+	return &EndPointBuilder[request, response]{options: []EndPointOptions[request, response]{}}
+}
+
+func NewEndPointGroup(group string, endpoints ...EndPointInterface) *EndpointGroup {
+	return &EndpointGroup{
+		groupUrl:  group,
+		endpoints: endpoints,
+	}
 }
