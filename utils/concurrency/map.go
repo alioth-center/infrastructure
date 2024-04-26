@@ -330,16 +330,16 @@ func CustomHashMapNodeOptions(want uint64) HashMapNodeOption {
 // Attention: the performance of hashMap is much better than Map, but this structure CANNOT be used for persistence, the hash value of the key will change after restarting the program
 func NewHashMap[K comparable, V any](maxNodes HashMapNodeOption) Map[K, V] {
 	var realNodes uint64
-	switch {
-	case maxNodes == HashMapNodeOptionSmallSize:
+	switch maxNodes {
+	case HashMapNodeOptionSmallSize:
 		realNodes = uint64(HashMapNodeOptionSmallSize)
-	case maxNodes == HashMapNodeOptionMediumSize:
+	case HashMapNodeOptionMediumSize:
 		realNodes = uint64(HashMapNodeOptionMediumSize)
-	case maxNodes == HashMapNodeOptionLargeSize:
+	case HashMapNodeOptionLargeSize:
 		realNodes = uint64(HashMapNodeOptionLargeSize)
-	case maxNodes == HashMapNodeOptionExtraSize:
+	case HashMapNodeOptionExtraSize:
 		realNodes = uint64(HashMapNodeOptionExtraSize)
-	case maxNodes == HashMapNodeOptionHugeSize:
+	case HashMapNodeOptionHugeSize:
 		realNodes = uint64(HashMapNodeOptionHugeSize)
 	default:
 		realNodes = uint64(CustomHashMapNodeOptions(uint64(maxNodes)))

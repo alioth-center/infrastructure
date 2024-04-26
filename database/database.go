@@ -35,7 +35,6 @@ type Database interface {
 	DeleteAll(query string, args ...any) error
 	ExecRaw(sql string, args ...any) error
 	QueryRaw(receiver any, sql string, args ...any) error
-	ExecRawsWithTransaction(sql []Template) error
 	HasWithCtx(ctx context.Context, table string, query string, args ...any) (exist bool, err error)
 	CountWithCtx(ctx context.Context, table string, query string, args ...any) (count int64, err error)
 	GetOneWithCtx(ctx context.Context, receiver any, query string, args ...any) error
@@ -50,7 +49,6 @@ type Database interface {
 	DeleteAllWithCtx(ctx context.Context, query string, args ...any) error
 	ExecRawWithCtx(ctx context.Context, sql string, args ...any) error
 	QueryRawWithCtx(ctx context.Context, receiver any, sql string, args ...any) error
-	ExecRawsWithTransactionCtx(ctx context.Context, sql []Template) error
 	ExtMethods() ExtMethods
 	SetLogger(logger logger.Logger)
 }

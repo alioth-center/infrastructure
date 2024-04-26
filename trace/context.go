@@ -85,13 +85,6 @@ func ForkContextWithOpts(ctx context.Context, fields ...string) (forked context.
 	return forked
 }
 
-// NewContextWithTraceID 从 context.Background 生成一个新的 context，并附加 trace_id
-//
-// Deprecated: use NewContext instead
-func NewContextWithTraceID() context.Context {
-	return NewContext()
-}
-
 // NewContext build a new context with trace id.
 func NewContext() context.Context {
 	return NewContextWithTid(uuid.NewString())
@@ -113,13 +106,6 @@ func AttachTraceID(ctx context.Context) (traceID string, result context.Context)
 // Deprecated: use TransformContext instead
 func GetTraceID(ctx context.Context) (traceID string, result context.Context) {
 	return TransformContext(ctx)
-}
-
-// ForkTracedContext 从已有 trace_id 的 context 中生成一个新的 context，用于在新的 goroutine 中使用
-//
-// Deprecated: use ForkContext instead
-func ForkTracedContext(ctx context.Context) (forked context.Context) {
-	return ForkContext(ctx)
 }
 
 // GetClientIPFromPeer get client ip from a grpc request, if not a grpc request or no client ip, return empty string

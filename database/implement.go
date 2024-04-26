@@ -251,25 +251,6 @@ func (s *BaseDatabaseImplement) QueryRaw(receiver any, sql string, args ...any) 
 	})
 }
 
-func (s *BaseDatabaseImplement) ExecRawsWithTransaction(sql []Template) error {
-	return s.execTransaction(func(tx *gorm.DB) error {
-		for _, item := range sql {
-			raw, buildRaw := item.Prepare()
-			if buildRaw != nil {
-				s.Logger.Error(logger.NewFields().WithMessage("sql transaction build raw sql failed").WithData(buildRaw))
-			}
-
-			if err := tx.Exec(raw).Error; err != nil {
-				execErr := NewExecuteSqlError(raw, err)
-				s.Logger.Error(logger.NewFields().WithMessage("sql transaction execute failed").WithData(execErr))
-				return execErr
-			}
-		}
-
-		return nil
-	})
-}
-
 func (s *BaseDatabaseImplement) HasWithCtx(ctx context.Context, table, query string, args ...any) (exist bool, err error) {
 	var count int64
 	err = s.exec(func(tx *gorm.DB) *gorm.DB {
@@ -354,26 +335,6 @@ func (s *BaseDatabaseImplement) ExecRawWithCtx(ctx context.Context, sql string, 
 func (s *BaseDatabaseImplement) QueryRawWithCtx(ctx context.Context, receiver any, sql string, args ...any) error {
 	return s.exec(func(tx *gorm.DB) *gorm.DB {
 		return tx.Raw(sql, args...).Scan(receiver)
-	}, ctx)
-}
-
-func (s *BaseDatabaseImplement) ExecRawsWithTransactionCtx(ctx context.Context, sql []Template) error {
-	return s.execTransaction(func(tx *gorm.DB) error {
-		for _, item := range sql {
-			raw, buildRaw := item.Prepare()
-			if buildRaw != nil {
-				s.Logger.Error(logger.NewFields(ctx).WithMessage("sql transaction build raw sql failed").WithData(buildRaw))
-				return buildRaw
-			}
-
-			if err := tx.Exec(raw).Error; err != nil {
-				execErr := NewExecuteSqlError(raw, err)
-				s.Logger.Error(logger.NewFields(ctx).WithMessage("sql transaction execute failed").WithData(execErr))
-				return execErr
-			}
-		}
-
-		return nil
 	}, ctx)
 }
 

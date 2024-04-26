@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/trace"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"testing"
@@ -117,7 +116,7 @@ func TestHttpClient(t *testing.T) {
 }
 
 func TestHttpServer(t *testing.T) {
-	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.ReleaseMode)
 	type Request struct {
 		Msg string `json:"msg" vc:"key:msg,required"`
 	}
@@ -125,63 +124,178 @@ func TestHttpServer(t *testing.T) {
 		Msg string `json:"msg"`
 	}
 
-	engine := NewEngine("/test")
-	engine.AddEndPoints(
-		NewEndPointWithOpts[Request, Response](
-			WithRouterOpts[Request, Response](engine.BaseRouter().Group("/echo/:name")),
-			WithAllowedMethodsOpts[Request, Response](GET, POST),
-			WithChainOpts[Request, Response](NewChain[Request, Response](
-				func(ctx Context[Request, Response]) {
+	t.Run("EndPointOpts", func(t *testing.T) {
+		engine := NewEngine("/test")
+		engine.AddEndPoints(
+			NewEndPointWithOpts[Request, Response](
+				WithRouterOpts[Request, Response](engine.BaseRouter().Group("/echo/:name")),
+				WithAllowedMethodsOpts[Request, Response](GET, POST),
+				WithChainOpts[Request, Response](NewChain[Request, Response](
+					func(ctx Context[Request, Response]) {
+						ctx.SetResponse(Response{Msg: ctx.PathParams().GetString("name") + ctx.Request().Msg})
+						ctx.SetStatusCode(StatusOK)
+					},
+				)),
+				WithHeaderOpts[Request, Response](map[string]bool{
+					"Content-Type": true,
+				}),
+				WithParamOpts[Request, Response](map[string]bool{
+					"name": true,
+				}),
+				WithQueryOpts[Request, Response](map[string]bool{
+					"admin": true,
+				}),
+				WithCookieOpts[Request, Response](map[string]bool{
+					"test": true,
+				}),
+			),
+		)
+
+		ex := make(chan struct{}, 1)
+		ec := engine.ServeAsync("0.0.0.0:8080", ex)
+		go func() {
+			for {
+				select {
+				case e := <-ec:
+					t.Errorf("http handlers occur error: %v", e)
+				}
+			}
+		}()
+
+		// 等待服务启动
+		time.Sleep(time.Millisecond * 100)
+
+		response, executeErr := NewLoggerClient(logger.Default()).ExecuteRequest(
+			NewRequestBuilder().
+				WithPath("http://localhost:8080/test/echo/sunist").
+				WithQuery("admin", "1").
+				WithMethod(POST).
+				WithCookie("test", "test").
+				WithHeader("Authorization", ContentTypeJson).
+				WithJsonBody(&Request{Msg: ""}),
+		)
+		if executeErr != nil {
+			t.Fatal(executeErr)
+		}
+
+		receiver := FrameworkResponse{}
+		if !StatusCodeIs4XX(response) {
+			t.Fatal("status code is not 4XX")
+		}
+		t.Log(response.RawResponse().StatusCode)
+		t.Log(response.BindJson(&receiver))
+		t.Log(receiver)
+
+		ex <- struct{}{}
+	})
+
+	t.Run("EndPointBuilder", func(t *testing.T) {
+		engine := NewEngine("/test1")
+		echoGroup := NewEndPointGroup("/echo")
+		nameHandler := NewEndPointBuilder[Request, Response]().
+			SetHandlerChain(
+				NewChain(func(ctx Context[Request, Response]) {
 					ctx.SetResponse(Response{Msg: ctx.PathParams().GetString("name") + ctx.Request().Msg})
 					ctx.SetStatusCode(StatusOK)
-				},
-			)),
-			WithHeaderOpts[Request, Response](map[string]bool{
-				"Content-Type": true,
-			}),
-			WithParamOpts[Request, Response](map[string]bool{
-				"name": true,
-			}),
-			WithQueryOpts[Request, Response](map[string]bool{
-				"admin": true,
-			}),
-			WithCookieOpts[Request, Response](map[string]bool{
-				"test": true,
-			}),
-		),
-	)
+				}),
+			).
+			SetRouter(NewRouter("/:name")).
+			SetAllowMethods(GET, POST).
+			SetNecessaryHeaders("Content-Type").
+			SetNecessaryParams("name").
+			SetNecessaryQueries("admin").
+			SetNecessaryCookies("test").
+			Build()
+		echoGroup.AddEndPoints(nameHandler)
+		engine.AddEndPoints(echoGroup)
 
-	ex := make(chan struct{}, 1)
-	ec := engine.ServeAsync("0.0.0.0:8080", ex)
-	go func() {
-		for {
-			select {
-			case e := <-ec:
-				t.Errorf("http handlers occur error: %v", e)
+		ex := make(chan struct{}, 1)
+		ec := engine.ServeAsync("0.0.0.0:8081", ex)
+		go func() {
+			for {
+				select {
+				case e := <-ec:
+					t.Errorf("http handlers occur error: %v", e)
+				}
 			}
+		}()
+
+		// 等待服务启动
+		time.Sleep(time.Millisecond * 100)
+
+		response, executeErr := NewLoggerClient(logger.Default()).ExecuteRequest(
+			NewRequestBuilder().
+				WithPath("http://localhost:8081/test1/echo/sunist").
+				WithQuery("admin", "1").
+				WithMethod(POST).
+				WithCookie("test", "test").
+				WithHeader("Authorization", ContentTypeJson).
+				WithJsonBody(&Request{Msg: ""}),
+		)
+		if executeErr != nil {
+			t.Fatal(executeErr)
 		}
-	}()
 
-	// 等待服务启动
-	time.Sleep(time.Millisecond * 100)
+		receiver := FrameworkResponse{}
+		if !StatusCodeIs4XX(response) {
+			t.Fatal("status code is not 4XX")
+		}
+		t.Log(response.RawResponse().StatusCode)
+		t.Log(response.BindJson(&receiver))
+		t.Log(receiver)
 
-	response, executeErr := NewLoggerClient(logger.Default()).ExecuteRequest(
-		NewRequestBuilder().
-			WithPath("http://localhost:8080/test/echo/sunist").
-			WithQuery("admin", "1").
-			WithMethod(POST).
-			WithCookie("test", "test").
-			WithHeader("Authorization", ContentTypeJson).
-			WithJsonBody(&Request{Msg: ""}),
-	)
-	if executeErr != nil {
-		t.Fatal(executeErr)
+		ex <- struct{}{}
+	})
+
+}
+
+func TestHttpFunctions(t *testing.T) {
+	okResponse := &simpleParser{
+		raw: &http.Response{
+			Status:     "ok",
+			StatusCode: 200,
+		},
+	}
+	badResponse := &simpleParser{
+		raw: &http.Response{
+			Status:     "bad",
+			StatusCode: 400,
+		},
+	}
+	errorResponse := &simpleParser{
+		raw: &http.Response{
+			Status:     "error",
+			StatusCode: 500,
+		},
 	}
 
-	receiver := FrameworkResponse{}
-	t.Log(response.RawResponse().StatusCode)
-	t.Log(response.BindJson(&receiver))
-	t.Log(receiver)
+	t.Run("StatusCode2XX", func(t *testing.T) {
+		if !StatusCodeIs2XX(okResponse) {
+			t.Error("StatusCodeIs2XX should return true")
+		}
+	})
 
-	ex <- struct{}{}
+	t.Run("StatusCode4XX", func(t *testing.T) {
+		if !StatusCodeIs4XX(badResponse) {
+			t.Error("StatusCodeIs4XX should return true")
+		}
+	})
+
+	t.Run("StatusCode5XX", func(t *testing.T) {
+		if !StatusCodeIs5XX(errorResponse) {
+			t.Error("StatusCodeIs5XX should return true")
+		}
+	})
+
+	t.Run("CheckStatusCode", func(t *testing.T) {
+		if CheckStatusCode(okResponse) {
+			t.Error("CheckStatusCode should return false when empty want list")
+		}
+		if !CheckStatusCode(okResponse, StatusOK) {
+			t.Error("CheckStatusCode should return true when 200")
+		}
+		if CheckStatusCode(okResponse, StatusBadRequest, StatusBadGateway) {
+			t.Error("CheckStatusCode should return false when 400 and 502")
+		}
+	})
 }

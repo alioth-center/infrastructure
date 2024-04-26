@@ -25,7 +25,7 @@ const (
 var (
 	workingDirectory = "./"
 	timeFormat       = "2006.01.02-15:04:05.000Z07:00"
-	levelValueMap    = map[Level]int{
+	LevelValueMap    = map[Level]int{
 		LevelDebug: 0,
 		LevelInfo:  1,
 		LevelWarn:  2,
@@ -109,7 +109,7 @@ func (f *fields) init(ctx context.Context) Fields {
 	return f
 }
 
-// export 导出日志字段
+// Export 导出日志字段
 func (f *fields) Export() *Entry {
 	traceID, ctx := trace.TransformContext(f.ctx)
 	f.ctx = ctx

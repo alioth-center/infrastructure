@@ -10,7 +10,7 @@ type Engine struct {
 	serving bool
 
 	baseRouter  Router
-	endpoints   map[string]EndPointInterface
+	endpoints   []EndPointInterface
 	middlewares []gin.HandlerFunc
 }
 
@@ -20,7 +20,7 @@ func (e *Engine) registerEndpoints() {
 	}
 
 	for _, ep := range e.endpoints {
-		ep.bindRouter(e.core.Group(""))
+		ep.bindRouter(e.core.Group(""), e.baseRouter)
 	}
 }
 
@@ -29,11 +29,11 @@ func (e *Engine) BaseRouter() Router {
 }
 
 func (e *Engine) AddEndPoints(eps ...EndPointInterface) {
-	for _, ep := range eps {
-		if ep != nil {
-			e.endpoints[ep.fullRouterPath()] = ep
-		}
+	if e.endpoints == nil {
+		e.endpoints = []EndPointInterface{}
 	}
+
+	e.endpoints = append(e.endpoints, eps...)
 }
 
 func (e *Engine) AddMiddlewares(middleware ...gin.HandlerFunc) {
@@ -80,7 +80,7 @@ func (e *Engine) ServeAsync(bindAddress string, exitChan chan struct{}) (errChan
 func NewEngine(base string) *Engine {
 	e := &Engine{
 		core:        gin.New(),
-		endpoints:   map[string]EndPointInterface{},
+		endpoints:   []EndPointInterface{},
 		baseRouter:  NewRouter(base),
 		middlewares: []gin.HandlerFunc{},
 	}
