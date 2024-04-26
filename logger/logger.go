@@ -94,40 +94,40 @@ func (l *logger) Logf(level Level, fields Fields, format string, args ...any) {
 }
 
 func (l *logger) Debug(fields Fields) {
-	if levelValueMap[l.options.LogLevel] <= levelValueMap[LevelDebug] {
+	if LevelValueMap[l.options.LogLevel] <= LevelValueMap[LevelDebug] {
 		l.options.StdoutWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelDebug)))
 	}
 }
 
 func (l *logger) Info(fields Fields) {
-	if levelValueMap[l.options.LogLevel] <= levelValueMap[LevelInfo] {
+	if LevelValueMap[l.options.LogLevel] <= LevelValueMap[LevelInfo] {
 		l.options.StdoutWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelInfo)))
 	}
 }
 
 func (l *logger) Warn(fields Fields) {
-	if levelValueMap[l.options.LogLevel] <= levelValueMap[LevelWarn] {
+	if LevelValueMap[l.options.LogLevel] <= LevelValueMap[LevelWarn] {
 		l.options.StdoutWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelWarn)))
 		l.options.StderrWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelWarn)))
 	}
 }
 
 func (l *logger) Error(fields Fields) {
-	if levelValueMap[l.options.LogLevel] <= levelValueMap[LevelError] {
+	if LevelValueMap[l.options.LogLevel] <= LevelValueMap[LevelError] {
 		l.options.StdoutWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelError)))
 		l.options.StderrWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelError)))
 	}
 }
 
 func (l *logger) Fatal(fields Fields) {
-	if levelValueMap[l.options.LogLevel] <= levelValueMap[LevelFatal] {
+	if LevelValueMap[l.options.LogLevel] <= LevelValueMap[LevelFatal] {
 		l.options.StdoutWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelFatal)))
 		l.options.StderrWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelFatal)))
 	}
 }
 
 func (l *logger) Panic(fields Fields) {
-	if levelValueMap[l.options.LogLevel] <= levelValueMap[LevelPanic] {
+	if LevelValueMap[l.options.LogLevel] <= LevelValueMap[LevelPanic] {
 		l.options.StdoutWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelPanic)))
 		l.options.StderrWriter.Write(l.marshalFieldsToBytes(fields.WithLevel(LevelPanic)))
 	}
