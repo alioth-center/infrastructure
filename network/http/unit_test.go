@@ -210,7 +210,7 @@ func TestHttpServer(t *testing.T) {
 		engine.AddEndPoints(echoGroup)
 
 		ex := make(chan struct{}, 1)
-		ec := engine.ServeAsync("0.0.0.0:8080", ex)
+		ec := engine.ServeAsync("0.0.0.0:8081", ex)
 		go func() {
 			for {
 				select {
@@ -225,7 +225,7 @@ func TestHttpServer(t *testing.T) {
 
 		response, executeErr := NewLoggerClient(logger.Default()).ExecuteRequest(
 			NewRequestBuilder().
-				WithPath("http://localhost:8080/test1/echo/sunist").
+				WithPath("http://localhost:8081/test1/echo/sunist").
 				WithQuery("admin", "1").
 				WithMethod(POST).
 				WithCookie("test", "test").
