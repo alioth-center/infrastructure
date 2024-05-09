@@ -35,17 +35,21 @@ func CheckRequestMethodPreprocessor[request any, response any](endpoint *EndPoin
 	}
 
 	if existMethod, allowMethod := endpoint.allowMethods.isAllowed(origin.Request.Method); !existMethod {
+		errMsg := values.BuildStringsWithJoin(" ", "method", origin.Request.Method, "is not supported")
 		origin.AbortWithStatusJSON(StatusMethodNotAllowed, &FrameworkResponse{
 			ErrorCode:    ErrorCodeMethodNotSupported,
-			ErrorMessage: values.BuildStringsWithJoin(" ", "method", origin.Request.Method, "is not supported"),
+			ErrorMessage: errMsg,
 			RequestID:    trace.GetTid(dest),
 		})
+		origin.Set(ErrorContextKey(), errMsg)
 	} else if !allowMethod {
+		errMsg := values.BuildStringsWithJoin(" ", "method", origin.Request.Method, "is not allowed")
 		origin.AbortWithStatusJSON(StatusMethodNotAllowed, &FrameworkResponse{
-			ErrorCode:    ErrorCodeMethodNotSupported,
-			ErrorMessage: values.BuildStringsWithJoin(" ", "method", origin.Request.Method, "is not allowed"),
+			ErrorCode:    ErrorCodeMethodNotAllowed,
+			ErrorMessage: errMsg,
 			RequestID:    trace.GetTid(dest),
 		})
+		origin.Set(ErrorContextKey(), errMsg)
 	}
 }
 
@@ -58,11 +62,13 @@ func CheckRequestHeadersPreprocessor[request any, response any](endpoint *EndPoi
 	headers := Params{}
 	for key, necessary := range endpoint.parsingHeaders {
 		if necessary && origin.GetHeader(key) == "" {
+			errMsg := values.BuildStringsWithJoin(" ", "header", key, "is required")
 			origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 				ErrorCode:    ErrorCodeMissingRequiredHeader,
-				ErrorMessage: values.BuildStringsWithJoin(" ", "header", key, "is required"),
+				ErrorMessage: errMsg,
 				RequestID:    trace.GetTid(dest),
 			})
+			origin.Set(ErrorContextKey(), errMsg)
 			return
 		}
 
@@ -72,7 +78,7 @@ func CheckRequestHeadersPreprocessor[request any, response any](endpoint *EndPoi
 	dest.SetHeaderParams(headers)
 }
 
-func LoadNormalRequestHeadersPreprocessor[request any, response any](endpoint *EndPoint[request, response], origin *gin.Context, dest PreprocessedContext[request, response]) {
+func LoadNormalRequestHeadersPreprocessor[request any, response any](_ *EndPoint[request, response], origin *gin.Context, dest PreprocessedContext[request, response]) {
 	// checking chain is aborted, no need to check
 	if origin.IsAborted() {
 		return
@@ -103,11 +109,13 @@ func CheckRequestQueriesPreprocessor[request any, response any](endpoint *EndPoi
 	queries := Params{}
 	for key, necessary := range endpoint.parsingQueries {
 		if necessary && origin.Query(key) == "" {
+			errMsg := values.BuildStringsWithJoin(" ", "query", key, "is required")
 			origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 				ErrorCode:    ErrorCodeMissingRequiredQuery,
-				ErrorMessage: values.BuildStringsWithJoin(" ", "query", key, "is required"),
+				ErrorMessage: errMsg,
 				RequestID:    trace.GetTid(dest),
 			})
+			origin.Set(ErrorContextKey(), errMsg)
 			return
 		}
 
@@ -126,11 +134,13 @@ func CheckRequestParamsPreprocessor[request any, response any](endpoint *EndPoin
 	params := Params{}
 	for key, necessary := range endpoint.parsingParams {
 		if necessary && origin.Param(key) == "" {
+			errMsg := values.BuildStringsWithJoin(" ", "param", key, "is required")
 			origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 				ErrorCode:    ErrorCodeMissingRequiredParam,
-				ErrorMessage: values.BuildStringsWithJoin(" ", "param", key, "is required"),
+				ErrorMessage: errMsg,
 				RequestID:    trace.GetTid(dest),
 			})
+			origin.Set(ErrorContextKey(), errMsg)
 			return
 		}
 
@@ -150,11 +160,13 @@ func CheckRequestCookiesPreprocessor[request any, response any](endpoint *EndPoi
 	for key, necessary := range endpoint.parsingCookies {
 		value, err := origin.Cookie(key)
 		if necessary && err != nil {
+			errMsg := values.BuildStringsWithJoin(" ", "cookie", key, "is required")
 			origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 				ErrorCode:    ErrorCodeMissingRequiredCookie,
-				ErrorMessage: values.BuildStringsWithJoin(" ", "cookie", key, "is required"),
+				ErrorMessage: errMsg,
 				RequestID:    trace.GetTid(dest),
 			})
+			origin.Set(ErrorContextKey(), errMsg)
 			return
 		}
 		cookies[key] = value
@@ -163,7 +175,7 @@ func CheckRequestCookiesPreprocessor[request any, response any](endpoint *EndPoi
 	dest.SetCookieParams(cookies)
 }
 
-func CheckRequestBodyPreprocessor[request any, response any](endpoint *EndPoint[request, response], origin *gin.Context, dest PreprocessedContext[request, response]) {
+func CheckRequestBodyPreprocessor[request any, response any](_ *EndPoint[request, response], origin *gin.Context, dest PreprocessedContext[request, response]) {
 	// checking chain is aborted, no need to check
 	if origin.IsAborted() {
 		return
@@ -172,32 +184,38 @@ func CheckRequestBodyPreprocessor[request any, response any](endpoint *EndPoint[
 	// read request body
 	payload, readErr := origin.GetRawData()
 	if readErr != nil {
+		errMsg := values.BuildStringsWithJoin(" ", "invalid request body:", readErr.Error())
 		origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 			ErrorCode:    ErrorCodeInvalidRequestBody,
-			ErrorMessage: values.BuildStringsWithJoin(" ", "invalid request body:", readErr.Error()),
+			ErrorMessage: errMsg,
 			RequestID:    trace.GetTid(dest),
 		})
+		origin.Set(ErrorContextKey(), errMsg)
 		return
 	}
 
 	// unmarshal request body
 	requestBody, unmarshalErr := defaultPayloadProcessor[request](origin.ContentType(), payload, nil)
 	if unmarshalErr != nil {
+		errMsg := values.BuildStringsWithJoin(" ", "invalid request body:", unmarshalErr.Error())
 		origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 			ErrorCode:    ErrorCodeInvalidRequestBody,
-			ErrorMessage: values.BuildStringsWithJoin(" ", "invalid request body:", unmarshalErr.Error()),
+			ErrorMessage: errMsg,
 			RequestID:    trace.GetTid(dest),
 		})
+		origin.Set(ErrorContextKey(), errMsg)
 		return
 	}
 
 	// check request body
 	if checkResult := values.CheckStruct(requestBody); checkResult != "" {
+		errMsg := values.BuildStringsWithJoin(" ", "missing required field:", checkResult)
 		origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
 			ErrorCode:    ErrorCodeBadRequestBody,
-			ErrorMessage: values.BuildStringsWithJoin(" ", "missing required field:", checkResult),
+			ErrorMessage: errMsg,
 			RequestID:    trace.GetTid(dest),
 		})
+		origin.Set(ErrorContextKey(), errMsg)
 		return
 	}
 

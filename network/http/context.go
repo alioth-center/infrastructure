@@ -2,9 +2,10 @@ package http
 
 import (
 	"context"
-	"github.com/alioth-center/infrastructure/utils/values"
 	"net/http"
 	"time"
+
+	"github.com/alioth-center/infrastructure/utils/values"
 )
 
 type PreprocessedContext[request any, response any] interface {
@@ -120,6 +121,16 @@ type Context[request any, response any] interface {
 	//		// do something with params
 	//	}
 	HeaderParams() Params
+
+	// CookieParams returns the cookie params.
+	// example:
+	//
+	//	func handler(ctx Context[request, response]) {
+	//		// do something
+	//		params := ctx.CookieParams()
+	//		// do something with params
+	//	}
+	CookieParams() Params
 
 	// NormalHeaders returns the normal headers.
 	// example:
@@ -260,6 +271,16 @@ type Context[request any, response any] interface {
 	//		// do something with err
 	//	}
 	SetError(err error)
+
+	// SetValue sets the value, equals to context.WithValue
+	// example:
+	//
+	//	func handler(ctx Context[request, response]) {
+	//		// do something
+	//		ctx.SetValue("key", "value")
+	//		// do something with value
+	//	}
+	SetValue(key, value any)
 }
 
 type acContext[request any, response any] struct {
@@ -368,6 +389,14 @@ func (c *acContext[request, response]) HeaderParams() Params {
 	return c.headerParams
 }
 
+func (c *acContext[request, response]) CookieParams() Params {
+	if c.cookieParams == nil {
+		c.cookieParams = Params{}
+	}
+
+	return c.cookieParams
+}
+
 func (c *acContext[request, response]) NormalHeaders() RequestHeader {
 	return c.headers
 }
@@ -438,6 +467,10 @@ func (c *acContext[request, response]) Error() error {
 
 func (c *acContext[request, response]) SetError(err error) {
 	c.err = err
+}
+
+func (c *acContext[request, response]) SetValue(key, value any) {
+	c.ctx = context.WithValue(c.ctx, key, value)
 }
 
 func (c *acContext[request, response]) Deadline() (deadline time.Time, ok bool) {

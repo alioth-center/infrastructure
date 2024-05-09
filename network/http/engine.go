@@ -2,6 +2,8 @@ package http
 
 import (
 	"github.com/alioth-center/infrastructure/exit"
+	"github.com/alioth-center/infrastructure/trace"
+	"github.com/alioth-center/infrastructure/utils/values"
 	"github.com/gin-gonic/gin"
 )
 
@@ -77,6 +79,25 @@ func (e *Engine) ServeAsync(bindAddress string, exitChan chan struct{}) (errChan
 	return ec
 }
 
+func (e *Engine) traceContext(ctx *gin.Context) {
+	tid := ctx.GetHeader(TraceHeaderKey())
+	if tid == "" {
+		tid = trace.GetTid(trace.NewContext())
+	}
+	ctx.Set(trace.ContextKey(), tid)
+}
+
+func (e *Engine) defaultHandler(ctx *gin.Context) {
+	errResponse := &FrameworkResponse{
+		ErrorCode:    ErrorCodeResourceNotFound,
+		ErrorMessage: values.BuildStringsWithJoin(" ", "resource", ctx.Request.URL.String(), "not found or function not implemented"),
+		RequestID:    trace.GetTid(ctx),
+		Data:         nil,
+	}
+
+	ctx.JSON(StatusNotFound, errResponse)
+}
+
 func NewEngine(base string) *Engine {
 	e := &Engine{
 		core:        gin.New(),
@@ -84,6 +105,10 @@ func NewEngine(base string) *Engine {
 		baseRouter:  NewRouter(base),
 		middlewares: []gin.HandlerFunc{},
 	}
+
+	e.core.Use(e.traceContext)
+	e.core.NoRoute(e.defaultHandler)
+	e.core.NoMethod(e.defaultHandler)
 
 	return e
 }
