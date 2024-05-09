@@ -3,11 +3,12 @@ package redis
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/alioth-center/infrastructure/cache"
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/utils/values"
 	"github.com/go-redis/redis/v8"
-	"time"
 )
 
 const DriverName = "redis"

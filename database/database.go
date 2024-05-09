@@ -2,8 +2,9 @@ package database
 
 import (
 	"context"
-	"github.com/alioth-center/infrastructure/logger"
 	"time"
+
+	"github.com/alioth-center/infrastructure/logger"
 )
 
 type Options struct {

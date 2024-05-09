@@ -1,10 +1,11 @@
 package memory
 
 import (
-	"github.com/alioth-center/infrastructure/cache"
-	"github.com/alioth-center/infrastructure/exit"
 	"sync"
 	"time"
+
+	"github.com/alioth-center/infrastructure/cache"
+	"github.com/alioth-center/infrastructure/exit"
 )
 
 const DriverName = "memory"

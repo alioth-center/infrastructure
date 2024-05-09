@@ -2,14 +2,15 @@ package cls
 
 import (
 	"fmt"
-	"github.com/alioth-center/infrastructure/logger"
-	"github.com/alioth-center/infrastructure/trace"
-	"github.com/alioth-center/infrastructure/utils/generate"
-	"github.com/alioth-center/infrastructure/utils/timezone"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/trace"
+	"github.com/alioth-center/infrastructure/utils/generate"
+	"github.com/alioth-center/infrastructure/utils/timezone"
 )
 
 func TestFieldParser(t *testing.T) {

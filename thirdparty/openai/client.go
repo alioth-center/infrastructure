@@ -2,6 +2,7 @@ package openai
 
 import (
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/utils/values"

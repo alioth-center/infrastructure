@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/alioth-center/infrastructure/cache"
-	"github.com/go-redis/redis/v8"
 	"reflect"
 	"time"
+
+	"github.com/alioth-center/infrastructure/cache"
+	"github.com/go-redis/redis/v8"
 )
 
 type accessor struct {

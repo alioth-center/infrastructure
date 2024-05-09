@@ -2,8 +2,9 @@ package sqlite
 
 import (
 	"fmt"
-	"github.com/alioth-center/infrastructure/trace"
 	"testing"
+
+	"github.com/alioth-center/infrastructure/trace"
 )
 
 type table struct {

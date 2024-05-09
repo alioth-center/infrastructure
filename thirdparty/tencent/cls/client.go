@@ -2,6 +2,7 @@ package cls
 
 import (
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/trace"
@@ -12,9 +13,7 @@ import (
 	tcls "github.com/tencentcloud/tencentcloud-cls-sdk-go"
 )
 
-var (
-	clients = concurrency.NewHashMap[string, *tcls.AsyncProducerClient](concurrency.HashMapNodeOptionSmallSize)
-)
+var clients = concurrency.NewHashMap[string, *tcls.AsyncProducerClient](concurrency.HashMapNodeOptionSmallSize)
 
 type client struct {
 	instance *tcls.AsyncProducerClient
@@ -77,7 +76,7 @@ func (c *client) exit(sig string) string {
 func (c *client) execute(fields map[string]string) {
 	log := tcls.NewCLSLog(timezone.NowInZeroTimeUnix(), fields)
 	go func(fields map[string]string) {
-		var e error = nil
+		var e error
 		for i := 0; i < c.opts.MaxRetries; i++ {
 			e = c.instance.SendLog(c.opts.TopicID, log, c)
 			if e == nil {

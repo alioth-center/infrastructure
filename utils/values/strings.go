@@ -23,7 +23,7 @@ func BuildStrings(parts ...string) string {
 //
 //	BuildStringsWithJoin("/", "a", "b", "c") -> "a/b/c"
 func BuildStringsWithJoin(sep string, parts ...string) string {
-	if parts == nil || len(parts) == 0 {
+	if len(parts) == 0 {
 		return ""
 	}
 
@@ -68,7 +68,7 @@ func BuildStringsWithReplacement(replacement map[string]string, parts ...string)
 //
 //	BuildStringsWithTemplate("a{1}b{2}c{3}", "1", "2", "3") -> "a1b2c3"
 func BuildStringsWithTemplate(template string, args ...string) string {
-	if args == nil || len(args) == 0 {
+	if len(args) == 0 {
 		return template
 	}
 
@@ -392,7 +392,7 @@ func NewRawSqlTemplateWithMap(template string, arguments map[string]string) *Raw
 }
 
 func (t *StringTemplate) Parse() string {
-	var template = t.template
+	template := t.template
 	if len(t.arguments) == 0 || len(t.startSignals) == 0 || len(t.endSignals) == 0 {
 		// 没有参数或者没有模板标志，原样输出
 		return t.template

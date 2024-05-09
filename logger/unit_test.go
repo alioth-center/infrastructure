@@ -59,7 +59,7 @@ func TestConsoleWriter(t *testing.T) {
 	cw.Write(wb)
 	cw.Write(wb)
 	cw.Write(wb)
-	//cw.Close()
+	// cw.Close()
 }
 
 func TestLogger(t *testing.T) {

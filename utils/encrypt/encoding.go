@@ -17,21 +17,22 @@ import (
 //
 // 没有出错重试机制，出错直接返回 err
 func AesEncrypt(message string, secret string) (encrypted string, err error) {
-	if block, buildAesBlockErr := aes.NewCipher([]byte(secret)); buildAesBlockErr != nil {
+	block, buildAesBlockErr := aes.NewCipher([]byte(secret))
+	if buildAesBlockErr != nil {
 		return "", buildAesBlockErr
-	} else {
-		plainTextBytes := []byte(message)
-		cipherText := make([]byte, aes.BlockSize+len(plainTextBytes))
-		iv := cipherText[:aes.BlockSize]
-		if _, buildIvErr := rand.Read(iv); buildIvErr != nil {
-			return "", buildIvErr
-		}
-
-		cipher.NewCFBEncrypter(block, iv).XORKeyStream(cipherText[aes.BlockSize:], plainTextBytes)
-		encryptedString := base64.StdEncoding.EncodeToString(cipherText)
-
-		return encryptedString, nil
 	}
+
+	plainTextBytes := []byte(message)
+	cipherText := make([]byte, aes.BlockSize+len(plainTextBytes))
+	iv := cipherText[:aes.BlockSize]
+	if _, buildIvErr := rand.Read(iv); buildIvErr != nil {
+		return "", buildIvErr
+	}
+
+	cipher.NewCFBEncrypter(block, iv).XORKeyStream(cipherText[aes.BlockSize:], plainTextBytes)
+	encryptedString := base64.StdEncoding.EncodeToString(cipherText)
+
+	return encryptedString, nil
 }
 
 // AesDecrypt 使用 AES 加密算法解密消息
@@ -42,25 +43,26 @@ func AesEncrypt(message string, secret string) (encrypted string, err error) {
 //
 // 没有出错重试机制，出错直接返回 err
 func AesDecrypt(encrypted string, secret string) (decrypted string, err error) {
-	if block, buildAesBlockErr := aes.NewCipher([]byte(secret)); buildAesBlockErr != nil {
+	block, buildAesBlockErr := aes.NewCipher([]byte(secret))
+	if buildAesBlockErr != nil {
 		return "", buildAesBlockErr
-	} else {
-		encryptedBytes, decodeErr := base64.StdEncoding.DecodeString(encrypted)
-		if decodeErr != nil {
-			return "", decodeErr
-		}
-
-		if len(encryptedBytes) < aes.BlockSize {
-			return "", fmt.Errorf("encrypted message too short")
-		}
-
-		iv := encryptedBytes[:aes.BlockSize]
-		encryptedBytes = encryptedBytes[aes.BlockSize:]
-
-		cipher.NewCFBDecrypter(block, iv).XORKeyStream(encryptedBytes, encryptedBytes)
-
-		return fmt.Sprintf("%s", encryptedBytes), nil
 	}
+
+	encryptedBytes, decodeErr := base64.StdEncoding.DecodeString(encrypted)
+	if decodeErr != nil {
+		return "", decodeErr
+	}
+
+	if len(encryptedBytes) < aes.BlockSize {
+		return "", fmt.Errorf("encrypted message too short")
+	}
+
+	iv := encryptedBytes[:aes.BlockSize]
+	encryptedBytes = encryptedBytes[aes.BlockSize:]
+
+	cipher.NewCFBDecrypter(block, iv).XORKeyStream(encryptedBytes, encryptedBytes)
+
+	return string(encryptedBytes), nil
 }
 
 // HashMD5 使用 MD5 算法计算消息的哈希值

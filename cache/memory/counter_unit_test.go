@@ -1,36 +1,35 @@
 package memory
 
 import (
-	"github.com/alioth-center/infrastructure/cache"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/cache"
 )
 
-var (
-	BaseCounterUnitTestCaseList = []TestCase[cache.Counter]{
-		{
-			CaseName:     "Increase",
-			TestFunction: IncreaseFunction,
-		},
-		{
-			CaseName:     "IncreaseWithExpireWhenNotExist",
-			TestFunction: IncreaseWithExpireWhenNOtExistFunction,
-		},
-		{
-			CaseName:     "SetExpire",
-			TestFunction: SetExpireFunction,
-		},
-		{
-			CaseName:     "SetExpireWhenNotSet",
-			TestFunction: SetExpireWhenNotSetFunction,
-		},
-		{
-			CaseName:     "ExpireImmediately",
-			TestFunction: ExpireImmediatelyFunction,
-		},
-	}
-)
+var BaseCounterUnitTestCaseList = []TestCase[cache.Counter]{
+	{
+		CaseName:     "Increase",
+		TestFunction: IncreaseFunction,
+	},
+	{
+		CaseName:     "IncreaseWithExpireWhenNotExist",
+		TestFunction: IncreaseWithExpireWhenNOtExistFunction,
+	},
+	{
+		CaseName:     "SetExpire",
+		TestFunction: SetExpireFunction,
+	},
+	{
+		CaseName:     "SetExpireWhenNotSet",
+		TestFunction: SetExpireWhenNotSetFunction,
+	},
+	{
+		CaseName:     "ExpireImmediately",
+		TestFunction: ExpireImmediatelyFunction,
+	},
+}
 
 func IncreaseFunction(impl cache.Counter) func(t *testing.T) {
 	return func(t *testing.T) {

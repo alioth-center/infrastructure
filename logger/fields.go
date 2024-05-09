@@ -2,13 +2,14 @@ package logger
 
 import (
 	"context"
-	"github.com/alioth-center/infrastructure/trace"
 	"os"
 	"path"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/alioth-center/infrastructure/trace"
 )
 
 type Level string
@@ -128,11 +129,11 @@ func (f *fields) Export() *Entry {
 
 // WithTraceID 设置 traceId，如果 traceId 已存在则无效
 func (f *fields) WithTraceID(traceId string) Fields {
-	if f.ctx.Value("trace_id") != nil {
+	if f.ctx.Value(trace.ContextKey()) != nil {
 		return f
 	}
 
-	f.ctx = context.WithValue(f.ctx, "trace_id", traceId)
+	f.ctx = context.WithValue(f.ctx, trace.ContextKey(), traceId) // nolint
 	return f
 }
 
@@ -194,9 +195,9 @@ func (f *fields) WithBaseFields(base Fields) Fields {
 func NewFields(ctx ...context.Context) Fields {
 	if len(ctx) == 1 {
 		return (&fields{}).init(ctx[0])
-	} else {
-		return (&fields{}).init(nil)
 	}
+
+	return (&fields{}).init(context.Background())
 }
 
 func NewFieldsFromEntry(entry *Entry) Fields {

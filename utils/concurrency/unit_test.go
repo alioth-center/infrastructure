@@ -10,7 +10,7 @@ import (
 
 func TestConcurrency(t *testing.T) {
 	st := time.Now()
-	var promises = make([]Promise[string], 10)
+	promises := make([]Promise[string], 10)
 	for i := 0; i < 10; i++ {
 		fn := func() string {
 			time.Sleep(1 * time.Second)

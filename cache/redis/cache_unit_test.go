@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/alioth-center/infrastructure/cache"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/cache"
 )
 
 var (
@@ -2104,7 +2105,6 @@ func AddMemberFunction(impl cache.Cache) func(t *testing.T) {
 			if executeErr == nil {
 				t.Errorf("AddMember:WrongType case failed: no error")
 			}
-
 		})
 	}
 }

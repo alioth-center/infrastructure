@@ -1,19 +1,19 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/alioth-center/infrastructure/cache"
 	"github.com/alioth-center/infrastructure/cache/memory"
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/trace"
 	"github.com/alioth-center/infrastructure/utils/values"
-	"strings"
-	"time"
 )
 
-var (
-	counter cache.Counter = nil
-)
+var counter cache.Counter = nil
 
 type Handler[request any, response any] func(ctx *Context[request, response])
 
@@ -115,7 +115,7 @@ func RequestLimiterHandler[request any, response any](rpd, rpm, rps int) func(ct
 
 		return func(ip string) bool {
 			key := keyBuilder(ip, limitType)
-			rpu := counter.IncreaseWithExpireWhenNotExist(nil, key, 1, expire)
+			rpu := counter.IncreaseWithExpireWhenNotExist(context.Background(), key, 1, expire)
 			if rpu == cache.CounterResultEnumFailed || rpu == cache.CounterResultEnumNotEffective {
 				// 我们内部计数器出错，默认不限制
 				return true

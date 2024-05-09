@@ -38,12 +38,18 @@ jobs:
         options: --entrypoint redis-server
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --config=.golangci.yaml
 
       - name: Test
         run: go test -race -v ./... -coverprofile ./coverage.txt
@@ -59,7 +65,7 @@ jobs:
           MYSQL_DB: testdb
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3.1.1
+        uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:

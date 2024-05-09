@@ -2,18 +2,21 @@ package trace
 
 import (
 	"context"
+	"net"
+
 	"github.com/google/uuid"
 	"google.golang.org/grpc/peer"
-	"net"
 )
 
 const (
 	defaultTraceIDKey = "trace_id"
 )
 
-var (
-	traceIDKey = defaultTraceIDKey
-)
+var traceIDKey = defaultTraceIDKey
+
+func ContextKey() string {
+	return traceIDKey
+}
 
 // SetTraceIDKey it will set the key of trace_id in context globally, only set once.
 // if you need to call it, make sure to set it before any other operation.
@@ -64,7 +67,7 @@ func FromContext(ctx context.Context) (traced context.Context) {
 		return ctx
 	}
 
-	return context.WithValue(ctx, traceIDKey, uuid.NewString())
+	return context.WithValue(ctx, traceIDKey, uuid.NewString()) // nolint
 }
 
 // ForkContext create a new traced context from an existed context.
@@ -79,7 +82,7 @@ func ForkContext(ctx context.Context) (forked context.Context) {
 func ForkContextWithOpts(ctx context.Context, fields ...string) (forked context.Context) {
 	forked = ForkContext(ctx)
 	for _, field := range fields {
-		forked = context.WithValue(forked, field, ctx.Value(field))
+		forked = context.WithValue(forked, field, ctx.Value(field)) // nolint
 	}
 
 	return forked
@@ -92,20 +95,17 @@ func NewContext() context.Context {
 
 // NewContextWithTid build a new context with existed trace id.
 func NewContextWithTid(traceID string) context.Context {
-	return context.WithValue(context.Background(), traceIDKey, traceID)
+	return context.WithValue(context.Background(), traceIDKey, traceID) // nolint
 }
 
 // AttachTraceID 为 context 附加 trace_id
 func AttachTraceID(ctx context.Context) (traceID string, result context.Context) {
 	traceID = uuid.NewString()
-	return traceID, context.WithValue(ctx, traceIDKey, traceID)
+	return traceID, context.WithValue(ctx, traceIDKey, traceID) // nolint
 }
 
-// GetTraceID 从 context 中获取 trace_id，如果获取失败，则重新生成
-//
-// Deprecated: use TransformContext instead
-func GetTraceID(ctx context.Context) (traceID string, result context.Context) {
-	return TransformContext(ctx)
+func Context(ctx context.Context, traceID string) context.Context {
+	return context.WithValue(ctx, traceIDKey, traceID) // nolint
 }
 
 // GetClientIPFromPeer get client ip from a grpc request, if not a grpc request or no client ip, return empty string

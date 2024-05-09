@@ -1,10 +1,11 @@
 package mysql
 
 import (
-	"github.com/alioth-center/infrastructure/logger"
-	"github.com/alioth-center/infrastructure/trace"
 	"os"
 	"testing"
+
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/trace"
 )
 
 func TestMysqlDb(t *testing.T) {

@@ -3,11 +3,12 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/alioth-center/infrastructure/logger"
-	"gopkg.in/yaml.v3"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/alioth-center/infrastructure/logger"
+	"gopkg.in/yaml.v3"
 )
 
 type Client interface {

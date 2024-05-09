@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/alioth-center/infrastructure/cache"
-	"github.com/alioth-center/infrastructure/utils/values"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/alioth-center/infrastructure/cache"
+	"github.com/alioth-center/infrastructure/utils/values"
 )
 
 func getEntryWithType[T any](mp *accessor, wantType Type, key string) (result T, exist bool, expireTime time.Duration) {
@@ -229,7 +230,7 @@ func (ca *accessor) GetExpiredTime(_ context.Context, key string) (exist bool, e
 }
 
 func (ca *accessor) Load(_ context.Context, key string) (exist bool, value string, err error) {
-	exist, _, value, err = ca.LoadWithEX(nil, key)
+	exist, _, value, err = ca.LoadWithEX(context.Background(), key)
 	return exist, value, err
 }
 
@@ -239,7 +240,7 @@ func (ca *accessor) LoadWithEX(_ context.Context, key string) (loaded bool, expi
 		// 如果不存在，返回空值
 		return false, 0, "", nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return true, expireTime, "", NewValueTypeNotMatchError(String, resultEntry.Type())
 	}
@@ -249,12 +250,12 @@ func (ca *accessor) LoadWithEX(_ context.Context, key string) (loaded bool, expi
 }
 
 func (ca *accessor) LoadJson(_ context.Context, key string, receiverPtr any) (exist bool, err error) {
-	exist, _, err = ca.LoadJsonWithEX(nil, key, receiverPtr)
+	exist, _, err = ca.LoadJsonWithEX(context.Background(), key, receiverPtr)
 	return exist, err
 }
 
 func (ca *accessor) LoadJsonWithEX(_ context.Context, key string, receiverPtr any) (exist bool, expiredTime time.Duration, err error) {
-	isExist, exTime, value, _ := ca.LoadWithEX(nil, key)
+	isExist, exTime, value, _ := ca.LoadWithEX(context.Background(), key)
 	if !isExist {
 		return false, 0, nil
 	}
@@ -311,7 +312,7 @@ func (ca *accessor) StoreJson(_ context.Context, key string, senderPtr any) (err
 		return fmt.Errorf("marshal json failed for key %s: %w", key, marshalErr)
 	}
 
-	return ca.Store(nil, key, string(marshaled))
+	return ca.Store(context.Background(), key, string(marshaled))
 }
 
 func (ca *accessor) StoreJsonEX(_ context.Context, key string, senderPtr any, expiration time.Duration) (err error) {
@@ -320,7 +321,7 @@ func (ca *accessor) StoreJsonEX(_ context.Context, key string, senderPtr any, ex
 		return fmt.Errorf("marshal json failed for key %s: %w", key, marshalErr)
 	}
 
-	return ca.StoreEX(nil, key, string(marshaled), expiration)
+	return ca.StoreEX(context.Background(), key, string(marshaled), expiration)
 }
 
 func (ca *accessor) Delete(_ context.Context, key string) (err error) {
@@ -329,19 +330,19 @@ func (ca *accessor) Delete(_ context.Context, key string) (err error) {
 }
 
 func (ca *accessor) LoadAndDelete(_ context.Context, key string) (loaded bool, value string, err error) {
-	if exist, val, _ := ca.Load(nil, key); exist {
-		return true, val, ca.Delete(nil, key)
-	} else {
-		return false, "", nil
+	if exist, val, _ := ca.Load(context.Background(), key); exist {
+		return true, val, ca.Delete(context.Background(), key)
 	}
+
+	return false, "", nil
 }
 
 func (ca *accessor) LoadAndDeleteJson(_ context.Context, key string, receivePtr any) (loaded bool, err error) {
-	if exist, loadErr := ca.LoadJson(nil, key, receivePtr); exist && loadErr == nil {
-		return true, ca.Delete(nil, key)
-	} else if exist && loadErr != nil {
+	if exist, loadErr := ca.LoadJson(context.Background(), key, receivePtr); exist && loadErr == nil {
+		return true, ca.Delete(context.Background(), key)
+	} else if exist {
 		// 即使没有序列化成功，也需要删除键值对
-		_ = ca.Delete(nil, key)
+		_ = ca.Delete(context.Background(), key)
 		return true, loadErr
 	} else {
 		return false, nil
@@ -349,23 +350,23 @@ func (ca *accessor) LoadAndDeleteJson(_ context.Context, key string, receivePtr 
 }
 
 func (ca *accessor) LoadOrStore(_ context.Context, key string, storeValue string) (loaded bool, value string, err error) {
-	if exist, val, _ := ca.Load(nil, key); exist {
+	if exist, val, _ := ca.Load(context.Background(), key); exist {
 		return true, val, nil
 	}
 
-	return false, storeValue, ca.Store(nil, key, storeValue)
+	return false, storeValue, ca.Store(context.Background(), key, storeValue)
 }
 
 func (ca *accessor) LoadOrStoreEX(_ context.Context, key string, storeValue string, expiration time.Duration) (loaded bool, value string, err error) {
-	if exist, val, _ := ca.Load(nil, key); exist {
+	if exist, val, _ := ca.Load(context.Background(), key); exist {
 		return true, val, nil
 	}
 
-	return false, storeValue, ca.StoreEX(nil, key, storeValue, expiration)
+	return false, storeValue, ca.StoreEX(context.Background(), key, storeValue, expiration)
 }
 
 func (ca *accessor) LoadOrStoreJson(_ context.Context, key string, senderPtr any, receiverPtr any) (loaded bool, err error) {
-	if exist, loadErr := ca.LoadJson(nil, key, receiverPtr); exist {
+	if exist, loadErr := ca.LoadJson(context.Background(), key, receiverPtr); exist {
 		return true, loadErr
 	}
 
@@ -375,11 +376,11 @@ func (ca *accessor) LoadOrStoreJson(_ context.Context, key string, senderPtr any
 		return false, copyErr
 	}
 
-	return false, ca.StoreJson(nil, key, senderPtr)
+	return false, ca.StoreJson(context.Background(), key, senderPtr)
 }
 
 func (ca *accessor) LoadOrStoreJsonEX(_ context.Context, key string, senderPtr any, receiverPtr any, expiration time.Duration) (loaded bool, err error) {
-	if exist, loadErr := ca.LoadJson(nil, key, receiverPtr); exist {
+	if exist, loadErr := ca.LoadJson(context.Background(), key, receiverPtr); exist {
 		return true, loadErr
 	}
 
@@ -389,7 +390,7 @@ func (ca *accessor) LoadOrStoreJsonEX(_ context.Context, key string, senderPtr a
 		return false, copyErr
 	}
 
-	return false, ca.StoreJsonEX(nil, key, senderPtr, expiration)
+	return false, ca.StoreJsonEX(context.Background(), key, senderPtr, expiration)
 }
 
 func (ca *accessor) IsMember(_ context.Context, key string, member string) (isMember bool, err error) {
@@ -398,7 +399,7 @@ func (ca *accessor) IsMember(_ context.Context, key string, member string) (isMe
 		// 如果不存在，直接返回
 		return false, nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return false, NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
@@ -407,7 +408,7 @@ func (ca *accessor) IsMember(_ context.Context, key string, member string) (isMe
 }
 
 func (ca *accessor) IsMembers(_ context.Context, key string, members ...string) (isMembers bool, err error) {
-	if members == nil || len(members) == 0 {
+	if len(members) == 0 {
 		// 如果没有元素，直接返回
 		return false, nil
 	}
@@ -417,7 +418,7 @@ func (ca *accessor) IsMembers(_ context.Context, key string, members ...string) 
 		// 如果不存在，直接返回
 		return false, nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return false, NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
@@ -440,7 +441,7 @@ func (ca *accessor) AddMember(_ context.Context, key string, member string) (err
 		ca.create(key, resultEntry)
 		return nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
@@ -452,7 +453,7 @@ func (ca *accessor) AddMember(_ context.Context, key string, member string) (err
 }
 
 func (ca *accessor) AddMembers(_ context.Context, key string, members ...string) (err error) {
-	if members == nil || len(members) == 0 {
+	if len(members) == 0 {
 		// 如果没有元素，直接返回
 		return nil
 	}
@@ -465,7 +466,7 @@ func (ca *accessor) AddMembers(_ context.Context, key string, members ...string)
 		ca.create(key, resultEntry)
 		return nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
@@ -481,7 +482,7 @@ func (ca *accessor) RemoveMember(_ context.Context, key string, member string) (
 		// 如果不存在，直接返回
 		return nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
@@ -497,7 +498,7 @@ func (ca *accessor) GetMembers(_ context.Context, key string) (members []string,
 		// 如果不存在，直接返回
 		return []string{}, nil
 	}
-	if resultEntry == nil && exist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return []string{}, NewValueTypeNotMatchError(Set, resultEntry.Type())
 	}
@@ -506,7 +507,7 @@ func (ca *accessor) GetMembers(_ context.Context, key string) (members []string,
 }
 
 func (ca *accessor) GetRandomMember(_ context.Context, key string) (member string, err error) {
-	members, getMembersErr := ca.GetMembers(nil, key)
+	members, getMembersErr := ca.GetMembers(context.Background(), key)
 	if getMembersErr != nil {
 		return "", getMembersErr
 	}
@@ -523,7 +524,7 @@ func (ca *accessor) GetRandomMembers(_ context.Context, key string, count int64)
 		return []string{}, nil
 	}
 
-	existMembers, getMembersErr := ca.GetMembers(nil, key)
+	existMembers, getMembersErr := ca.GetMembers(context.Background(), key)
 	if getMembersErr != nil {
 		return []string{}, getMembersErr
 	}
@@ -566,7 +567,7 @@ func (ca *accessor) HGetValue(_ context.Context, key string, field string) (exis
 		// 如果不存在hash的key，直接返回
 		return false, "", nil
 	}
-	if resultEntry == nil && isExist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return true, "", NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
@@ -581,7 +582,7 @@ func (ca *accessor) HGetValues(_ context.Context, key string, fields ...string) 
 		// 如果不存在hash的key，直接返回
 		return map[string]string{}, nil
 	}
-	if resultEntry == nil && isExist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return map[string]string{}, NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
@@ -590,7 +591,7 @@ func (ca *accessor) HGetValues(_ context.Context, key string, fields ...string) 
 }
 
 func (ca *accessor) HGetJson(_ context.Context, key string, field string, receiverPtr any) (exist bool, err error) {
-	isExist, value, getValueErr := ca.HGetValue(nil, key, field)
+	isExist, value, getValueErr := ca.HGetValue(context.Background(), key, field)
 	if !isExist {
 		return false, nil
 	}
@@ -611,7 +612,7 @@ func (ca *accessor) HGetAll(_ context.Context, key string) (resultMap map[string
 		// 如果不存在hash的key，直接返回
 		return map[string]string{}, nil
 	}
-	if resultEntry == nil && isExist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return map[string]string{}, NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
@@ -620,7 +621,7 @@ func (ca *accessor) HGetAll(_ context.Context, key string) (resultMap map[string
 }
 
 func (ca *accessor) HGetAllJson(_ context.Context, key string, receiverPtr any) (err error) {
-	result, getErr := ca.HGetAll(nil, key)
+	result, getErr := ca.HGetAll(context.Background(), key)
 	if getErr != nil {
 		return getErr
 	}
@@ -644,7 +645,7 @@ func (ca *accessor) HSetValue(_ context.Context, key string, field string, value
 		ca.create(key, resultEntry)
 		return nil
 	}
-	if resultEntry == nil && isExist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
@@ -664,7 +665,7 @@ func (ca *accessor) HSetValues(_ context.Context, key string, values map[string]
 		ca.create(key, resultEntry)
 		return nil
 	}
-	if resultEntry == nil && isExist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
@@ -681,7 +682,7 @@ func (ca *accessor) HRemoveValue(_ context.Context, key string, field string) (e
 		// 如果不存在hash的key，直接返回
 		return nil
 	}
-	if resultEntry == nil && isExist {
+	if resultEntry == nil {
 		// 如果类型不匹配，返回错误
 		return NewValueTypeNotMatchError(Hash, resultEntry.Type())
 	}
@@ -701,7 +702,7 @@ func (ca *accessor) HRemoveValues(_ context.Context, key string, fields ...strin
 	}
 
 	if entry.IsExpired() {
-		_ = ca.Delete(nil, key)
+		_ = ca.Delete(context.Background(), key)
 		return nil
 	}
 

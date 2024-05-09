@@ -58,8 +58,5 @@ func BlockedUntilTerminate() {
 	}
 
 	set = true
-	select {
-	case <-exc:
-		return
-	}
+	<-exc
 }

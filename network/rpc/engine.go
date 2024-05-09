@@ -2,9 +2,10 @@ package rpc
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/alioth-center/infrastructure/exit"
 	"google.golang.org/grpc"
-	"net"
 )
 
 type Engine struct {
@@ -22,16 +23,16 @@ func (e *Engine) Serving() bool {
 func (e *Engine) Serve(address string) (err error) {
 	if e.serving {
 		return NewServerAlreadyServingError(e.address)
-	} else {
-		e.serving = true
-		e.address = address
-
-		// 只有在未启动服务时才需要注册退出
-		exit.Register(func(_ string) string {
-			e.server.GracefulStop()
-			return "rpc engine stopped"
-		}, "rpc engine")
 	}
+
+	e.serving = true
+	e.address = address
+
+	// 只有在未启动服务时才需要注册退出
+	exit.Register(func(_ string) string {
+		e.server.GracefulStop()
+		return "rpc engine stopped"
+	}, "rpc engine")
 
 	conn, listenErr := net.Listen("tcp", address)
 	defer func() {
@@ -57,13 +58,13 @@ func (e *Engine) ServeAsync(address string, ex chan struct{}) (exitChan chan err
 	if e.serving {
 		ec <- NewServerAlreadyServingError(e.address)
 		return ec
-	} else {
-		// 只有在未启动服务时才需要退出
-		exit.Register(func(_ string) string {
-			ex <- struct{}{}
-			return "rpc server stopped"
-		}, "rpc server")
 	}
+
+	// 只有在未启动服务时才需要退出
+	exit.Register(func(_ string) string {
+		ex <- struct{}{}
+		return "rpc server stopped"
+	}, "rpc server")
 
 	go func() {
 		select {

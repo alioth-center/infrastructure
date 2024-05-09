@@ -5,9 +5,7 @@ import (
 	"strings"
 )
 
-var (
-	globalRedisKeyPrefix string
-)
+var globalRedisKeyPrefix string
 
 func SetGlobalRedisKeyPrefix(key string) {
 	globalRedisKeyPrefix = key

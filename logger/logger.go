@@ -2,12 +2,11 @@ package logger
 
 import (
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/exit"
 )
 
-var (
-	defaultLogger *logger = nil
-)
+var defaultLogger *logger = nil
 
 type Options struct {
 	LogLevel     Level
@@ -158,7 +157,7 @@ func (l *logger) Panicf(fields Fields, format string, args ...any) {
 }
 
 func New() Logger {
-	var l = &logger{}
+	l := &logger{}
 	l.init(Options{
 		LogLevel:     LevelInfo,
 		Marshaller:   JsonMarshaller,
@@ -182,7 +181,7 @@ func Default() Logger {
 }
 
 func newLoggerWithOptions(options Options) Logger {
-	var l = &logger{}
+	l := &logger{}
 	exit.Register(func(_ string) string {
 		// stdout 和 stderr 不能关闭，可能会导致异常情况
 		if options.notStdout {

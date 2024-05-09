@@ -3,21 +3,20 @@ package http
 import (
 	"encoding/json"
 	"encoding/xml"
+
 	"github.com/alioth-center/infrastructure/utils/values"
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	processors = map[string]func(in []byte, receiver any) error{
-		"":                 json.Unmarshal, // default use json processor
-		"application/json": json.Unmarshal,
-		"text/json":        json.Unmarshal,
-		"application/yaml": yaml.Unmarshal,
-		"text/yaml":        yaml.Unmarshal,
-		"application/xml":  xml.Unmarshal,
-		"text/xml":         xml.Unmarshal,
-	}
-)
+var processors = map[string]func(in []byte, receiver any) error{
+	"":                 json.Unmarshal, // default use json processor
+	"application/json": json.Unmarshal,
+	"text/json":        json.Unmarshal,
+	"application/yaml": yaml.Unmarshal,
+	"text/yaml":        yaml.Unmarshal,
+	"application/xml":  xml.Unmarshal,
+	"text/xml":         xml.Unmarshal,
+}
 
 func defaultPayloadProcessor[request any](contentType string, payload []byte, marshaller func(in []byte, receiver any) error) (request, error) {
 	if marshaller == nil {

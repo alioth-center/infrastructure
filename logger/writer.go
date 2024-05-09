@@ -2,9 +2,10 @@ package logger
 
 import (
 	"fmt"
-	"github.com/alioth-center/infrastructure/errors"
 	"os"
 	"sync"
+
+	"github.com/alioth-center/infrastructure/errors"
 )
 
 var (
@@ -130,7 +131,7 @@ func FileWriter(path string) (w Writer, err error) {
 		return nil, errors.NewFileWriterWriteToDirectoryError(path)
 	}
 
-	f, ope := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	f, ope := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 	if ope != nil {
 		// 打开文件失败，返回错误
 		return nil, fmt.Errorf("open log file error: %w", ope)

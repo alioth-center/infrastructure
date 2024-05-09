@@ -2,8 +2,9 @@ package rpc
 
 import (
 	"context"
-	"github.com/alioth-center/infrastructure/trace"
 	"time"
+
+	"github.com/alioth-center/infrastructure/trace"
 )
 
 const (

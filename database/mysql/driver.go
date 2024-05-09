@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/database"
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"

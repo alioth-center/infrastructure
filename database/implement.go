@@ -3,9 +3,10 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
+
 	"github.com/alioth-center/infrastructure/logger"
 	"gorm.io/gorm"
-	"time"
 )
 
 type BaseDatabaseImplement struct {
@@ -137,10 +138,8 @@ func (s *BaseDatabaseImplement) execTransaction(command func(tx *gorm.DB) error,
 	var db *gorm.DB
 	if len(ctx) != 1 {
 		db = s.Db.Session(&gorm.Session{})
-		trace = nil
 	} else if ctx[0] == nil {
 		db = s.Db.Session(&gorm.Session{})
-		trace = nil
 	} else if s.Timeout > 0 {
 		timeout, cancel := context.WithTimeout(ctx[0], s.Timeout)
 		trace = timeout

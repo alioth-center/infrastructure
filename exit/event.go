@@ -11,9 +11,7 @@ type eventList struct {
 	handler EventHandler
 }
 
-var (
-	exitEvents []eventList
-)
+var exitEvents []eventList
 
 // Register 向退出事件列表中注册事件，事件将在程序退出时执行，按注册顺序执行
 func Register(fn EventHandler, name string) {

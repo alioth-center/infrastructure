@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/alioth-center/infrastructure/trace"
-	"github.com/alioth-center/infrastructure/utils/values"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+
+	"github.com/alioth-center/infrastructure/trace"
+	"github.com/alioth-center/infrastructure/utils/values"
 )
 
 // RequestBuilder is used to build a http request.

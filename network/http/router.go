@@ -1,8 +1,9 @@
 package http
 
 import (
-	"github.com/alioth-center/infrastructure/utils/values"
 	"strings"
+
+	"github.com/alioth-center/infrastructure/utils/values"
 )
 
 // Router is the interface that wraps the basic methods of a router.
@@ -55,9 +56,7 @@ func (r *router) Group(sub string) Router {
 		sub = "/" + sub
 	}
 
-	if strings.HasSuffix(sub, "/") {
-		sub = strings.TrimSuffix(sub, "/")
-	}
+	sub = strings.TrimSuffix(sub, "/")
 
 	nr := &router{father: r, children: map[string]*router{}, content: sub}
 
@@ -112,9 +111,7 @@ func NewRouter(base string) Router {
 	if !strings.HasPrefix(base, "/") {
 		base = "/" + base
 	}
-	if strings.HasSuffix(base, "/") {
-		base = strings.TrimSuffix(base, "/")
-	}
+	base = strings.TrimSuffix(base, "/")
 
 	r := &router{
 		father:   nil,
