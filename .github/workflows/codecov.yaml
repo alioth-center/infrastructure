@@ -49,7 +49,7 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          args: --config=.golangci.yaml
+          args: --config=.golangci.yaml --timeout=10m
 
       - name: Test
         run: go test -race -v ./... -coverprofile ./coverage.txt
