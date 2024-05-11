@@ -50,7 +50,7 @@ type requestBuilder struct {
 
 func (b *requestBuilder) WithContext(ctx context.Context) RequestBuilder {
 	b.ctx = trace.FromContext(ctx)
-	return b
+	return b.WithHeader(TraceHeaderKey(), trace.GetTid(b.ctx))
 }
 
 func (b *requestBuilder) WithMethod(method Method) RequestBuilder {
@@ -135,12 +135,12 @@ func (b *requestBuilder) WithContentType(contentType ContentType) RequestBuilder
 
 func (b *requestBuilder) Clone() RequestBuilder {
 	builder := &requestBuilder{
-		ctx:     b.ctx,
 		method:  b.method,
 		path:    b.path,
 		headers: b.headers,
 	}
 
+	builder.WithContext(b.ctx)
 	if b.queries != nil {
 		builder.queries = &url.Values{}
 		*builder.queries = *b.queries
@@ -239,7 +239,6 @@ func (b *requestBuilder) Build() (request *http.Request, err error) {
 // then you can use the request to send a http request
 func NewRequestBuilder() RequestBuilder {
 	rbq := &requestBuilder{
-		ctx:     trace.NewContext(),
 		method:  "",
 		path:    "",
 		queries: &url.Values{},
@@ -248,6 +247,7 @@ func NewRequestBuilder() RequestBuilder {
 		cookies: map[string]*http.Cookie{},
 		headers: map[string]string{},
 	}
+	rbq.WithContext(trace.NewContext())
 	return rbq.WithUserAgent(AliothClient)
 }
 

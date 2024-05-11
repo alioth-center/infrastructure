@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/trace"
 	"gopkg.in/yaml.v3"
 )
 
@@ -155,6 +156,9 @@ func (c loggerClient) ExecuteRequest(request RequestBuilder) (response ResponseP
 func (c loggerClient) ExecuteRawRequest(request *http.Request) (response *http.Response, err error) {
 	// log request before execute
 	if c.log != nil {
+		if tid := request.Header.Get(TraceHeaderKey()); tid != "" {
+			request = request.WithContext(trace.Context(request.Context(), tid))
+		}
 		fields := logger.NewFields(request.Context()).
 			WithMessage("http request executed").
 			WithData(c.buildRequestLoggingFields(request)).
@@ -208,6 +212,9 @@ type mockClient struct {
 func (c mockClient) ExecuteRawRequest(request *http.Request) (response *http.Response, err error) {
 	// if logger enable, log request
 	if c.log != nil {
+		if tid := request.Header.Get(TraceHeaderKey()); tid != "" {
+			request = request.WithContext(trace.Context(request.Context(), tid))
+		}
 		fields := logger.NewFields(request.Context()).
 			WithMessage("http request executed").
 			WithData(c.buildRequestLoggingFields(request)).
