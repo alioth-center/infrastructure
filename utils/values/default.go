@@ -10,3 +10,7 @@ func NilFunction[T any]() func() T {
 		return Nil[T]()
 	}
 }
+
+func Ptr[T any](val T) *T {
+	return &val
+}

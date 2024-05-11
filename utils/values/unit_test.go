@@ -830,6 +830,14 @@ func TestDefault(t *testing.T) {
 	t.Run("NilFunction", func(t *testing.T) {
 		NilFunction[int]()()
 	})
+
+	t.Run("Ptr", func(t *testing.T) {
+		b := true
+		bPtr := Ptr(&b)
+		if **bPtr != b {
+			t.Errorf("Ptr() = %v, want %v", **bPtr, b)
+		}
+	})
 }
 
 func TestArray(t *testing.T) {
@@ -928,6 +936,34 @@ func TestArray(t *testing.T) {
 				t.Errorf("MergeArrays[%d] = %v, want %v", i, v, arr2[i-5])
 			} else if i >= 10 && v != arr3[i-10] {
 				t.Errorf("MergeArrays[%d] = %v, want %v", i, v, arr3[i-10])
+			}
+		}
+	})
+
+	t.Run("Filter", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5}
+		filtered := FilterArray(arr, func(v int) bool {
+			return v%2 == 0
+		})
+		if len(filtered) != 2 {
+			t.Errorf("FilterArray() = %v, want %v", len(filtered), 2)
+		}
+
+		for i, v := range filtered {
+			if v != arr[i*2+1] {
+				t.Errorf("FilterArray[%d] = %v, want %v", i, v, arr[i*2+1])
+			}
+		}
+	})
+
+	t.Run("Sort", func(t *testing.T) {
+		arr := []int{5, 4, 3, 2, 1}
+		sorted := SortArray(arr, func(a, b int) bool {
+			return a < b
+		})
+		for i, v := range sorted {
+			if v != i+1 {
+				t.Errorf("SortArray[%d] = %v, want %v", i, v, i+1)
 			}
 		}
 	})

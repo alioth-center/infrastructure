@@ -3,6 +3,7 @@ package values
 import (
 	"math/rand"
 	"slices"
+	"sort"
 )
 
 // ReverseArray reverses the array. The original array will not be modified.
@@ -101,4 +102,37 @@ func MergeArrays[T any](arrays ...[]T) []T {
 	}
 
 	return result
+}
+
+// FilterArray filters the array with the filter function.
+//
+// example:
+//
+//	FilterArray([]int{1, 2, 3}, func(i int) bool { return i > 1 }) => []int{2, 3}
+//	FilterArray([]string{"a", "b", "c"}, func(s string) bool { return s != "a" }) => []string{"b", "c"}
+func FilterArray[T any](array []T, filter func(T) bool) []T {
+	result := make([]T, 0, len(array))
+	for _, item := range array {
+		if filter(item) {
+			result = append(result, item)
+		}
+	}
+
+	return result
+}
+
+// SortArray sorts the array with the compare function. The original array will not be modified.
+//
+// example:
+//
+//	SortArray([]int{3, 1, 2}, func(i, j int) bool { return i < j }) => []int{1, 2, 3}
+//	SortArray([]string{"c", "a", "b"}, func(i, j string) bool { return i < j }) => []string{"a", "b", "c"}
+func SortArray[T any](array []T, cmp func(T, T) bool) []T {
+	sorted := make([]T, len(array))
+	copy(sorted, array)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return cmp(sorted[i], sorted[j])
+	})
+
+	return sorted
 }
