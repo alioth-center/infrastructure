@@ -168,27 +168,29 @@ func (ep *EndPoint[request, response]) bindRouter(router *gin.RouterGroup, base 
 	}
 
 	// inject gin middlewares
+	var fns []gin.HandlerFunc
 	if len(ep.ginMiddlewares) > 0 {
-		router.Use(ep.ginMiddlewares...)
+		fns = append(fns, ep.ginMiddlewares...)
 	}
+	fns = append(fns, ep.Serve)
 
 	// bind router
 	for _, method := range ep.allowMethods.allowedMethods() {
 		switch method {
 		case http.MethodGet:
-			router.GET(routerPath, ep.Serve)
+			router.GET(routerPath, fns...)
 		case http.MethodPost:
-			router.POST(routerPath, ep.Serve)
+			router.POST(routerPath, fns...)
 		case http.MethodPut:
-			router.PUT(routerPath, ep.Serve)
+			router.PUT(routerPath, fns...)
 		case http.MethodDelete:
-			router.DELETE(routerPath, ep.Serve)
+			router.DELETE(routerPath, fns...)
 		case http.MethodPatch:
-			router.PATCH(routerPath, ep.Serve)
+			router.PATCH(routerPath, fns...)
 		case http.MethodHead:
-			router.HEAD(routerPath, ep.Serve)
+			router.HEAD(routerPath, fns...)
 		case http.MethodOptions:
-			router.OPTIONS(routerPath, ep.Serve)
+			router.OPTIONS(routerPath, fns...)
 		}
 	}
 }
