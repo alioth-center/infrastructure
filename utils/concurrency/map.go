@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash/fnv"
-	"modernc.org/mathutil"
 	"sync"
+
+	"modernc.org/mathutil"
 )
 
 // Map is a thread-safe map

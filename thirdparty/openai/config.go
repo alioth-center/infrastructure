@@ -1,8 +1,9 @@
 package openai
 
 import (
-	"github.com/alioth-center/infrastructure/network/http"
 	"strings"
+
+	"github.com/alioth-center/infrastructure/network/http"
 )
 
 type Config struct {
@@ -43,26 +44,24 @@ const (
 	defaultUserAgent = http.AliothClient
 )
 
-var (
-	// defaultEndpoints 默认的endpoint
-	defaultEndpoints = map[EndpointEnum]string{
-		EndpointEnumListModel:             "models",
-		EndpointEnumRetrieveModel:         "models/{model}",
-		EndpointEnumCreateImage:           "images/generations",
-		EndpointEnumCompleteChat:          "chat/completions",
-		EndpointEnumCreateSpeech:          "audio/speech",
-		EndpointEnumCreateTranscription:   "audio/transcriptions",
-		EndpointEnumCompleteModeration:    "moderations",
-		EndpointEnumCreateFineTuningJob:   "fine_tuning/jobs",
-		EndpointEnumRetrieveFineTuningJob: "fine_tuning/jobs/{id}",
-		EndpointEnumListFineTuningJobs:    "fine_tuning/jobs",
-		EndpointEnumCancelFineTuningJob:   "fine_tuning/jobs/{id}/cancel",
-		EndpointEnumUploadFile:            "files",
-		EndpointEnumListFiles:             "files",
-		EndpointEnumRetrieveFile:          "files/{id}",
-		EndpointEnumDeleteFile:            "files/{id}",
-	}
-)
+// defaultEndpoints 默认的endpoint
+var defaultEndpoints = map[EndpointEnum]string{
+	EndpointEnumListModel:             "models",
+	EndpointEnumRetrieveModel:         "models/{model}",
+	EndpointEnumCreateImage:           "images/generations",
+	EndpointEnumCompleteChat:          "chat/completions",
+	EndpointEnumCreateSpeech:          "audio/speech",
+	EndpointEnumCreateTranscription:   "audio/transcriptions",
+	EndpointEnumCompleteModeration:    "moderations",
+	EndpointEnumCreateFineTuningJob:   "fine_tuning/jobs",
+	EndpointEnumRetrieveFineTuningJob: "fine_tuning/jobs/{id}",
+	EndpointEnumListFineTuningJobs:    "fine_tuning/jobs",
+	EndpointEnumCancelFineTuningJob:   "fine_tuning/jobs/{id}/cancel",
+	EndpointEnumUploadFile:            "files",
+	EndpointEnumListFiles:             "files",
+	EndpointEnumRetrieveFile:          "files/{id}",
+	EndpointEnumDeleteFile:            "files/{id}",
+}
 
 func (c Config) getRequestUrl(endpoint EndpointEnum) string {
 	result := strings.Builder{}
@@ -90,9 +89,9 @@ func (c Config) getRequestUrl(endpoint EndpointEnum) string {
 func (c Config) getUserAgent() string {
 	if c.CustomUserAgent != "" {
 		return c.CustomUserAgent
-	} else {
-		return defaultUserAgent
 	}
+
+	return defaultUserAgent
 }
 
 func (c Config) buildBaseRequest(endpoint EndpointEnum, args ...string) http.RequestBuilder {
@@ -103,7 +102,7 @@ func (c Config) buildBaseRequest(endpoint EndpointEnum, args ...string) http.Req
 		baseRequest.WithHeader("OpenAI-Beta", c.BetaFeatures)
 	}
 
-	if args != nil && len(args) > 0 && len(args)%2 == 0 {
+	if len(args) > 0 && len(args)%2 == 0 {
 		templates := map[string]string{}
 		for i := 0; i < len(args); i += 2 {
 			templates[args[i]] = args[i+1]

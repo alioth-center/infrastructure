@@ -43,10 +43,10 @@ func (e *trackable) GetExpireTime() time.Duration {
 	if e.expiredTime < 0 || e.createdAt.IsZero() {
 		// 如果没有设置过期时间，或者没有创建时间，则返回0
 		return 0
-	} else {
-		// 返回剩余过期时间
-		return time.Until(e.createdAt.Add(e.expiredTime))
 	}
+
+	// 返回剩余过期时间
+	return time.Until(e.createdAt.Add(e.expiredTime))
 }
 
 type entry interface {
@@ -184,7 +184,7 @@ func (e *hashEntry) GetField(field string) (value string, exist bool) {
 }
 
 func (e *hashEntry) GetFields(fields ...string) (resultMap map[string]string) {
-	if fields == nil || len(fields) == 0 {
+	if len(fields) == 0 {
 		return map[string]string{}
 	}
 

@@ -3,6 +3,7 @@ package event
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/utils/values"
 )
 
@@ -46,7 +47,7 @@ func GetCallbackRequestEventData[data any](request *CallbackRequest, event Handl
 				Header: request.Header,
 				Event:  resultData,
 			}
-			
+
 			return result, nil
 		}
 	} else {

@@ -92,7 +92,7 @@ func (s *slice[T]) Append(item T) {
 }
 
 func (s *slice[T]) Appends(items ...T) {
-	if items == nil || len(items) == 0 {
+	if len(items) == 0 {
 		return
 	}
 
@@ -154,7 +154,7 @@ func NewSlice[T any](items ...T) Slice[T] {
 		mtx:   sync.RWMutex{},
 	}
 
-	if items != nil && len(items) > 0 {
+	if len(items) > 0 {
 		s.items = append(s.items, items...)
 	}
 

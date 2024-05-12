@@ -1,9 +1,10 @@
 package orm
 
 import (
+	"testing"
+
 	"github.com/alioth-center/infrastructure/database/sqlite"
 	"gorm.io/gorm"
-	"testing"
 )
 
 type table struct {

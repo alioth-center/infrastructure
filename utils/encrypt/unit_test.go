@@ -1,9 +1,10 @@
 package encrypt
 
 import (
-	"github.com/alioth-center/infrastructure/utils/generate"
 	"math/rand"
 	"testing"
+
+	"github.com/alioth-center/infrastructure/utils/generate"
 )
 
 func TestEncoding(t *testing.T) {

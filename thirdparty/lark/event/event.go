@@ -4,17 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/utils/concurrency"
 )
 
-var (
-	eventHandlers = map[string]Handler{
-		EnumReceiveMessage.TriggerEventType(): nil,
-		EnumBotEvent.TriggerEventType():       nil,
-		EnumMemberAdd.TriggerEventType():      nil,
-		EnumMemberDelete.TriggerEventType():   nil,
-	}
-)
+var eventHandlers = map[string]Handler{
+	EnumReceiveMessage.TriggerEventType(): nil,
+	EnumBotEvent.TriggerEventType():       nil,
+	EnumMemberAdd.TriggerEventType():      nil,
+	EnumMemberDelete.TriggerEventType():   nil,
+}
 
 func SetEventHandler(handler Handler) {
 	if handler != nil {
@@ -111,10 +110,10 @@ func HandleEncryptedEventWithChallenge(ctx context.Context, req *EncryptedReques
 
 		// 返回 challenge 响应
 		return callback(challenge)
-	} else {
-		// 返回事件处理结果
-		return HandleEvent(ctx, &request)
 	}
+
+	// 返回事件处理结果
+	return HandleEvent(ctx, &request)
 }
 
 type BaseEventHandler[realEvent any] struct {
@@ -141,13 +140,14 @@ func (b BaseEventHandler[realEvent]) HandleEvent(ctx context.Context, event *Cal
 			}
 		}()
 
-		if fullData, getFullDataErr := GetCallbackRequestEventData[realEvent](event, b); getFullDataErr != nil {
+		fullData, getFullDataErr := GetCallbackRequestEventData[realEvent](event, b)
+		if getFullDataErr != nil {
 			// 事件内容不匹配，返回错误
 			return NewTypeNotMatchError(event.Header.EventType, b.TriggerEventType())
-		} else {
-			// 调用事件处理函数
-			return b.handler(ctx, &fullData)
 		}
+
+		// 调用事件处理函数
+		return b.handler(ctx, &fullData)
 	}
 }
 

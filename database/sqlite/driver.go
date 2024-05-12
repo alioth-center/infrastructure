@@ -2,13 +2,14 @@ package sqlite
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/alioth-center/infrastructure/database"
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"os"
-	"path/filepath"
 )
 
 const DriverName = "sqlite"

@@ -1,5 +1,35 @@
 package http
 
+const (
+	defaultTraceHeaderKey  = "Ac-Request-Id"
+	defaultErrorContextKey = "ac-error"
+)
+
+var (
+	traceHeaderKey  = defaultTraceHeaderKey
+	errorContextKey = defaultErrorContextKey
+)
+
+func TraceHeaderKey() string {
+	return traceHeaderKey
+}
+
+func SetTraceHeaderKey(key string) {
+	if traceHeaderKey == defaultTraceHeaderKey {
+		traceHeaderKey = key
+	}
+}
+
+func ErrorContextKey() string {
+	return errorContextKey
+}
+
+func SetErrorContextKey(key string) {
+	if errorContextKey == defaultErrorContextKey {
+		errorContextKey = key
+	}
+}
+
 type Method = string
 
 const (
@@ -161,6 +191,8 @@ const (
 	ErrorCodeMissingRequiredCookie FrameworkErrorCode = 4004
 	ErrorCodeInvalidRequestBody    FrameworkErrorCode = 4005
 	ErrorCodeBadRequestBody        FrameworkErrorCode = 4006
+
+	ErrorCodeResourceNotFound FrameworkErrorCode = 4041
 
 	ErrorCodeMethodNotSupported FrameworkErrorCode = 4051
 	ErrorCodeMethodNotAllowed   FrameworkErrorCode = 4052

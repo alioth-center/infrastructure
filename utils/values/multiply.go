@@ -71,9 +71,9 @@ func NumberOrStringValueGetInt(value any) int {
 	case bool:
 		if v {
 			return 1
-		} else {
-			return 0
 		}
+
+		return 0
 	default:
 		return 0
 	}
@@ -111,9 +111,9 @@ func NumberOrStringValueGetFloat(value any) float64 {
 	case bool:
 		if v {
 			return 1
-		} else {
-			return 0
 		}
+
+		return 0
 	default:
 		return 0
 	}

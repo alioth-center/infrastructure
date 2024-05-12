@@ -11,6 +11,6 @@ type Cookie struct {
 	HttpOnly bool
 }
 
-func NewBasicCookie(name, value string) *Cookie {
-	return &Cookie{Name: name, Value: value}
+func NewBasicCookie(name, value string) Cookie {
+	return Cookie{Name: name, Value: value}
 }

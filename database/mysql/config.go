@@ -2,8 +2,9 @@ package mysql
 
 import (
 	"fmt"
-	"github.com/alioth-center/infrastructure/database"
 	"time"
+
+	"github.com/alioth-center/infrastructure/database"
 )
 
 type Config struct {

@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/alioth-center/infrastructure/errors"
-	"gopkg.in/yaml.v3"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/alioth-center/infrastructure/errors"
+	"gopkg.in/yaml.v3"
 )
 
 // LoadConfig 从指定路径加载配置到 receiver 中，通过文件扩展名自动识别配置文件类型，支持 yaml、json、xml
@@ -62,7 +63,7 @@ func readConfigFile(path string, bytes ...[]byte) (content []byte, err error) {
 		return nil, errors.NewConfigFilepathIsDirError(path)
 	}
 
-	f, ofe := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0666)
+	f, ofe := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0o666)
 	if ofe != nil {
 		return nil, fmt.Errorf("open config file error: %w", ofe)
 	}

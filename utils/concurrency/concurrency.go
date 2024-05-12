@@ -2,6 +2,7 @@ package concurrency
 
 import (
 	"fmt"
+
 	"github.com/alioth-center/infrastructure/errors"
 	"github.com/alioth-center/infrastructure/utils/values"
 )
@@ -33,11 +34,11 @@ func RecoverErr(e any) error {
 		return nil
 	}
 
-	switch e.(type) {
+	switch e := e.(type) {
 	case error:
-		return e.(error)
+		return e
 	default:
-		return fmt.Errorf("%v", e) // nolint:goerr
+		return fmt.Errorf("%v", e)
 	}
 }
 

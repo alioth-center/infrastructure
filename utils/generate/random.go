@@ -1,10 +1,11 @@
 package generate
 
 import (
-	"github.com/google/uuid"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // dictionary base64字典：a-z, A-Z, 0-9, +, /

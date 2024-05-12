@@ -16,8 +16,7 @@ type ModelObject struct {
 
 // ListModelRequest 列出模型请求
 // reference https://platform.openai.com/docs/api-reference/models/list
-type ListModelRequest struct {
-}
+type ListModelRequest struct{}
 
 // ListModelResponseBody 列出模型响应
 // reference https://platform.openai.com/docs/api-reference/models/list
@@ -81,9 +80,9 @@ func (cre ChatRoleEnum) String() string { return string(cre) }
 func getChatRoleEnum(enum ChatRoleEnum) string {
 	if _, exist := supportedChatRoleEnum[enum.String()]; !exist {
 		return ChatRoleEnumUser.String()
-	} else {
-		return enum.String()
 	}
+
+	return enum.String()
 }
 
 // 聊天角色枚举值
@@ -93,14 +92,12 @@ const (
 	ChatRoleEnumUser      ChatRoleEnum = "user"      // 用户，用户一般使用该角色
 )
 
-var (
-	// 支持的聊天角色枚举
-	supportedChatRoleEnum = map[string]ChatRoleEnum{
-		ChatRoleEnumSystem.String():    ChatRoleEnumSystem,
-		ChatRoleEnumAssistant.String(): ChatRoleEnumAssistant,
-		ChatRoleEnumUser.String():      ChatRoleEnumUser,
-	}
-)
+// 支持的聊天角色枚举
+var supportedChatRoleEnum = map[string]ChatRoleEnum{
+	ChatRoleEnumSystem.String():    ChatRoleEnumSystem,
+	ChatRoleEnumAssistant.String(): ChatRoleEnumAssistant,
+	ChatRoleEnumUser.String():      ChatRoleEnumUser,
+}
 
 // ChatMessageObject 聊天消息对象
 // reference https://platform.openai.com/docs/api-reference/chat/object
@@ -163,9 +160,9 @@ func (ve VoiceEnum) String() string { return string(ve) }
 func getVoiceEnum(enum VoiceEnum) string {
 	if _, exist := supportedVoiceEnum[enum.String()]; !exist {
 		return VoiceEnumAlloy.String()
-	} else {
-		return enum.String()
 	}
+
+	return enum.String()
 }
 
 // 语音枚举值
@@ -178,17 +175,15 @@ const (
 	VoiceEnumShimmer VoiceEnum = "shimmer" // shimmer音色，成年女性，中性声音
 )
 
-var (
-	// 支持的语音枚举
-	supportedVoiceEnum = map[string]VoiceEnum{
-		VoiceEnumAlloy.String():   VoiceEnumAlloy,
-		VoiceEnumEcho.String():    VoiceEnumEcho,
-		VoiceEnumFable.String():   VoiceEnumFable,
-		VoiceEnumOnyx.String():    VoiceEnumOnyx,
-		VoiceEnumNova.String():    VoiceEnumNova,
-		VoiceEnumShimmer.String(): VoiceEnumShimmer,
-	}
-)
+// 支持的语音枚举
+var supportedVoiceEnum = map[string]VoiceEnum{
+	VoiceEnumAlloy.String():   VoiceEnumAlloy,
+	VoiceEnumEcho.String():    VoiceEnumEcho,
+	VoiceEnumFable.String():   VoiceEnumFable,
+	VoiceEnumOnyx.String():    VoiceEnumOnyx,
+	VoiceEnumNova.String():    VoiceEnumNova,
+	VoiceEnumShimmer.String(): VoiceEnumShimmer,
+}
 
 // CreateSpeechRequestBody 生成语音请求体
 // reference https://platform.openai.com/docs/api-reference/audio/createSpeech
@@ -325,13 +320,11 @@ const (
 	AvailableFineTuningModelEnumDavinci AvailableFineTuningModelEnum = "davinci-002"        // davinci模型
 )
 
-var (
-	// 支持的微调模型枚举
-	supportedAvailableFineTuningModelEnum = map[string]AvailableFineTuningModelEnum{
-		AvailableFineTuningModelEnumGPT35.String():   AvailableFineTuningModelEnumGPT35,
-		AvailableFineTuningModelEnumDavinci.String(): AvailableFineTuningModelEnumDavinci,
-	}
-)
+// 支持的微调模型枚举
+var supportedAvailableFineTuningModelEnum = map[string]AvailableFineTuningModelEnum{
+	AvailableFineTuningModelEnumGPT35.String():   AvailableFineTuningModelEnumGPT35,
+	AvailableFineTuningModelEnumDavinci.String(): AvailableFineTuningModelEnumDavinci,
+}
 
 func getAvailableFineTuningModelEnum(enum AvailableFineTuningModelEnum) string {
 	if _, exist := supportedAvailableFineTuningModelEnum[enum.String()]; !exist {
@@ -457,8 +450,8 @@ type FileObject struct {
 	FileName string `json:"filename"` // 文件的名称
 	Object   string `json:"object"`   // 文件的类型，一定为file
 	Purpose  string `json:"purpose"`  // 文件的用途, 可能的值见reference
-	//Status        string `json:"status"`         // 已过时。文件的状态，uploaded/processed/error
-	//StatusDetails string `json:"status_details"` // 已过时。文件的状态详情
+	// Status        string `json:"status"`         // 已过时。文件的状态，uploaded/processed/error
+	// StatusDetails string `json:"status_details"` // 已过时。文件的状态详情
 }
 
 // UploadFileRequestBody 文件上传请求体

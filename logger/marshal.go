@@ -3,9 +3,10 @@ package logger
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/alioth-center/infrastructure/errors"
 	"strings"
 	"time"
+
+	"github.com/alioth-center/infrastructure/errors"
 )
 
 var (
@@ -35,21 +36,19 @@ func jsonMarshaller(entry *Entry) ([]byte, error) {
 	bytes, err := json.Marshal(entry)
 	if err != nil {
 		return nil, err
-	} else {
-		return append(bytes, '\n'), nil
 	}
+
+	return append(bytes, '\n'), nil
 }
 
-var (
-	textMarshallerLevelPlaceholder = map[Level]string{
-		LevelDebug: "DEBU",
-		LevelInfo:  "INFO",
-		LevelWarn:  "WARN",
-		LevelError: "ERRO",
-		LevelFatal: "FATA",
-		LevelPanic: "PANI",
-	}
-)
+var textMarshallerLevelPlaceholder = map[Level]string{
+	LevelDebug: "DEBU",
+	LevelInfo:  "INFO",
+	LevelWarn:  "WARN",
+	LevelError: "ERRO",
+	LevelFatal: "FATA",
+	LevelPanic: "PANI",
+}
 
 func textMarshaller(entry *Entry) ([]byte, error) {
 	if entry.File == "" {

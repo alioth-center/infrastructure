@@ -52,10 +52,10 @@ func (c *tlsClient) closeClient() error {
 
 	if closeErr := c.client.Quit(); closeErr != nil {
 		return NewDialSmtpServerError(closeErr)
-	} else {
-		c.client = nil
-		return nil
 	}
+
+	c.client = nil
+	return nil
 }
 
 func (c *tlsClient) SendContent(content Content) error {
@@ -95,7 +95,7 @@ func NewTLSClient(cfg Config) (client Client, err error) {
 	}
 	if initClientErr := client.initClient(); initClientErr != nil {
 		return nil, initClientErr
-	} else {
-		return client, nil
 	}
+
+	return client, nil
 }

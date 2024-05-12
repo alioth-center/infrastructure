@@ -2,12 +2,13 @@ package http
 
 import (
 	"bytes"
-	"github.com/alioth-center/infrastructure/logger"
-	"github.com/alioth-center/infrastructure/trace"
 	"io"
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/trace"
 )
 
 func TestHttpClient(t *testing.T) {
@@ -75,7 +76,7 @@ func TestHttpClient(t *testing.T) {
 
 	t.Run("LoggerClient", func(t *testing.T) {
 		client := NewLoggerClient(logger.Default())
-		//client := NewSimpleClient()
+		// client := NewSimpleClient()
 		response, err := client.ExecuteRequest(NewRequestBuilder().
 			WithPath("https://echo.apifox.com/post?fuck=you").
 			WithMethod(POST).
@@ -116,7 +117,7 @@ func TestHttpClient(t *testing.T) {
 }
 
 func TestHttpServer(t *testing.T) {
-	//gin.SetMode(gin.ReleaseMode)
+	// gin.SetMode(gin.ReleaseMode)
 	type Request struct {
 		Msg string `json:"msg" vc:"key:msg,required"`
 	}
@@ -230,6 +231,7 @@ func TestHttpServer(t *testing.T) {
 				WithMethod(POST).
 				WithCookie("test", "test").
 				WithHeader("Authorization", ContentTypeJson).
+				WithHeader("Ac-Request-Id", "114514").
 				WithJsonBody(&Request{Msg: ""}),
 		)
 		if executeErr != nil {
@@ -240,13 +242,15 @@ func TestHttpServer(t *testing.T) {
 		if !StatusCodeIs4XX(response) {
 			t.Fatal("status code is not 4XX")
 		}
-		t.Log(response.RawResponse().StatusCode)
 		t.Log(response.BindJson(&receiver))
+		if receiver.RequestID != "114514" {
+			t.Fatal("request id is not equal")
+		}
+		t.Log(response.RawResponse().StatusCode)
 		t.Log(receiver)
 
 		ex <- struct{}{}
 	})
-
 }
 
 func TestHttpFunctions(t *testing.T) {

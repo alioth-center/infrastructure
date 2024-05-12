@@ -3,9 +3,10 @@ package cls
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/utils/timezone"
-	"strings"
 )
 
 const (

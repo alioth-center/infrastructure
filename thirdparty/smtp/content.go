@@ -99,9 +99,9 @@ func (c *RenderableContent) ExportToMailText() []byte {
 	buffer := bytes.NewBufferString("")
 	if c.template.Execute(buffer, c) != nil {
 		return []byte{}
-	} else {
-		return buffer.Bytes()
 	}
+
+	return buffer.Bytes()
 }
 
 func NewRenderableTextContent(receiver string, subject string, template template.Template) Content {

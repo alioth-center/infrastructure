@@ -2,6 +2,7 @@ package im
 
 import (
 	"context"
+
 	"github.com/alioth-center/infrastructure/thirdparty/lark/event"
 )
 

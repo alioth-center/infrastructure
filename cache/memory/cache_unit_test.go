@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/alioth-center/infrastructure/cache"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/cache"
 )
 
 var (
@@ -1754,7 +1755,7 @@ func LoadOrStoreJsonFunction(impl cache.Cache) func(t *testing.T) {
 			if loaded {
 				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: key exist, want not exist")
 			}
-			var receiverTypeError = NewReceiverTypeIncorrectError(reflect.TypeOf(receiver).String(), reflect.ValueOf(receiver).IsNil())
+			receiverTypeError := NewReceiverTypeIncorrectError(reflect.TypeOf(receiver).String(), reflect.ValueOf(receiver).IsNil())
 			if !errors.As(loadErr, &receiverTypeError) {
 				t.Errorf("LoadOrStoreJson:LoadTypeError case failed: incorrect error type")
 			}

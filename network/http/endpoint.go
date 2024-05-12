@@ -1,12 +1,13 @@
 package http
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/alioth-center/infrastructure/trace"
 	"github.com/alioth-center/infrastructure/utils/concurrency"
 	"github.com/alioth-center/infrastructure/utils/values"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"time"
 )
 
 const (
@@ -148,6 +149,7 @@ type EndPoint[request any, response any] struct {
 	parsingParams  map[string]bool
 	parsingCookies map[string]bool
 	preprocessors  []EndpointPreprocessor[request, response]
+	ginMiddlewares []gin.HandlerFunc
 }
 
 func (ep *EndPoint[request, response]) bindRouter(router *gin.RouterGroup, base Router) {
@@ -165,23 +167,37 @@ func (ep *EndPoint[request, response]) bindRouter(router *gin.RouterGroup, base 
 		routerPath = "/"
 	}
 
+	// inject gin middlewares
+	var fns []gin.HandlerFunc
+	if len(ep.ginMiddlewares) > 0 {
+		fns = append(fns, ep.ginMiddlewares...)
+	}
+	fns = append(fns, ep.Serve)
+
+	// bind router
 	for _, method := range ep.allowMethods.allowedMethods() {
 		switch method {
 		case http.MethodGet:
-			router.GET(routerPath, ep.Serve)
+			router.GET(routerPath, fns...)
 		case http.MethodPost:
-			router.POST(routerPath, ep.Serve)
+			router.POST(routerPath, fns...)
 		case http.MethodPut:
-			router.PUT(routerPath, ep.Serve)
+			router.PUT(routerPath, fns...)
 		case http.MethodDelete:
-			router.DELETE(routerPath, ep.Serve)
+			router.DELETE(routerPath, fns...)
 		case http.MethodPatch:
-			router.PATCH(routerPath, ep.Serve)
+			router.PATCH(routerPath, fns...)
 		case http.MethodHead:
-			router.HEAD(routerPath, ep.Serve)
+			router.HEAD(routerPath, fns...)
 		case http.MethodOptions:
-			router.OPTIONS(routerPath, ep.Serve)
+			router.OPTIONS(routerPath, fns...)
 		}
+	}
+}
+
+func (ep *EndPoint[request, response]) SetGinMiddlewares(middlewares ...gin.HandlerFunc) {
+	if len(middlewares) > 0 {
+		ep.ginMiddlewares = middlewares
 	}
 }
 
@@ -236,7 +252,7 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 	defer func() {
 		if recovered := concurrency.RecoverErr(recover()); recovered != nil {
 			errResponse := &FrameworkResponse{
-				ErrorCode:    ErrorCodeInternalErrorOccurred,
+				ErrorCode:    ErrorCodePanicErrorRecovered,
 				ErrorMessage: values.BuildStrings("internal error: ", recovered.Error()),
 				RequestID:    tid,
 			}
@@ -260,6 +276,17 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 
 	// execute endpoint handler chain
 	ep.chain.Execute(context)
+
+	// internal error occurred
+	if context.Error() != nil {
+		errResponse := &FrameworkResponse{
+			ErrorCode:    ErrorCodeInternalErrorOccurred,
+			ErrorMessage: values.BuildStrings("internal error: ", context.Error().Error()),
+			RequestID:    tid,
+		}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, errResponse)
+		return
+	}
 
 	// set response
 	for key, value := range context.ResponseHeaders() {
@@ -295,6 +322,18 @@ type EndPointOptions[request any, response any] func(ep *EndPoint[request, respo
 func WithRouterOpts[request any, response any](router Router) EndPointOptions[request, response] {
 	return func(ep *EndPoint[request, response]) {
 		ep.router = router
+	}
+}
+
+// WithGinMiddlewaresOpts sets the gin middlewares for EndPoint, nil is allowed, but it will not work.
+// example:
+//
+//	ep := NewEndPointWithOpts[request, response](
+//		WithGinMiddlewaresOpts[request, response](middlewares...),
+//	)
+func WithGinMiddlewaresOpts[request any, response any](middlewares ...gin.HandlerFunc) EndPointOptions[request, response] {
+	return func(ep *EndPoint[request, response]) {
+		ep.SetGinMiddlewares(middlewares...)
 	}
 }
 
@@ -568,6 +607,11 @@ func (eb *EndPointBuilder[request, response]) SetCookies(cookies map[string]bool
 
 func (eb *EndPointBuilder[request, response]) SetRouter(router Router) *EndPointBuilder[request, response] {
 	eb.options = append(eb.options, WithRouterOpts[request, response](router))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetGinMiddlewares(middlewares ...gin.HandlerFunc) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithGinMiddlewaresOpts[request, response](middlewares...))
 	return eb
 }
 
