@@ -8,5 +8,4 @@ type Parser interface {
 	Matcher() prompt.Completer
 }
 
-type parserImpl struct {
-}
+type parserImpl struct{}

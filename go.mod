@@ -9,6 +9,7 @@ require (
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.6.0
+	github.com/joeycumines/go-prompt v0.0.0-00010101000000-000000000000
 	github.com/larksuite/oapi-sdk-go/v3 v3.2.4
 	github.com/stretchr/testify v1.9.0
 	github.com/tencentcloud/tencentcloud-cls-sdk-go v1.0.8
@@ -46,7 +47,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/joeycumines/go-prompt v0.0.0-00010101000000-000000000000 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
