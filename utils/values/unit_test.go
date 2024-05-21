@@ -967,6 +967,102 @@ func TestArray(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("LastOf", func(t *testing.T) {
+		arr := []int{1, 2, 3, 4, 5}
+		if LastOfArray(arr) != 5 {
+			t.Errorf("LastOfArray() = %v, want %v", LastOfArray(arr), 5)
+		}
+
+		if LastOfArray([]int{}) != 0 {
+			t.Errorf("LastOfArray() = %v, want %v", LastOfArray([]int{}), 0)
+		}
+	})
+
+	t.Run("TopN", func(t *testing.T) {
+		t.Run("TopN-30Percent", func(t *testing.T) {
+			array := []int{10, 80, 30, 90, 40, 50, 70, 20, 60, 100}
+			percentN := 30
+			result := TopNArray(array, percentN, func(a, b int) bool {
+				return a < b
+			})
+			if result != 30 {
+				t.Errorf("TopNArray() = %v, want %v", result, 30)
+			}
+		})
+
+		t.Run("EmptyArray", func(t *testing.T) {
+			var array []int
+			percentN := 50
+			result := TopNArray(array, percentN, func(a, b int) bool {
+				return a < b
+			})
+			var want int
+			if result != want {
+				t.Errorf("TopNArray() = %v, want %v", result, want)
+			}
+		})
+
+		t.Run("SingleElement", func(t *testing.T) {
+			array := []int{42}
+			percentN := 50
+			result := TopNArray(array, percentN, func(a, b int) bool {
+				return a < b
+			})
+			want := 42
+			if result != want {
+				t.Errorf("TopNArray() = %v, want %v", result, want)
+			}
+		})
+
+		t.Run("PercentN-LessThanZero", func(t *testing.T) {
+			array := []int{10, 20}
+			percentN := -10
+			result := TopNArray(array, percentN, func(a, b int) bool {
+				return a < b
+			})
+			want := 10
+			if result != want {
+				t.Errorf("TopNArray() = %v, want %v", result, want)
+			}
+		})
+
+		t.Run("PercentN-GreaterThan100", func(t *testing.T) {
+			array := []int{10, 20}
+			percentN := 150
+			result := TopNArray(array, percentN, func(a, b int) bool {
+				return a < b
+			})
+			want := 20
+			if result != want {
+				t.Errorf("TopNArray() = %v, want %v", result, want)
+			}
+		})
+
+		t.Run("ArrayWithDuplicates", func(t *testing.T) {
+			array := []int{10, 10, 20, 20, 30, 30}
+			percentN := 50
+			result := TopNArray(array, percentN, func(a, b int) bool {
+				return a < b
+			})
+			want := 20
+			if result != want {
+				t.Errorf("TopNArray() = %v, want %v", result, want)
+			}
+		})
+
+		t.Run("TestWithFloats", func(t *testing.T) {
+			array := []float64{1.1, 2.2, 3.3, 4.4, 5.5}
+			percentN := 40
+			result := TopNArray(array, percentN, func(a, b float64) bool {
+				return a < b
+			})
+			want := 2.2
+			if result != want {
+				t.Errorf("TopNArray() = %v, want %v", result, want)
+			}
+		})
+	})
 }
 
 func TestReflect(t *testing.T) {
