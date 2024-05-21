@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"os"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -202,6 +203,11 @@ func TestGrammarTree(t *testing.T) {
 			NewCli(c)
 		})
 		t.Run("Execute", func(t *testing.T) {
+			_, err := syscall.Open("/dev/tty", syscall.O_RDONLY, 0)
+			if !os.IsNotExist(err) && err != nil {
+				t.Skip("cannot open /dev/tty")
+			}
+
 			go func() {
 				NewCli(c).Execute()
 				fmt.Fprintf(os.Stdin, "version\n")
