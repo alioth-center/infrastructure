@@ -2,14 +2,12 @@ module github.com/alioth-center/infrastructure
 
 go 1.21
 
-replace github.com/joeycumines/go-prompt => github.com/sunist-c/go-prompt v0.0.0-20240416230256-6187f5f46668
-
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.6.0
-	github.com/joeycumines/go-prompt v0.0.0-00010101000000-000000000000
+	github.com/joeycumines/go-prompt v0.0.0-20240416230256-6187f5f46668
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/larksuite/oapi-sdk-go/v3 v3.2.4
 	github.com/schollz/progressbar/v3 v3.14.2
