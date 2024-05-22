@@ -1,6 +1,7 @@
 package config
 
 import (
+	"embed"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -45,6 +46,40 @@ func LoadConfigWithKeys(receiver any, path string, keys ...string) (err error) {
 		return loadJsonConfigWithKeys(receiver, bytesOfConfig, keys...)
 	default:
 		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
+	}
+}
+
+func LoadEmbedConfig(receiver any, fs embed.FS, name string) (err error) {
+	bytesOfConfig, readConfigFileErr := fs.ReadFile(name)
+	if readConfigFileErr != nil {
+		return fmt.Errorf("read config file error: %w", readConfigFileErr)
+	}
+
+	switch filepath.Ext(name) {
+	case ".yaml", ".yml":
+		return loadYamlConfigWithKeys(receiver, bytesOfConfig)
+	case ".json":
+		return loadJsonConfigWithKeys(receiver, bytesOfConfig)
+	case ".xml":
+		return loadXmlConfigWithKeys(receiver, bytesOfConfig)
+	default:
+		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(name))
+	}
+}
+
+func LoadEmbedConfigWithKeys(receiver any, fs embed.FS, name string, keys ...string) (err error) {
+	bytesOfConfig, readConfigFileErr := fs.ReadFile(name)
+	if readConfigFileErr != nil {
+		return fmt.Errorf("read config file error: %w", readConfigFileErr)
+	}
+
+	switch filepath.Ext(name) {
+	case ".yaml", ".yml":
+		return loadYamlConfigWithKeys(receiver, bytesOfConfig, keys...)
+	case ".json":
+		return loadJsonConfigWithKeys(receiver, bytesOfConfig, keys...)
+	default:
+		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(name))
 	}
 }
 
