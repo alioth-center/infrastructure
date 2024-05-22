@@ -1,0 +1,55 @@
+version: v1.0.0
+copyright: cli-builder by alioth-center/infrastructure, alioth.center
+released_at: 2024.3.4
+cli_prefix: 'ac-cli-builder'
+language_mapping:
+  zh-CN:
+    - 'zh-HK'
+    - 'zh-TW'
+    - 'zh-SG'
+    - 'zh-MO'
+debug: true
+commands:
+  init:
+    handler: InitProject
+    descriptions:
+      - lang: zh-CN
+        text: 创建新项目
+      - lang: en-US
+        text: create a new project
+    commands:
+      directory:
+        handler: InitProject
+        type: option
+        descriptions:
+          - lang: zh-CN
+            name: ~/projects/ac-cli-project
+            text: 新项目的目录
+          - lang: en-US
+            name: ~/projects/ac-cli-project
+            text: the directory of new project
+        commands:
+          package-name:
+            handler: InitProject
+            type: option
+            descriptions:
+              - lang: zh-CN
+                name: github.com/alioth-center/ac-cli-project
+                text: 新项目的包名
+              - lang: en-US
+                name: github.com/alioth-center/ac-cli-project
+                text: the package name of new project
+  version:
+    handler: AcDefaultVersionFn
+    descriptions:
+      - lang: zh-CN
+        text: 显示版本信息
+      - lang: en-US
+        text: show version information
+  exit:
+    handler: AcDefaultExitFn
+    descriptions:
+      - lang: zh-CN
+        text: 退出系统
+      - lang: en-US
+        text: exit the system

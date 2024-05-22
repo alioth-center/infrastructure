@@ -9,6 +9,7 @@ type ApplicationConfig struct {
 	PreferredLanguage string                   `json:"preferred_language" yaml:"preferred_language"`
 	Commands          map[string]CommandConfig `json:"commands" yaml:"commands"`
 	Debug             bool                     `json:"debug" yaml:"debug"`
+	LanguageMapping   map[string][]string      `json:"language_mapping" yaml:"language_mapping"`
 }
 
 type DescriptionConfig struct {

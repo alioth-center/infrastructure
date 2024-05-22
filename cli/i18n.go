@@ -422,8 +422,8 @@ func init() {
 	}
 }
 
-func generateErrorPrompt(language string, key string, args map[string]string) []prompt.Suggest {
-	name, description := i18nPacks[key].GetTranslation(language)
+func generateErrorPrompt(language []string, key string, args map[string]string) []prompt.Suggest {
+	name, description := i18nPacks[key].GetTranslation(language...)
 	description = values.NewStringTemplate(description, args).Parse()
 	return []prompt.Suggest{{Text: name, Description: description}}
 }

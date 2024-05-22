@@ -6,21 +6,21 @@ cli_prefix: 'ac-cli-builder$ '
 debug: true
 commands:
   exit:
-    handler: ac-default-exit-fn
+    handler: AcDefaultExitFn
     descriptions:
       - lang: zh-CN
         text: 退出系统
       - lang: en-US
         text: exit the system
   version:
-    handler: ac-default-version-fn
+    handler: AcDefaultVersionFn
     descriptions:
       - lang: zh-CN
         text: 显示版本信息
       - lang: en-US
         text: show version information
   help:
-    handler: ac-default-list-fn
+    handler: AcDefaultHelpFn
     descriptions:
       - lang: zh-CN
         text: 列出所有帮助项

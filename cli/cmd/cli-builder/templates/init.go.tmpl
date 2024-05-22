@@ -1,0 +1,28 @@
+package main
+
+import (
+    "embed"
+
+    "github.com/alioth-center/infrastructure/cli"
+    "github.com/alioth-center/infrastructure/config"
+
+    _ "{{ .PackageName }}/handlers"
+    _ "{{ .PackageName }}/injectors"
+)
+
+var (
+    //go:embed embeddings/*
+    embeddings embed.FS
+
+    program cli.CommandLine
+)
+
+func init() {
+    cfg := cli.ApplicationConfig{}
+    err := config.LoadEmbedConfig(&cfg, embeddings, "embeddings/{{ .ConfigFileName }}.yml")
+    if err != nil {
+        panic(err)
+    }
+
+    program = cli.NewCli(cfg)
+}

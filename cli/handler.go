@@ -11,15 +11,15 @@ type Injector func(input *Input) (result []TranslationSet)
 
 func DefaultHandler() Handler {
 	return func(input *Input) {
-		_, description := i18nPacks[i18nNoImplement].GetTranslation(input.language)
+		_, description := i18nPacks[i18nNoImplement].GetTranslation(input.Language...)
 		fmt.Println(description)
 	}
 }
 
 func NoCommandHandler() Handler {
 	return func(input *Input) {
-		_, description := i18nPacks[i18nNoCommand].GetTranslation(input.language)
-		fmt.Println(description + ": " + input.fullText)
+		_, description := i18nPacks[i18nNoCommand].GetTranslation(input.Language...)
+		fmt.Println(description + ": " + input.FullText)
 	}
 }
 

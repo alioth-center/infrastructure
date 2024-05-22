@@ -113,7 +113,7 @@ func TestGrammarTree(t *testing.T) {
 		}
 
 		t.Run("Found", func(t *testing.T) {
-			suggestions := root.indexSuggestions(newContext("help version", "en-US", true))
+			suggestions := root.indexSuggestions(newContext("help version", []string{"en-US"}, true))
 			if len(suggestions) != 1 {
 				t.Errorf("expected 1 suggestion, got %d", len(suggestions))
 			}
@@ -126,7 +126,7 @@ func TestGrammarTree(t *testing.T) {
 		})
 
 		t.Run("NotFound", func(t *testing.T) {
-			suggestions := root.indexSuggestions(newContext("fuck version", "en-US", true))
+			suggestions := root.indexSuggestions(newContext("fuck version", []string{"en-US"}, true))
 			if len(suggestions) != 1 {
 				t.Errorf("expected 1 suggestion, got %d", len(suggestions))
 			}
@@ -136,7 +136,7 @@ func TestGrammarTree(t *testing.T) {
 		})
 
 		t.Run("TranslationFallback", func(t *testing.T) {
-			suggestions := root.indexSuggestions(newContext("help version", "zh-CN", true))
+			suggestions := root.indexSuggestions(newContext("help version", []string{"zh-CN"}, true))
 			if len(suggestions) != 1 {
 				t.Errorf("expected 1 suggestion, got %d", len(suggestions))
 			}
@@ -149,7 +149,7 @@ func TestGrammarTree(t *testing.T) {
 		})
 
 		t.Run("MatchMultiple", func(t *testing.T) {
-			suggestions := root.indexSuggestions(newContext("help ", "zh-CN", true))
+			suggestions := root.indexSuggestions(newContext("help ", []string{"zh-CN"}, true))
 			if len(suggestions) != 2 {
 				t.Errorf("expected 2 suggestion, got %d", len(suggestions))
 				t.Log(suggestions)
@@ -157,7 +157,7 @@ func TestGrammarTree(t *testing.T) {
 		})
 
 		t.Run("MatchOptions", func(t *testing.T) {
-			suggestions := root.indexSuggestions(newContext("help me sb ", "zh-CN", true))
+			suggestions := root.indexSuggestions(newContext("help me sb ", []string{"zh-CN"}, true))
 			if len(suggestions) != 1 {
 				t.Errorf("expected 1 suggestion, got %d", len(suggestions))
 			}
@@ -170,24 +170,24 @@ func TestGrammarTree(t *testing.T) {
 		})
 
 		t.Run("ExecuteCommand", func(t *testing.T) {
-			root.execute(newContext("help me sb want", "zh-CN", true))
-			if result.fullText != "help me sb want" {
-				t.Errorf("expected 'help me sb want', got '%s'", result.fullText)
+			root.execute(newContext("help me sb want", []string{"zh-CN"}, true))
+			if result.FullText != "help me sb want" {
+				t.Errorf("expected 'help me sb want', got '%s'", result.FullText)
 			}
-			if result.params["info"] != "want" {
-				t.Errorf("expected 'want', got '%s'", result.params["info"])
+			if result.Params["info"] != "want" {
+				t.Errorf("expected 'want', got '%s'", result.Params["info"])
 			}
-			if result.params["status"] != "sb" {
-				t.Errorf("expected 'sb', got '%s'", result.params["status"])
+			if result.Params["status"] != "sb" {
+				t.Errorf("expected 'sb', got '%s'", result.Params["status"])
 			}
 		})
 
 		t.Run("ExecuteCommandNotFound", func(t *testing.T) {
-			root.execute(newContext("help you be a sb", "zh-CN", true))
+			root.execute(newContext("help you be a sb", []string{"zh-CN"}, true))
 		})
 
 		t.Run("IndexInjector", func(t *testing.T) {
-			suggestions := root.indexSuggestions(newContext("help me s", "zh-CN", true))
+			suggestions := root.indexSuggestions(newContext("help me s", []string{"zh-CN"}, true))
 			if len(suggestions) != 2 {
 				t.Errorf("expected 2 suggestion, got %d", len(suggestions))
 			}
@@ -223,15 +223,23 @@ func TestGrammarTree(t *testing.T) {
 			c := &cli{}
 			t.Run("LANG", func(t *testing.T) {
 				os.Setenv("LANG", "en-US")
-				if c.getLanguage() != "en-US" {
-					t.Errorf("expected 'en-US', got '%s'", c.getLanguage())
+				languages := c.getLanguage()
+				if len(languages) != 1 {
+					t.Errorf("expected 1 language, got %d", len(languages))
+				}
+				if languages[0] != "en-US" {
+					t.Errorf("expected 'en-US', got '%s'", languages[0])
 				}
 				os.Unsetenv("LANG")
 			})
 			t.Run("LC_ALL", func(t *testing.T) {
 				os.Setenv("LC_ALL", "zh-CN")
-				if c.getLanguage() != "zh-CN" {
-					t.Errorf("expected 'zh-CN', got '%s'", c.getLanguage())
+				languages := c.getLanguage()
+				if len(languages) != 2 {
+					t.Errorf("expected 2 languages, got %d", len(languages))
+				}
+				if languages[0] != "zh-CN" && languages[1] != "en-US" {
+					t.Errorf("expected 'zh-CN' and 'en-US', got '%s' and '%s'", languages[0], languages[1])
 				}
 				os.Unsetenv("LC_ALL")
 			})

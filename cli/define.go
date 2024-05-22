@@ -26,6 +26,8 @@ const (
 var (
 	handlers  = concurrency.NewHashMap[string, Handler](concurrency.HashMapNodeOptionSmallSize)
 	injectors = concurrency.NewHashMap[string, Injector](concurrency.HashMapNodeOptionSmallSize)
+
+	languageCache []string
 )
 
 func RegisterHandler(name string, handler Handler) {
@@ -45,13 +47,13 @@ func GetInjector(name string) (injector Injector, ok bool) {
 }
 
 type HandlerNotFoundError struct {
-	displayLanguage string
-	CommandPath     string
-	HandlerName     string
+	displayLanguages []string
+	CommandPath      string
+	HandlerName      string
 }
 
 func (e HandlerNotFoundError) Error() string {
-	_, description := i18nPacks[i18nErrHandlerNotFound].GetTranslation(e.displayLanguage)
+	_, description := i18nPacks[i18nErrHandlerNotFound].GetTranslation(e.displayLanguages...)
 	return values.NewStringTemplate(description, map[string]string{
 		"command": e.CommandPath,
 		"handler": e.HandlerName,
@@ -59,13 +61,13 @@ func (e HandlerNotFoundError) Error() string {
 }
 
 type InjectorNotFoundError struct {
-	displayLanguage string
-	CommandPath     string
-	InjectorName    string
+	displayLanguages []string
+	CommandPath      string
+	InjectorName     string
 }
 
 func (e InjectorNotFoundError) Error() string {
-	_, description := i18nPacks[i18nErrInjectorNotFound].GetTranslation(e.displayLanguage)
+	_, description := i18nPacks[i18nErrInjectorNotFound].GetTranslation(e.displayLanguages...)
 	return values.NewStringTemplate(description, map[string]string{
 		"command":  e.CommandPath,
 		"injector": e.InjectorName,
@@ -73,6 +75,16 @@ func (e InjectorNotFoundError) Error() string {
 }
 
 const (
-	FunctionNameDefaultVersion = "ac-default-version-fn"
-	FunctionNameDefaultExit    = "ac-default-exit-fn"
+	FunctionNameDefaultVersion = "AcDefaultVersionFn"
+	FunctionNameDefaultExit    = "AcDefaultExitFn"
 )
+
+type HandlerItem struct {
+	Name    string
+	Handler Handler
+}
+
+type InjectorItem struct {
+	Name     string
+	Injector Injector
+}

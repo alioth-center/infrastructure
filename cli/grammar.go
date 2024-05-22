@@ -18,25 +18,22 @@ type TranslationSet struct {
 	translations map[string]TranslatedItem
 }
 
-func (ts *TranslationSet) GetTranslation(language string) (key, description string) {
+func (ts *TranslationSet) GetTranslation(languages ...string) (key, description string) {
 	// no translations, cannot return anything
-	if len(ts.translations) == 0 {
+	if ts == nil || len(ts.translations) == 0 {
 		return "", ""
 	}
 
 	// return the translation if it exists
-	item, translated := ts.translations[language]
-	if translated {
-		return item.DisplayKey, item.DisplayDescription
+	for _, language := range languages {
+		item, translated := ts.translations[language]
+		if translated {
+			return item.DisplayKey, item.DisplayDescription
+		}
+
 	}
 
-	// if no matched translation, return the english translation if it exists
-	item, translated = ts.translations["en-US"]
-	if translated {
-		return item.DisplayKey, item.DisplayDescription
-	}
-
-	// return the first translation if no english translation exists
+	// return the first translation if no translation exists
 	for _, item := range ts.translations {
 		key, description = item.DisplayKey, item.DisplayDescription
 		break
@@ -53,9 +50,9 @@ func (ts *TranslationSet) InitTranslations(items []TranslatedItem) {
 }
 
 type Input struct {
-	params   http.Params
-	fullText string
-	language string
+	Params   http.Params
+	FullText string
+	Language []string
 }
 
 type grammarContext struct {
@@ -65,14 +62,14 @@ type grammarContext struct {
 	splits     []string
 	params     http.Params
 	ignoreCase bool
-	language   string
+	language   []string
 }
 
 func fromGrammarContext(ctx *grammarContext) (c *Input) {
 	return &Input{
-		params:   ctx.params,
-		fullText: ctx.fullText,
-		language: ctx.language,
+		Params:   ctx.params,
+		FullText: ctx.fullText,
+		Language: ctx.language,
 	}
 }
 
@@ -85,7 +82,7 @@ func (gc *grammarContext) end() bool {
 	return gc.index >= (len(gc.splits) - 1)
 }
 
-func newContext(text string, wantLanguage string, ignoreCase bool) *grammarContext {
+func newContext(text string, wantLanguage []string, ignoreCase bool) *grammarContext {
 	splits := strings.Split(text, " ")
 	return &grammarContext{
 		index:      0,
@@ -187,7 +184,7 @@ func (gn *grammarNode) execute(ctx *grammarContext) {
 }
 
 func (gn *grammarNode) prompts(ctx *grammarContext) []prompt.Suggest {
-	key, description := gn.descriptions.GetTranslation(ctx.language)
+	key, description := gn.descriptions.GetTranslation(ctx.language...)
 	if gn.nodeType != NodeTypeOption {
 		return []prompt.Suggest{{Text: gn.displayKey, Description: description}}
 	}
@@ -196,7 +193,7 @@ func (gn *grammarNode) prompts(ctx *grammarContext) []prompt.Suggest {
 		var suggestions []prompt.Suggest
 		result := gn.injector(fromGrammarContext(ctx))
 		for _, item := range result {
-			itemKey, itemValue := item.GetTranslation(ctx.language)
+			itemKey, itemValue := item.GetTranslation(ctx.language...)
 			suggestions = append(suggestions, prompt.Suggest{Text: itemKey, Description: itemValue})
 		}
 
@@ -206,7 +203,7 @@ func (gn *grammarNode) prompts(ctx *grammarContext) []prompt.Suggest {
 	return []prompt.Suggest{{Text: key, Description: description}}
 }
 
-func (gn *grammarNode) initialize(cfg map[string]CommandConfig, prefixes []string, errDisplayLanguage string) (errs []error) {
+func (gn *grammarNode) initialize(cfg map[string]CommandConfig, prefixes []string, errDisplayLanguages []string) (errs []error) {
 	for name, subCfg := range cfg {
 		if subCfg.Type != NodeTypeOption {
 			subCfg.Type = NodeTypeCommand
@@ -222,9 +219,9 @@ func (gn *grammarNode) initialize(cfg map[string]CommandConfig, prefixes []strin
 			handler, got := GetHandler(subCfg.Handler)
 			if !got {
 				errs = append(errs, HandlerNotFoundError{
-					displayLanguage: errDisplayLanguage,
-					CommandPath:     strings.Join(append(prefixes, name), " "),
-					HandlerName:     subCfg.Handler,
+					displayLanguages: errDisplayLanguages,
+					CommandPath:      strings.Join(append(prefixes, name), " "),
+					HandlerName:      subCfg.Handler,
 				})
 				handler = DefaultHandler()
 			}
@@ -236,9 +233,9 @@ func (gn *grammarNode) initialize(cfg map[string]CommandConfig, prefixes []strin
 			injector, got := GetInjector(subCfg.Examples)
 			if !got {
 				errs = append(errs, InjectorNotFoundError{
-					displayLanguage: errDisplayLanguage,
-					CommandPath:     strings.Join(append(prefixes, name), " "),
-					InjectorName:    subCfg.Examples,
+					displayLanguages: errDisplayLanguages,
+					CommandPath:      strings.Join(append(prefixes, name), " "),
+					InjectorName:     subCfg.Examples,
 				})
 				injector = nil
 			}
@@ -274,7 +271,7 @@ func (gn *grammarNode) initialize(cfg map[string]CommandConfig, prefixes []strin
 		if len(subCfg.Commands) > 0 {
 			var next []string
 			copy(next, prefixes)
-			subErrs := subNode.initialize(subCfg.Commands, append(next, name), errDisplayLanguage)
+			subErrs := subNode.initialize(subCfg.Commands, append(next, name), errDisplayLanguages)
 			errs = append(errs, subErrs...)
 		}
 
