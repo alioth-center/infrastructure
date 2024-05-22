@@ -189,7 +189,7 @@ func TestLoadConfigWithKeysViaGPT(t *testing.T) {
 
 	t.Run("JsonConfig", func(t *testing.T) {
 		jsonMps := Extra{}
-		err := LoadConfigWithKeys(&jsonMps, "testdata/config.json", "extra")
+		err := LoadConfigWithKeys(&jsonMps, "testdata/config_with_keys.json", "extra")
 		if err != nil {
 			t.Error(err)
 		}
@@ -210,7 +210,7 @@ func TestLoadConfigWithKeysViaGPT(t *testing.T) {
 
 	t.Run("YamlConfig", func(t *testing.T) {
 		yamlMps := Extra{}
-		err := LoadConfigWithKeys(&yamlMps, "testdata/config.yaml", "extra")
+		err := LoadConfigWithKeys(&yamlMps, "testdata/config_with_keys.yaml", "extra")
 		if err != nil {
 			t.Error(err)
 		}
