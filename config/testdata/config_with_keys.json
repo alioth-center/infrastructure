@@ -1,0 +1,8 @@
+{
+  "port": 8080,
+  "backend": "https://api.your.com",
+  "extra": {
+    "username": "admin",
+    "password": "123456"
+  }
+}
