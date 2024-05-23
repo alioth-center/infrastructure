@@ -2,8 +2,10 @@ style: github
 template: CHANGELOG.tpl.md
 info:
   title: CHANGELOG
-  repository_url: https://github.com/sunist-c/infrastructure
+  repository_url: https://github.com/alioth-center/infrastructure
 options:
+  tag_filter_pattern: '^v'
+  sort: "date"
   commits:
     # filters:
     #   Type:
