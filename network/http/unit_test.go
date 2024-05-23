@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"github.com/alioth-center/infrastructure/utils/values"
 	"io"
 	"net/http"
 	"testing"
@@ -628,7 +629,10 @@ func TestMethodList(t *testing.T) {
 		t.Fatal("methodList should not allow DELETE method")
 	}
 	methods := m.allowedMethods()
-	if len(methods) != 2 || methods[0] != "GET" || methods[1] != "POST" {
+	if len(methods) != 2 {
+		t.Fatal("methodList allowed methods are incorrect")
+	}
+	if !values.ContainsArray(methods, "GET") || !values.ContainsArray(methods, "POST") {
 		t.Fatal("methodList allowed methods are incorrect")
 	}
 }
