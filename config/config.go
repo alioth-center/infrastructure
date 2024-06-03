@@ -83,6 +83,19 @@ func LoadEmbedConfigWithKeys(receiver any, fs embed.FS, name string, keys ...str
 	}
 }
 
+func WriteConfig(path string, object any) (err error) {
+	switch filepath.Ext(path) {
+	case ".yaml", ".yml":
+		return writeYamlConfig(path, object)
+	case ".json":
+		return writeJsonConfig(path, object)
+	case ".xml":
+		return writeXmlConfig(path, object)
+	default:
+		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
+	}
+}
+
 // readConfigFile 读取配置文件
 func readConfigFile(path string, bytes ...[]byte) (content []byte, err error) {
 	if len(bytes) > 0 {
@@ -164,4 +177,66 @@ func loadYamlConfigWithKeys(receiver any, bytesOfConfig []byte, keys ...string) 
 // loadXmlConfigWithKeys 加载 xml 配置文件，只加载指定的配置项
 func loadXmlConfigWithKeys(receiver any, bytesOfConfig []byte, keys ...string) (err error) {
 	return loadConfigWithKeys(receiver, bytesOfConfig, xml.Unmarshal, xml.Marshal, keys...)
+}
+
+func writeJsonConfig(path string, object any) (err error) {
+	bytesOfConfig, marshalErr := json.Marshal(object)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal config object error: %w", marshalErr)
+	}
+
+	writeErr := writeFile(path, bytesOfConfig)
+	if writeErr != nil {
+		return fmt.Errorf("write config file error: %w", writeErr)
+	}
+
+	return nil
+}
+
+func writeYamlConfig(path string, object any) (err error) {
+	bytesOfConfig, marshalErr := yaml.Marshal(object)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal config object error: %w", marshalErr)
+	}
+
+	writeErr := writeFile(path, bytesOfConfig)
+	if writeErr != nil {
+		return fmt.Errorf("write config file error: %w", writeErr)
+	}
+
+	return nil
+}
+
+func writeXmlConfig(path string, object any) (err error) {
+	bytesOfConfig, marshalErr := xml.Marshal(object)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal config object error: %w", marshalErr)
+	}
+
+	writeErr := writeFile(path, bytesOfConfig)
+	if writeErr != nil {
+		return fmt.Errorf("write config file error: %w", writeErr)
+	}
+
+	return nil
+}
+
+func writeFile(p string, data []byte) (err error) {
+	f, createErr := os.Create(p)
+	if createErr != nil {
+		return fmt.Errorf("create config file error: %w", createErr)
+	}
+
+	defer func() {
+		closeErr := f.Close()
+		if closeErr != nil {
+			err = fmt.Errorf("close config file error: %w", closeErr)
+		}
+	}()
+	_, writeErr := f.Write(data)
+	if writeErr != nil {
+		return fmt.Errorf("write file error: %w", writeErr)
+	}
+
+	return nil
 }

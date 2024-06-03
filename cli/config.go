@@ -7,7 +7,7 @@ type ApplicationConfig struct {
 	CaseSensitive     bool                     `json:"case_sensitive" yaml:"case_sensitive"`
 	CliPrefix         string                   `json:"cli_prefix" yaml:"cli_prefix"`
 	PreferredLanguage string                   `json:"preferred_language" yaml:"preferred_language"`
-	Commands          map[string]CommandConfig `json:"commands" yaml:"commands"`
+	Commands          map[string]CommandConfig `json:"commands" yaml:"commands,omitempty"`
 	Debug             bool                     `json:"debug" yaml:"debug"`
 	LanguageMapping   map[string][]string      `json:"language_mapping" yaml:"language_mapping"`
 }
