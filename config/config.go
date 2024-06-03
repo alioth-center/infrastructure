@@ -1,6 +1,7 @@
 package config
 
 import (
+	"embed"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -43,6 +44,53 @@ func LoadConfigWithKeys(receiver any, path string, keys ...string) (err error) {
 		return loadYamlConfigWithKeys(receiver, bytesOfConfig, keys...)
 	case ".json":
 		return loadJsonConfigWithKeys(receiver, bytesOfConfig, keys...)
+	default:
+		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
+	}
+}
+
+func LoadEmbedConfig(receiver any, fs embed.FS, name string) (err error) {
+	bytesOfConfig, readConfigFileErr := fs.ReadFile(name)
+	if readConfigFileErr != nil {
+		return fmt.Errorf("read config file error: %w", readConfigFileErr)
+	}
+
+	switch filepath.Ext(name) {
+	case ".yaml", ".yml":
+		return loadYamlConfigWithKeys(receiver, bytesOfConfig)
+	case ".json":
+		return loadJsonConfigWithKeys(receiver, bytesOfConfig)
+	case ".xml":
+		return loadXmlConfigWithKeys(receiver, bytesOfConfig)
+	default:
+		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(name))
+	}
+}
+
+func LoadEmbedConfigWithKeys(receiver any, fs embed.FS, name string, keys ...string) (err error) {
+	bytesOfConfig, readConfigFileErr := fs.ReadFile(name)
+	if readConfigFileErr != nil {
+		return fmt.Errorf("read config file error: %w", readConfigFileErr)
+	}
+
+	switch filepath.Ext(name) {
+	case ".yaml", ".yml":
+		return loadYamlConfigWithKeys(receiver, bytesOfConfig, keys...)
+	case ".json":
+		return loadJsonConfigWithKeys(receiver, bytesOfConfig, keys...)
+	default:
+		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(name))
+	}
+}
+
+func WriteConfig(path string, object any) (err error) {
+	switch filepath.Ext(path) {
+	case ".yaml", ".yml":
+		return writeYamlConfig(path, object)
+	case ".json":
+		return writeJsonConfig(path, object)
+	case ".xml":
+		return writeXmlConfig(path, object)
 	default:
 		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
 	}
@@ -129,4 +177,66 @@ func loadYamlConfigWithKeys(receiver any, bytesOfConfig []byte, keys ...string) 
 // loadXmlConfigWithKeys 加载 xml 配置文件，只加载指定的配置项
 func loadXmlConfigWithKeys(receiver any, bytesOfConfig []byte, keys ...string) (err error) {
 	return loadConfigWithKeys(receiver, bytesOfConfig, xml.Unmarshal, xml.Marshal, keys...)
+}
+
+func writeJsonConfig(path string, object any) (err error) {
+	bytesOfConfig, marshalErr := json.Marshal(object)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal config object error: %w", marshalErr)
+	}
+
+	writeErr := writeFile(path, bytesOfConfig)
+	if writeErr != nil {
+		return fmt.Errorf("write config file error: %w", writeErr)
+	}
+
+	return nil
+}
+
+func writeYamlConfig(path string, object any) (err error) {
+	bytesOfConfig, marshalErr := yaml.Marshal(object)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal config object error: %w", marshalErr)
+	}
+
+	writeErr := writeFile(path, bytesOfConfig)
+	if writeErr != nil {
+		return fmt.Errorf("write config file error: %w", writeErr)
+	}
+
+	return nil
+}
+
+func writeXmlConfig(path string, object any) (err error) {
+	bytesOfConfig, marshalErr := xml.Marshal(object)
+	if marshalErr != nil {
+		return fmt.Errorf("marshal config object error: %w", marshalErr)
+	}
+
+	writeErr := writeFile(path, bytesOfConfig)
+	if writeErr != nil {
+		return fmt.Errorf("write config file error: %w", writeErr)
+	}
+
+	return nil
+}
+
+func writeFile(p string, data []byte) (err error) {
+	f, createErr := os.Create(p)
+	if createErr != nil {
+		return fmt.Errorf("create config file error: %w", createErr)
+	}
+
+	defer func() {
+		closeErr := f.Close()
+		if closeErr != nil {
+			err = fmt.Errorf("close config file error: %w", closeErr)
+		}
+	}()
+	_, writeErr := f.Write(data)
+	if writeErr != nil {
+		return fmt.Errorf("write file error: %w", writeErr)
+	}
+
+	return nil
 }

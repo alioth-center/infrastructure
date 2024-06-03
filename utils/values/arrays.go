@@ -136,3 +136,53 @@ func SortArray[T any](array []T, cmp func(T, T) bool) []T {
 
 	return sorted
 }
+
+func LastOfArray[T any](array []T) T {
+	if len(array) == 0 {
+		return Nil[T]()
+	}
+
+	return array[len(array)-1]
+}
+
+func TopNArray[T any](array []T, percentN int, cmp func(a, b T) bool) (result T) {
+	if len(array) == 0 {
+		return Nil[T]()
+	}
+
+	tempArray := make([]T, len(array))
+	copy(tempArray, array)
+
+	n := len(tempArray) * percentN / 100
+	if n <= 0 {
+		n = 1
+	}
+
+	// quick select algorithm
+	left, right := 0, len(tempArray)-1
+	for left < right {
+		pivotIndex := left + (right-left)/2
+		tempArray[pivotIndex], tempArray[right] = tempArray[right], tempArray[pivotIndex]
+
+		// partition
+		storeIndex := left
+		for i := left; i < right; i++ {
+			if cmp(tempArray[i], tempArray[right]) {
+				tempArray[storeIndex], tempArray[i] = tempArray[i], tempArray[storeIndex]
+				storeIndex++
+			}
+		}
+
+		tempArray[storeIndex], tempArray[right] = tempArray[right], tempArray[storeIndex]
+
+		if storeIndex == n-1 {
+			return tempArray[storeIndex]
+		} else if storeIndex < n-1 {
+			left = storeIndex + 1
+		} else {
+			right = storeIndex - 1
+		}
+	}
+
+	return tempArray[left]
+}

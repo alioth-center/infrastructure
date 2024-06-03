@@ -1,0 +1,33 @@
+version: v1.0.0
+copyright: cli-builder by alioth-center/infrastructure, alioth.center
+released_at: 2024.3.4
+preferred_language: zh-CN
+cli_prefix: 'ac-cli-builder$ '
+debug: true
+commands:
+  exit:
+    handler: AcDefaultExitFn
+    descriptions:
+      - lang: zh-CN
+        text: 退出系统
+      - lang: en-US
+        text: exit the system
+  version:
+    handler: AcDefaultVersionFn
+    descriptions:
+      - lang: zh-CN
+        text: 显示版本信息
+      - lang: en-US
+        text: show version information
+  help:
+    handler: AcDefaultHelpFn
+    descriptions:
+      - lang: zh-CN
+        text: 列出所有帮助项
+      - lang: en-US
+        text: list all help options
+    commands:
+      module:
+        handler: ac-default-help-fn
+        type: option
+        examples : ac-default-help-examples
