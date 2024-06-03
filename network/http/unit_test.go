@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"github.com/alioth-center/infrastructure/utils/values"
+	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -741,4 +743,292 @@ func TestHttpChains(t *testing.T) {
 	c.AddHandlerBack()
 	c.AddHandlerFront()
 	c.Execute(NewContext[any, any]())
+}
+
+func TestRouter(t *testing.T) {
+	// Test NewRouter with empty base
+	r := NewRouter("")
+	if r.FullRouterPath() != "" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "", r.FullRouterPath())
+	}
+	if r.BaseRouterPath() != "" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "", r.BaseRouterPath())
+	}
+
+	// Test NewRouter with base '/api'
+	r = NewRouter("/api")
+	if r.FullRouterPath() != "/api" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api", r.FullRouterPath())
+	}
+	if r.BaseRouterPath() != "/api" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/api", r.BaseRouterPath())
+	}
+
+	// Test NewRouter with base 'api'
+	r = NewRouter("api")
+	if r.FullRouterPath() != "/api" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api", r.FullRouterPath())
+	}
+	if r.BaseRouterPath() != "/api" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/api", r.BaseRouterPath())
+	}
+
+	// Test Group method
+	subRouter := r.Group("/v1")
+	if subRouter.FullRouterPath() != "/api/v1" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1", subRouter.FullRouterPath())
+	}
+	if subRouter.BaseRouterPath() != "/v1" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/v1", subRouter.BaseRouterPath())
+	}
+
+	subRouter2 := subRouter.Group("user")
+	if subRouter2.FullRouterPath() != "/api/v1/user" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1/user", subRouter2.FullRouterPath())
+	}
+	if subRouter2.BaseRouterPath() != "/user" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "user", subRouter2.BaseRouterPath())
+	}
+
+	subRouter3 := subRouter2.Group("info/")
+	if subRouter3.FullRouterPath() != "/api/v1/user/info" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1/user/info", subRouter3.FullRouterPath())
+	}
+	if subRouter3.BaseRouterPath() != "/info" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "info", subRouter3.BaseRouterPath())
+	}
+
+	// Test Group with empty sub path
+	subRouter4 := subRouter3.Group("")
+	if subRouter4.FullRouterPath() != "/api/v1/user/info" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1/user/info", subRouter4.FullRouterPath())
+	}
+	if subRouter4.BaseRouterPath() != "/info" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "info", subRouter4.BaseRouterPath())
+	}
+
+	// Test Extend method
+	r = NewRouter("/api")
+	subRouter = NewRouter("/v1")
+	subRouter.Extend(r)
+	if subRouter.FullRouterPath() != "/api/v1" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1", subRouter.FullRouterPath())
+	}
+	if subRouter.BaseRouterPath() != "/v1" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/v1", subRouter.BaseRouterPath())
+	}
+
+	// Test extending an already extended router
+	subRouter2 = NewRouter("/v2")
+	subRouter2.Extend(r)
+	subRouter2.Extend(subRouter) // should not change anything
+	if subRouter2.FullRouterPath() != "/api/v2" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v2", subRouter2.FullRouterPath())
+	}
+	if subRouter2.BaseRouterPath() != "/v2" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/v2", subRouter2.BaseRouterPath())
+	}
+
+	// Test FullRouterPath
+	r = NewRouter("/api")
+	if r.FullRouterPath() != "/api" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api", r.FullRouterPath())
+	}
+
+	subRouter = r.Group("/v1")
+	if subRouter.FullRouterPath() != "/api/v1" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1", subRouter.FullRouterPath())
+	}
+
+	subRouter2 = subRouter.Group("user")
+	if subRouter2.FullRouterPath() != "/api/v1/user" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1/user", subRouter2.FullRouterPath())
+	}
+
+	subRouter3 = subRouter2.Group("info/")
+	if subRouter3.FullRouterPath() != "/api/v1/user/info" {
+		t.Errorf("expected FullRouterPath '%s' but got '%s'", "/api/v1/user/info", subRouter3.FullRouterPath())
+	}
+
+	// Test BaseRouterPath
+	r = NewRouter("/api")
+	if r.BaseRouterPath() != "/api" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/api", r.BaseRouterPath())
+	}
+
+	subRouter = r.Group("/v1")
+	if subRouter.BaseRouterPath() != "/v1" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "/v1", subRouter.BaseRouterPath())
+	}
+
+	subRouter2 = subRouter.Group("user")
+	if subRouter2.BaseRouterPath() != "/user" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "user", subRouter2.BaseRouterPath())
+	}
+
+	subRouter3 = subRouter2.Group("info/")
+	if subRouter3.BaseRouterPath() != "/info" {
+		t.Errorf("expected BaseRouterPath '%s' but got '%s'", "info", subRouter3.BaseRouterPath())
+	}
+}
+
+func TestEndPointBuilder(t *testing.T) {
+	type request struct{}
+	type response struct{}
+
+	// Test NewBasicEndPoint
+	ep := NewBasicEndPoint[request, response](GET, nil, nil)
+	if ep == nil {
+		t.Errorf("NewBasicEndPoint returned nil")
+	}
+
+	// Test SetAllowMethods
+	builder := &EndPointBuilder[request, response]{}
+	builder.SetAllowMethods(GET, POST)
+	if len(builder.options) != 1 {
+		t.Errorf("SetAllowMethods failed, expected 1 option, got %d", len(builder.options))
+	}
+
+	// Test SetNecessaryParams
+	builder.SetNecessaryParams("param1", "param2")
+	if len(builder.options) != 2 {
+		t.Errorf("SetNecessaryParams failed, expected 2 options, got %d", len(builder.options))
+	}
+
+	// Test SetAdditionalParams
+	builder.SetAdditionalParams("param3", "param4")
+	if len(builder.options) != 3 {
+		t.Errorf("SetAdditionalParams failed, expected 3 options, got %d", len(builder.options))
+	}
+
+	// Test SetParams
+	builder.SetParams(map[string]bool{"param5": true, "param6": false})
+	if len(builder.options) != 4 {
+		t.Errorf("SetParams failed, expected 4 options, got %d", len(builder.options))
+	}
+
+	// Test SetNecessaryQueries
+	builder.SetNecessaryQueries("query1", "query2")
+	if len(builder.options) != 5 {
+		t.Errorf("SetNecessaryQueries failed, expected 5 options, got %d", len(builder.options))
+	}
+
+	// Test SetAdditionalQueries
+	builder.SetAdditionalQueries("query3", "query4")
+	if len(builder.options) != 6 {
+		t.Errorf("SetAdditionalQueries failed, expected 6 options, got %d", len(builder.options))
+	}
+
+	// Test SetQueries
+	builder.SetQueries(map[string]bool{"query5": true, "query6": false})
+	if len(builder.options) != 7 {
+		t.Errorf("SetQueries failed, expected 7 options, got %d", len(builder.options))
+	}
+
+	// Test SetNecessaryHeaders
+	builder.SetNecessaryHeaders("header1", "header2")
+	if len(builder.options) != 8 {
+		t.Errorf("SetNecessaryHeaders failed, expected 8 options, got %d", len(builder.options))
+	}
+
+	// Test SetAdditionalHeaders
+	builder.SetAdditionalHeaders("header3", "header4")
+	if len(builder.options) != 9 {
+		t.Errorf("SetAdditionalHeaders failed, expected 9 options, got %d", len(builder.options))
+	}
+
+	// Test SetHeaders
+	builder.SetHeaders(map[string]bool{"header5": true, "header6": false})
+	if len(builder.options) != 10 {
+		t.Errorf("SetHeaders failed, expected 10 options, got %d", len(builder.options))
+	}
+
+	// Test SetNecessaryCookies
+	builder.SetNecessaryCookies("cookie1", "cookie2")
+	if len(builder.options) != 11 {
+		t.Errorf("SetNecessaryCookies failed, expected 11 options, got %d", len(builder.options))
+	}
+
+	// Test SetAdditionalCookies
+	builder.SetAdditionalCookies("cookie3", "cookie4")
+	if len(builder.options) != 12 {
+		t.Errorf("SetAdditionalCookies failed, expected 12 options, got %d", len(builder.options))
+	}
+
+	// Test SetCookies
+	builder.SetCookies(map[string]bool{"cookie5": true, "cookie6": false})
+	if len(builder.options) != 13 {
+		t.Errorf("SetCookies failed, expected 13 options, got %d", len(builder.options))
+	}
+
+	// Test SetRouter
+	builder.SetRouter(nil)
+	if len(builder.options) != 14 {
+		t.Errorf("SetRouter failed, expected 14 options, got %d", len(builder.options))
+	}
+
+	// Test SetGinMiddlewares
+	builder.SetGinMiddlewares(nil)
+	if len(builder.options) != 15 {
+		t.Errorf("SetGinMiddlewares failed, expected 15 options, got %d", len(builder.options))
+	}
+
+	// Test SetHandlerChain
+	builder.SetHandlerChain(nil)
+	if len(builder.options) != 16 {
+		t.Errorf("SetHandlerChain failed, expected 16 options, got %d", len(builder.options))
+	}
+
+	// Test SetCustomPreprocessors
+	builder.SetCustomPreprocessors(nil)
+	if len(builder.options) != 17 {
+		t.Errorf("SetCustomPreprocessors failed, expected 17 options, got %d", len(builder.options))
+	}
+}
+
+func TestEngine(t *testing.T) {
+	// Test NewEngine
+	engine := NewEngine("/base")
+	if engine == nil {
+		t.Fatal("NewEngine returned nil")
+	}
+	if engine.core == nil {
+		t.Fatal("Engine core is nil")
+	}
+	if engine.baseRouter == nil {
+		t.Fatal("Engine baseRouter is nil")
+	}
+	if len(engine.endpoints) != 0 {
+		t.Fatalf("Expected 0 endpoints, got %d", len(engine.endpoints))
+	}
+	if len(engine.middlewares) != 0 {
+		t.Fatalf("Expected 0 middlewares, got %d", len(engine.middlewares))
+	}
+
+	// Test AddMiddlewares
+	mw1 := func(c *gin.Context) {}
+	mw2 := func(c *gin.Context) {}
+	engine.AddMiddlewares(mw1, mw2)
+	if len(engine.middlewares) != 2 {
+		t.Fatalf("Expected 2 middlewares, got %d", len(engine.middlewares))
+	}
+
+	// Test registerEndpoints
+	engine.registerEndpoints()
+	if len(engine.core.Handlers) != 3 { // 1 for traceContext, 2 for added middlewares
+		t.Fatalf("Expected 3 handlers, got %d", len(engine.core.Handlers))
+	}
+
+	// Test traceContext
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request, _ = http.NewRequest("GET", "/", nil)
+	engine.traceContext(ctx)
+	if ctx.GetString(trace.ContextKey()) == "" {
+		t.Fatal("Expected trace ID in context, got empty string")
+	}
+
+	// Test defaultHandler
+	ctx, _ = gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request, _ = http.NewRequest("GET", "/", nil)
+	engine.defaultHandler(ctx)
 }
