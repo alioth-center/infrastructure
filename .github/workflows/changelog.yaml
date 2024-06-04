@@ -1,14 +1,12 @@
 name: Generate Changelog
 
 on:
-  pull_request:
-    branches:
-      - main
-    tags:
-      - 'v*'
+  release:
+    types: [published]
 
 jobs:
   generate-changelog:
+    if: github.repository == 'alioth-center/infrastructure'
     runs-on: ubuntu-latest
 
     steps:
