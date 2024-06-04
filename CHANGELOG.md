@@ -2,14 +2,42 @@
 ## [Unreleased]
 
 ### Conf
+- 使ChangLog工作流可以手动触发
+
+### Fix
+- 修复GitHub Actions中的报错
+
+
+<a name="v1.2.15"></a>
+## [v1.2.15] - 2024-06-04
+### Chore
+- update CHANGELOG
+
+### Conf
+- 移除codefactor集成，将changelog更改为release时触发
+- 配置codefactor和changelog的设置
+- 更新 git-chglog 工作流配置，调整为在 pr 时触发
 - 更新 git-chglog 工作流配置，添加 debug 输出
 - 更新 git-chglog 工作流配置
+
+### Fix
+- 修复 HTTP 模块中的部分硬编码用例
+- 修复依赖，执行golangci-lint
 
 ### Init
 - 初始化 README 文档
 
+### Optimize
+- 优化了cli的实现结构，添加了config的写入功能
+
 ### Update
+- 添加了http模块的部分单元测试用例
 - 为 http 模块新增单元测试内容
+- 为cli添加 go-prompt 依赖并简单定义了接口
+
+### Pull Requests
+- Merge pull request [#16](https://github.com/alioth-center/infrastructure/issues/16) from sunist-c/main
+- Merge pull request [#14](https://github.com/alioth-center/infrastructure/issues/14) from sunist-c/cli
 
 
 <a name="v1.2.14"></a>
@@ -321,7 +349,8 @@
 - 删除无效文件
 
 
-[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.14...HEAD
+[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.15...HEAD
+[v1.2.15]: https://github.com/alioth-center/infrastructure/compare/v1.2.14...v1.2.15
 [v1.2.14]: https://github.com/alioth-center/infrastructure/compare/v1.2.13...v1.2.14
 [v1.2.13]: https://github.com/alioth-center/infrastructure/compare/v1.2.12...v1.2.13
 [v1.2.12]: https://github.com/alioth-center/infrastructure/compare/v1.2.11...v1.2.12
