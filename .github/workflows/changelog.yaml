@@ -1,0 +1,42 @@
+name: Generate Changelog
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-changelog:
+    if: github.repository == 'alioth-center/infrastructure'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整的历史记录和所有标签
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install git-chglog
+        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+
+      - name: Debugging info
+        run: |
+          git fetch --tags
+          git tag
+
+      - name: Generate CHANGELOG
+        run: git-chglog -o CHANGELOG.md
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add CHANGELOG.md
+          git commit -m "chore: update CHANGELOG"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
