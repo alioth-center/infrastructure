@@ -35,8 +35,9 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout main  # 切换到 main 分支
           git add CHANGELOG.md
           git commit -m "chore: update CHANGELOG"
-          git push
+          git push origin main  # 推送到 main 分支
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
