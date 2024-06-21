@@ -21,6 +21,7 @@ type RequestBuilder interface {
 	WithPath(path string) RequestBuilder
 	WithPathFormat(format string, args ...any) RequestBuilder
 	WithPathTemplate(template string, args map[string]string) RequestBuilder
+	WithQueries(queries *url.Values) RequestBuilder
 	WithQuery(key, value string) RequestBuilder
 	WithQueryIgnoreEmptyValue(key, value string) RequestBuilder
 	WithHeader(key, value string) RequestBuilder
@@ -77,6 +78,18 @@ func (b *requestBuilder) WithQuery(key, value string) RequestBuilder {
 		b.queries = &url.Values{}
 	}
 	b.queries.Add(key, value)
+	return b
+}
+
+func (b *requestBuilder) WithQueries(queries *url.Values) RequestBuilder {
+	if b.queries == nil {
+		b.queries = queries
+		return b
+	}
+
+	for k, v := range *queries {
+		b.queries.Add(k, v[0])
+	}
 	return b
 }
 
