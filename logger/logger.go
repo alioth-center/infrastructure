@@ -156,6 +156,36 @@ func (l *logger) Panicf(fields Fields, format string, args ...any) {
 	l.Panic(fields.WithMessage(fmt.Sprintf(format, args...)))
 }
 
+type muteLogger struct{}
+
+func (m muteLogger) Debug(fields Fields) {}
+
+func (m muteLogger) Info(fields Fields) {}
+
+func (m muteLogger) Warn(fields Fields) {}
+
+func (m muteLogger) Error(fields Fields) {}
+
+func (m muteLogger) Fatal(fields Fields) {}
+
+func (m muteLogger) Panic(fields Fields) {}
+
+func (m muteLogger) Log(level Level, fields Fields) {}
+
+func (m muteLogger) Logf(level Level, fields Fields, format string, args ...any) {}
+
+func (m muteLogger) Debugf(fields Fields, format string, args ...any) {}
+
+func (m muteLogger) Infof(fields Fields, format string, args ...any) {}
+
+func (m muteLogger) Warnf(fields Fields, format string, args ...any) {}
+
+func (m muteLogger) Errorf(fields Fields, format string, args ...any) {}
+
+func (m muteLogger) Fatalf(fields Fields, format string, args ...any) {}
+
+func (m muteLogger) Panicf(fields Fields, format string, args ...any) {}
+
 func New() Logger {
 	l := &logger{}
 	l.init(Options{
@@ -178,6 +208,10 @@ func Default() Logger {
 		})
 	}
 	return defaultLogger
+}
+
+func Mute() Logger {
+	return &muteLogger{}
 }
 
 func newLoggerWithOptions(options Options) Logger {

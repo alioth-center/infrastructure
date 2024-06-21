@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -63,12 +64,24 @@ func TestConsoleWriter(t *testing.T) {
 }
 
 func TestLogger(t *testing.T) {
-	logger := Default()
-	logger.Debug(NewFields(context.Background()).WithMessage("test1").WithData("hello"))
-	logger.Info(NewFields(context.Background()).WithMessage("test2").WithData("hello"))
-	logger.Warn(NewFields(context.Background()).WithMessage("test3").WithData("hello"))
-	logger.Error(NewFields(context.Background()).WithMessage("test4").WithData("hello"))
-	logger.Logf(LevelInfo, NewFields(context.Background()).WithMessage("test5"), "hello, %s", "world")
+	loggerTesting := func(logging Logger, t *testing.T) {
+		logging.Debug(NewFields(context.Background()).WithMessage("test1").WithData("hello"))
+		logging.Info(NewFields(context.Background()).WithMessage("test2").WithData("hello"))
+		logging.Warn(NewFields(context.Background()).WithMessage("test3").WithData("hello"))
+		logging.Error(NewFields(context.Background()).WithMessage("test4").WithData("hello"))
+		logging.Debugf(NewFields(context.Background()).WithMessage("test5"), "hello, %s", "world")
+		logging.Infof(NewFields(context.Background()).WithMessage("test6"), "hello, %s", "world")
+		logging.Warnf(NewFields(context.Background()).WithMessage("test7"), "hello, %s", "world")
+		logging.Errorf(NewFields(context.Background()).WithMessage("test8"), "hello, %s", "world")
+		logging.Logf(LevelInfo, NewFields(context.Background()).WithMessage("test9"), "hello, %s", "world")
+	}
+
+	testingLoggers := []Logger{Default(), New(), Mute()}
+	for i, ll := range testingLoggers {
+		t.Run(fmt.Sprintf("%d:Loggeer", i), func(t *testing.T) {
+			loggerTesting(ll, t)
+		})
+	}
 }
 
 func TestConfigConvert(t *testing.T) {
