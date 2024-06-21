@@ -3,10 +3,11 @@ package caiyun
 import (
 	"context"
 	"fmt"
-	"github.com/alioth-center/infrastructure/logger"
-	"github.com/alioth-center/infrastructure/network/http"
 	"net/url"
 	"strconv"
+
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/network/http"
 )
 
 type Client interface {
