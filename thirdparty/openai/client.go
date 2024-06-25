@@ -406,3 +406,10 @@ func NewClient(options Config, logger logger.Logger) Client {
 		options:  options,
 	}
 }
+
+func NewCustomClient(opts Config, cli http.Client) Client {
+	return client{
+		executor: cli,
+		options:  opts,
+	}
+}

@@ -122,6 +122,33 @@ type UsageObject struct {
 	TotalTokens      int `json:"total_tokens"`      // 全部token消耗
 }
 
+// ResponseFormat 聊天请求返回格式
+// reference https://platform.openai.com/docs/api-reference/chat/create#chat-create-response_format
+type ResponseFormat struct {
+	Type string `json:"type,omitempty"` // 返回格式，支持 json_object 和 text
+}
+
+// 聊天请求返回格式
+var (
+	TextResponseFormat       = &ResponseFormat{Type: "text"}        // 返回文本格式
+	JsonObjectResponseFormat = &ResponseFormat{Type: "json_object"} // 返回json格式
+)
+
+// Tools 聊天请求工具
+// reference https://platform.openai.com/docs/api-reference/chat/create#chat-create-tools
+type Tools struct {
+	Type     string       `json:"type,omitempty"`     // 工具类型，目前只有 function
+	Function ToolFunction `json:"function,omitempty"` // 工具函数
+}
+
+// ToolFunction 聊天请求工具函数
+// reference https://platform.openai.com/docs/api-reference/chat/create#chat-create-tools-function
+type ToolFunction struct {
+	Name        string `json:"name,omitempty"`        // 工具函数名称
+	Description string `json:"description,omitempty"` // 工具函数描述
+	Parameters  any    `json:"parameters,omitempty"`  // 工具函数参数
+}
+
 // CompleteChatRequestBody 聊天请求体
 // reference https://platform.openai.com/docs/api-reference/chat/create
 type CompleteChatRequestBody struct {
@@ -135,6 +162,14 @@ type CompleteChatRequestBody struct {
 	PresencePenalty  float64             `json:"presence_penalty,omitempty"`  // 创新惩罚，-2~+2，越高越可能出现新东西
 	FrequencyPenalty float64             `json:"frequency_penalty,omitempty"` // 重复惩罚，-2~+2，越高越不可能重复
 	User             string              `json:"user,omitempty"`              // 用户的唯一标识符，用于openai跟踪
+	LogitBias        map[string]float64  `json:"logit_bias,omitempty"`        // 对特定token的偏好
+	LogProbs         int                 `json:"logprobs,omitempty"`          // 返回token的log概率
+	TopLogProbs      int                 `json:"top_logprobs,omitempty"`      // 返回token的top log概率
+	ResponseFormat   *ResponseFormat     `json:"response_format,omitempty"`   // 返回格式，text 或者 json_object
+	Seed             int                 `json:"seed,omitempty"`              // 随机种子
+	ServiceTier      string              `json:"service_tier,omitempty"`      // 服务层级
+	Tools            []Tools             `json:"tools,omitempty"`             // 模型可以调用的工具列表
+	ToolChoice       any                 `json:"tool_choice,omitempty"`       // 控制模型调用哪个（如果有）工具
 }
 
 // CompleteChatRequest 聊天请求
@@ -146,11 +181,14 @@ type CompleteChatRequest struct {
 // CompleteChatResponseBody 聊天响应
 // reference https://platform.openai.com/docs/api-reference/chat/create
 type CompleteChatResponseBody struct {
-	ID      string              `json:"id"`      // openai提供的回复id
-	Object  string              `json:"object"`  // openai标记的返回对象，此处固定为chat.completion
-	Created int64               `json:"created"` // openai返回的消息回复时间
-	Choices []ReplyChoiceObject `json:"choices"` // openai的回复，一般情况下只有一个元素
-	Usage   UsageObject         `json:"usage"`   // openai的token使用量
+	ID                string              `json:"id"`                 // openai提供的回复id
+	Object            string              `json:"object"`             // openai标记的返回对象，此处固定为chat.completion
+	Created           int64               `json:"created"`            // openai返回的消息回复时间
+	Choices           []ReplyChoiceObject `json:"choices"`            // openai的回复，一般情况下只有一个元素
+	Usage             UsageObject         `json:"usage"`              // openai的token使用量
+	Model             string              `json:"model"`              // openai的模型
+	ServiceTier       string              `json:"service_tier"`       // openai的服务层级
+	SystemFingerprint string              `json:"system_fingerprint"` // openai的系统指纹，与 seed 结合使用
 }
 
 type VoiceEnum string
