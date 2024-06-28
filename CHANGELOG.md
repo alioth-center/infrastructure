@@ -1,11 +1,38 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v1.2.16"></a>
+## [v1.2.16] - 2024-06-28
+### Chore
+- golangci-lint fix
+- 更新readme，添加贡献者列表
+- update CHANGELOG
+
 ### Conf
+- 配置 codecov 忽略无法测试的驱动与三方实现
 - 使ChangLog工作流可以手动触发
 
+### Feat
+- 添加了 openai.client 的 embedding 接口与相关测试
+- 添加了 openai.client 的测试
+- 为 openai.client 添加了 CalculateToken 方法，可以计算文本所占用的 token 数量
+- 添加三目运算符的函数实现与对应测试方法
+- 添加彩云天气的第三方集成
+- 为http.client添加一个接收url.Values的方法
+- 添加新的Logger实现，它不会进行任何日志，并且适配测试文件
+
 ### Fix
+- 修复 golangci-lint 错误
 - 修复GitHub Actions中的报错
+
+### Update
+- 升级 golang 版本和 go.mod 依赖
+- 更新 openai 的接口封装，适配最新的版本
+
+### Pull Requests
+- Merge pull request [#19](https://github.com/alioth-center/infrastructure/issues/19) from sunist-c/main
+- Merge pull request [#17](https://github.com/alioth-center/infrastructure/issues/17) from sunist-c/main
 
 
 <a name="v1.2.15"></a>
@@ -349,7 +376,8 @@
 - 删除无效文件
 
 
-[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.15...HEAD
+[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.16...HEAD
+[v1.2.16]: https://github.com/alioth-center/infrastructure/compare/v1.2.15...v1.2.16
 [v1.2.15]: https://github.com/alioth-center/infrastructure/compare/v1.2.14...v1.2.15
 [v1.2.14]: https://github.com/alioth-center/infrastructure/compare/v1.2.13...v1.2.14
 [v1.2.13]: https://github.com/alioth-center/infrastructure/compare/v1.2.12...v1.2.13
