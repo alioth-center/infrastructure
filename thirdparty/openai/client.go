@@ -2,6 +2,7 @@ package openai
 
 import (
 	"fmt"
+	"github.com/pandodao/tokenizer-go"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
@@ -9,6 +10,7 @@ import (
 )
 
 type Client interface {
+	CalculateToken(inputs ...string) (tokens int)
 	ListModels(req ListModelRequest) (resp ListModelResponseBody, err error)
 	RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error)
 	GenerateImage(req CreateImageRequest) (resp ImageResponseBody, err error)
@@ -30,6 +32,14 @@ type Client interface {
 type client struct {
 	executor http.Client
 	options  Config
+}
+
+func (c client) CalculateToken(inputs ...string) (tokens int) {
+	for _, input := range inputs {
+		tokens += tokenizer.MustCalToken(input)
+	}
+
+	return tokens
 }
 
 func (c client) ListModels(_ ListModelRequest) (resp ListModelResponseBody, err error) {
