@@ -339,6 +339,32 @@ type CompleteModerationRequest struct {
 	Body CompleteModerationRequestBody
 }
 
+// EmbeddingRequest 嵌入请求
+type EmbeddingRequest struct {
+	Body EmbeddingRequestBody
+}
+
+// EmbeddingRequestBody 嵌入请求体
+type EmbeddingRequestBody struct {
+	Input string `json:"input"`           // 需要生成嵌入的文本
+	Model string `json:"model,omitempty"` // 进行嵌入的模型
+}
+
+// EmbeddingDataItem 嵌入数据项
+type EmbeddingDataItem struct {
+	Object    string    `json:"object"`    // 数据类型，一般为embedding
+	Embedding []float64 `json:"embedding"` // 嵌入数据
+	Index     int       `json:"index"`     // 嵌入数据的索引
+}
+
+// EmbeddingResponseBody 嵌入响应
+type EmbeddingResponseBody struct {
+	Object string              `json:"object"` // 数据类型，一般为 list
+	Data   []EmbeddingDataItem `json:"data"`   // 嵌入数据
+	Model  string              `json:"model"`  // 进行嵌入的模型
+	Usage  UsageObject         `json:"usage"`  // openai的token使用量
+}
+
 // CompleteModerationResponseBody 内容审核响应
 // reference https://platform.openai.com/docs/api-reference/moderations/create
 type CompleteModerationResponseBody struct {
