@@ -6,9 +6,11 @@ import (
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/utils/values"
+	"github.com/pandodao/tokenizer-go"
 )
 
 type Client interface {
+	CalculateToken(inputs ...string) (tokens int)
 	ListModels(req ListModelRequest) (resp ListModelResponseBody, err error)
 	RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error)
 	GenerateImage(req CreateImageRequest) (resp ImageResponseBody, err error)
@@ -16,6 +18,7 @@ type Client interface {
 	CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error)
 	CreateTranscription(req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error)
 	CompleteModeration(req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error)
+	Embedding(req EmbeddingRequest) (resp EmbeddingResponseBody, err error)
 
 	CreateFineTuningJob(req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error)
 	RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error)
@@ -30,6 +33,14 @@ type Client interface {
 type client struct {
 	executor http.Client
 	options  Config
+}
+
+func (c client) CalculateToken(inputs ...string) (tokens int) {
+	for _, input := range inputs {
+		tokens += tokenizer.MustCalToken(input)
+	}
+
+	return tokens
 }
 
 func (c client) ListModels(_ ListModelRequest) (resp ListModelResponseBody, err error) {
@@ -195,6 +206,29 @@ func (c client) CompleteModeration(req CompleteModerationRequest) (resp Complete
 	bindErr := response.BindJson(&resp)
 	if bindErr != nil {
 		return CompleteModerationResponseBody{}, fmt.Errorf("parse complete moderation response error: %w", bindErr)
+	}
+
+	return resp, nil
+}
+
+func (c client) Embedding(req EmbeddingRequest) (resp EmbeddingResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumEmbedding).
+		WithMethod(http.POST).
+		WithAccept(http.ContentTypeJson).
+		WithJsonBody(&req.Body)
+	response, executeErr := c.executor.ExecuteRequest(request)
+	if executeErr != nil {
+		return EmbeddingResponseBody{}, fmt.Errorf("execute embedding request error: %w", executeErr)
+	}
+
+	code, message := response.Status()
+	if code != http.StatusOK {
+		return EmbeddingResponseBody{}, &ResponseStatusError{StatusCode: code, Status: message}
+	}
+
+	bindErr := response.BindJson(&resp)
+	if bindErr != nil {
+		return EmbeddingResponseBody{}, fmt.Errorf("parse embedding response error: %w", bindErr)
 	}
 
 	return resp, nil
@@ -404,5 +438,12 @@ func NewClient(options Config, logger logger.Logger) Client {
 	return client{
 		executor: http.NewLoggerClient(logger),
 		options:  options,
+	}
+}
+
+func NewCustomClient(opts Config, cli http.Client) Client {
+	return client{
+		executor: cli,
+		options:  opts,
 	}
 }

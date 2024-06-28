@@ -10,3 +10,7 @@ coverage:
   status:
     patch: false
     project: false
+
+ignore:
+  - "thirdparty/"
+  - "database/"

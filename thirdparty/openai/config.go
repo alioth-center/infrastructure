@@ -26,6 +26,7 @@ const (
 	EndpointEnumCreateSpeech          EndpointEnum = "create_speech"        // 创建语音
 	EndpointEnumCreateTranscription   EndpointEnum = "create_transcription" // 创建转录
 	EndpointEnumCompleteModeration    EndpointEnum = "complete_moderation"  // 完成审核
+	EndpointEnumEmbedding             EndpointEnum = "embedding"
 	EndpointEnumCreateFineTuningJob   EndpointEnum = "create_fine_tuning"   // 创建微调
 	EndpointEnumRetrieveFineTuningJob EndpointEnum = "retrieve_fine_tuning" // 检索微调
 	EndpointEnumListFineTuningJobs    EndpointEnum = "list_fine_tuning"     // 列出微调
@@ -53,6 +54,7 @@ var defaultEndpoints = map[EndpointEnum]string{
 	EndpointEnumCreateSpeech:          "audio/speech",
 	EndpointEnumCreateTranscription:   "audio/transcriptions",
 	EndpointEnumCompleteModeration:    "moderations",
+	EndpointEnumEmbedding:             "embeddings",
 	EndpointEnumCreateFineTuningJob:   "fine_tuning/jobs",
 	EndpointEnumRetrieveFineTuningJob: "fine_tuning/jobs/{id}",
 	EndpointEnumListFineTuningJobs:    "fine_tuning/jobs",

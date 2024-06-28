@@ -63,6 +63,8 @@ jobs:
           MYSQL_USER: user
           MYSQL_PASSWORD: password
           MYSQL_DB: testdb
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
