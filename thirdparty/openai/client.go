@@ -2,11 +2,11 @@ package openai
 
 import (
 	"fmt"
-	"github.com/pandodao/tokenizer-go"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/utils/values"
+	"github.com/pandodao/tokenizer-go"
 )
 
 type Client interface {
