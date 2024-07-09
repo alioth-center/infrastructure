@@ -3,10 +3,11 @@ package trace
 import (
 	"bytes"
 	"fmt"
-	"github.com/alioth-center/infrastructure/utils/values"
 	"os"
 	"reflect"
 	"runtime"
+
+	"github.com/alioth-center/infrastructure/utils/values"
 )
 
 var (
