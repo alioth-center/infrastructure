@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/alioth-center/infrastructure/database"
 	"github.com/alioth-center/infrastructure/exit"
@@ -42,10 +43,10 @@ func (s *postgresDb) Init(options database.Options) error {
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open postgresDb database").WithData(dataSource))
 
 	// 注册退出事件
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(_ os.Signal) {
 		_ = sqlDb.Close()
-		return "closed postgres database"
-	}, "postgres database")
+		fmt.Println("closed postgres database")
+	}, "CLOSE_POSTGRES_DB_CONN")
 	return nil
 }
 

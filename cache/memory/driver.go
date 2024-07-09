@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -29,10 +31,10 @@ func newCache(cfg Config) *accessor {
 		go memoryCache.cleanCache(interval, maxExec, cfg.MaxCleanPercentage)
 
 		// 启动了主动淘汰策略，需要注册退出事件
-		exit.Register(func(_ string) string {
+		exit.RegisterExitEvent(func(_ os.Signal) {
 			memoryCache.close()
-			return "closed memory cache"
-		}, "memory cache")
+			fmt.Println("closed memory cache")
+		}, "CLEAN_MEMORY_CACHE")
 	}
 
 	return memoryCache

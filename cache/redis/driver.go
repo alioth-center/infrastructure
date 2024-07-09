@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/alioth-center/infrastructure/cache"
@@ -46,10 +47,10 @@ func newRedisClient(cfg Config) (rds *accessor, err error) {
 	}
 
 	// 初始化成功，需要注册退出函数
-	exit.Register(func(_ string) string {
-		e := client.Close()
-		return fmt.Sprintf("closed redis client: %s", e.Error())
-	}, "redis cache")
+	exit.RegisterExitEvent(func(signal os.Signal) {
+		_ = client.Close()
+		fmt.Println("closed redis client")
+	}, "CLOSE_REDIS_CONN")
 
 	return &accessor{
 		db: client,

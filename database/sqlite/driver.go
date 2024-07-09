@@ -52,10 +52,10 @@ func (s *sqliteDb) Init(options database.Options) error {
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open sqliteDb database").WithData(dataSource))
 
 	// 注册退出事件
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(_ os.Signal) {
 		_ = sqlDb.Close()
-		return "closed sqlite database"
-	}, "sqlite database")
+		fmt.Println("closed sqlite database")
+	}, "CLOSE_SQLITE_DB_CONN")
 	return nil
 }
 

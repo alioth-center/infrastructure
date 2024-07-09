@@ -3,6 +3,7 @@ package rpc
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/alioth-center/infrastructure/exit"
 	"google.golang.org/grpc"
@@ -29,10 +30,10 @@ func (e *Engine) Serve(address string) (err error) {
 	e.address = address
 
 	// 只有在未启动服务时才需要注册退出
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(_ os.Signal) {
 		e.server.GracefulStop()
-		return "rpc engine stopped"
-	}, "rpc engine")
+		fmt.Println("rpc engine stopped")
+	}, "SHUTDOWN_RPC_SERVER")
 
 	conn, listenErr := net.Listen("tcp", address)
 	defer func() {
@@ -61,10 +62,10 @@ func (e *Engine) ServeAsync(address string, ex chan struct{}) (exitChan chan err
 	}
 
 	// 只有在未启动服务时才需要退出
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(signal os.Signal) {
 		ex <- struct{}{}
-		return "rpc server stopped"
-	}, "rpc server")
+		fmt.Println("rpc server stopped")
+	}, "SHUTDOWN_RPC_SERVER")
 
 	go func() {
 		select {

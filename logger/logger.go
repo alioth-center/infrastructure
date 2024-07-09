@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/alioth-center/infrastructure/exit"
 )
@@ -216,7 +217,7 @@ func Mute() Logger {
 
 func newLoggerWithOptions(options Options) Logger {
 	l := &logger{}
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(signal os.Signal) {
 		// stdout 和 stderr 不能关闭，可能会导致异常情况
 		if options.notStdout {
 			options.StdoutWriter.Close()
@@ -224,8 +225,8 @@ func newLoggerWithOptions(options Options) Logger {
 		if options.notStderr {
 			options.StderrWriter.Close()
 		}
-		return "logger stopped"
-	}, "logger")
+		fmt.Println("logger stopped")
+	}, "CLEANUP_LOGGER")
 	l.init(options)
 	return l
 }
@@ -237,11 +238,11 @@ func NewLoggerWithConfig(cfg Config) Logger {
 func NewLoggerWithCustomWriter(stdout, stderr Writer, closable bool, formatter Marshaller, level Level) Logger {
 	l := &logger{}
 	if closable {
-		exit.Register(func(_ string) string {
+		exit.RegisterExitEvent(func(signal os.Signal) {
 			stdout.Close()
 			stderr.Close()
-			return "logger stopped"
-		}, "logger")
+			fmt.Println("logger stopped")
+		}, "CLEANUP_LOGGER")
 	}
 
 	l.init(Options{

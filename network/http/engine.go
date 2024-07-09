@@ -1,6 +1,9 @@
 package http
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/trace"
 	"github.com/alioth-center/infrastructure/utils/values"
@@ -62,10 +65,10 @@ func (e *Engine) ServeAsync(bindAddress string, exitChan chan struct{}) (errChan
 		return ec
 	}
 
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(_ os.Signal) {
 		exitChan <- struct{}{}
-		return "http server stopped"
-	}, "http server")
+		fmt.Println("http server stopped")
+	}, "SHUTDOWN_HTTP_SERVER")
 
 	go func() {
 		select {
