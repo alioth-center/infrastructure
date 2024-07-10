@@ -61,21 +61,6 @@ func (s *BaseDatabaseImplement) SetDriverName(name string) {
 	s.driver = name
 }
 
-func (s *BaseDatabaseImplement) ParseLoggerOptions(opts Options) {
-	loggerCfg := logger.Config{
-		Level:          string(logger.LevelInfo),
-		Formatter:      "json",
-		StdoutFilePath: opts.Stdout,
-		StderrFilePath: opts.Stderr,
-	}
-
-	if opts.DebugLog {
-		loggerCfg.Level = string(logger.LevelDebug)
-	}
-
-	s.Logger = logger.NewLoggerWithConfig(loggerCfg)
-}
-
 func (s *BaseDatabaseImplement) ParseDatabaseOptions(db *sql.DB, opts Options) {
 	if opts.MaxIdle > 0 {
 		db.SetMaxIdleConns(opts.MaxIdle)

@@ -21,8 +21,6 @@ func convertConfigToOptions(cfg Config) (opt database.Options) {
 	return database.Options{
 		DataSource: cfg.Database,
 		DebugLog:   cfg.Debug,
-		Stdout:     cfg.Stdout,
-		Stderr:     cfg.Stderr,
 		MaxIdle:    cfg.MaxIdle,
 		MaxOpen:    cfg.MaxOpen,
 		MaxLife:    time.Duration(cfg.MaxLifeSecond) * time.Second,

@@ -13,8 +13,6 @@ type Options struct {
 	MaxOpen    int
 	MaxLife    time.Duration
 	Timeout    time.Duration
-	Stdout     string
-	Stderr     string
 	DebugLog   bool
 }
 

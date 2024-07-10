@@ -19,7 +19,7 @@ type postgresDb struct {
 
 func (s *postgresDb) Init(options database.Options) error {
 	// 初始化日志
-	s.BaseDatabaseImplement.ParseLoggerOptions(options)
+	s.Logger = logger.Default()
 	s.Logger.Info(logger.NewFields().WithMessage("start open postgresDb database").WithData(options.DataSource))
 
 	// 连接数据库

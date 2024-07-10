@@ -1,143 +1,158 @@
 package logger
 
 import (
-	"fmt"
 	"os"
-	"sync"
+	"path/filepath"
+	"sync/atomic"
+	"time"
 
-	"github.com/alioth-center/infrastructure/errors"
-)
-
-var (
-	consoleWriter    Writer
-	consoleErrWriter Writer
+	"github.com/alioth-center/infrastructure/exit"
+	"github.com/alioth-center/infrastructure/utils/concurrency"
 )
 
 type Writer interface {
-	init(output *os.File)
-	errors() chan error
 	Write(data []byte)
 	Close()
 }
 
-type writer struct {
-	iw     *os.File
-	ex     chan struct{}
-	es     chan error
-	closed bool
+var fileWriters = concurrency.NewMap[string, Writer]()
+
+type fileLogWriter struct {
+	f      *os.File
 	buffer chan []byte
-	wg     *sync.WaitGroup
+	closed atomic.Bool
 }
 
-func (w *writer) init(output *os.File) {
-	if output == nil {
-		output = os.Stdout
+func (fw *fileLogWriter) Write(data []byte) {
+	if !fw.closed.Load() {
+		fw.buffer <- data
+	}
+}
+
+func (fw *fileLogWriter) Close() {
+	if !fw.closed.Load() {
+		fw.closed.Store(true)
+		close(fw.buffer)
+		for data := range fw.buffer {
+			_, _ = fw.f.Write(data)
+		}
+		_ = fw.f.Close()
+	}
+}
+
+func (fw *fileLogWriter) serve() {
+	exit.RegisterExitEvent(func(_ os.Signal) {
+		fw.Close()
+	}, "EXIT_FILE_LOGGER:"+fw.f.Name())
+
+	for data := range fw.buffer {
+		_, _ = fw.f.Write(data)
+	}
+}
+
+func NewFileWriter(path string) Writer {
+	// exist file writer, return it
+	if w, ok := fileWriters.Get(path); ok {
+		return w
 	}
 
-	w.iw = output
-	w.ex = make(chan struct{})
-	w.es = make(chan error, 16)
-	w.closed = false
-	w.buffer = make(chan []byte, 1024)
-	w.wg = &sync.WaitGroup{}
+	f, e := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
+	if e != nil {
+		return nil
+	}
 
+	w := &fileLogWriter{
+		f:      f,
+		buffer: make(chan []byte, 1024),
+		closed: atomic.Bool{},
+	}
+	w.closed.Store(false)
 	go w.serve()
+
+	fileWriters.Set(path, w)
+
+	return w
 }
 
-func (w *writer) serve() {
-	defer w.wg.Done()
-	for {
-		select {
-		case <-w.ex:
-			w.closed = true
+type rotationFileWriter struct {
+	baseDir  string
+	rotation func(time.Time) string
+	lastFile atomic.Value
+}
 
-			// 等待缓冲区中的数据全部写入
-			for {
-				select {
-				case data := <-w.buffer:
-					_, e := w.iw.Write(data)
-					if e != nil {
-						w.es <- e
-					}
-				default:
-					goto end
-				}
-			}
-		end:
-			close(w.buffer)
-			close(w.es)
-			return
-		case data := <-w.buffer:
-			_, e := w.iw.Write(data)
-			if e != nil {
-				w.es <- e
-			}
+func (r *rotationFileWriter) Write(data []byte) {
+	logFile := filepath.Join(r.baseDir, r.rotation(time.Now()))
+	if r.lastFile.Load() != logFile {
+		lastWriter, exist := fileWriters.Get(logFile)
+		if exist && lastWriter != nil {
+			lastWriter.Close()
 		}
 	}
+
+	writer := NewFileWriter(logFile)
+	writer.Write(data)
 }
 
-func (w *writer) errors() chan error {
-	return w.es
-}
-
-func (w *writer) Write(data []byte) {
-	if w.closed {
-		return
+func (r *rotationFileWriter) Close() {
+	lastFile := r.lastFile.Load().(string)
+	lastWriter, exist := fileWriters.Get(lastFile)
+	if exist && lastWriter != nil {
+		lastWriter.Close()
 	}
-
-	w.buffer <- data
 }
 
-func (w *writer) Close() {
-	if w.closed {
-		return
+func NewTimeBasedRotationFileWriter(directory string, rotation func(time time.Time) (filename string)) Writer {
+	atValue := atomic.Value{}
+	atValue.Store(filepath.Join(directory, rotation(time.Now())))
+	return &rotationFileWriter{
+		baseDir:  directory,
+		rotation: rotation,
+		lastFile: atValue,
 	}
-
-	w.wg.Add(1)
-	w.ex <- struct{}{}
-	_ = w.iw.Close()
-
-	// 等待缓冲区中的数据写入
-	w.wg.Wait()
 }
 
-func ConsoleWriter() Writer {
-	return consoleWriter
+type consoleWriter struct {
+	console *os.File
 }
 
-func ConsoleErrorWriter() Writer {
-	return consoleErrWriter
+func (c consoleWriter) Write(data []byte) {
+	if c.console == os.Stdout || c.console == os.Stderr {
+		_, _ = c.console.Write(data)
+	}
 }
 
-func FileWriter(path string) (w Writer, err error) {
-	fi, fie := os.Stat(path)
-	if fie != nil {
-		if os.IsNotExist(fie) {
-			// 文件不存在，创建文件
-			f, cfe := os.Create(path)
-			if cfe != nil {
-				return nil, fmt.Errorf("create log file error: %w", cfe)
-			}
-			w = &writer{}
-			w.init(f)
-			return w, nil
-		}
+func (c consoleWriter) Close() {}
 
-		return nil, fie
+func NewStdoutConsoleWriter() Writer {
+	return consoleWriter{
+		console: os.Stdout,
 	}
+}
 
-	if fi.IsDir() {
-		// 文件路径是一个目录，返回错误
-		return nil, errors.NewFileWriterWriteToDirectoryError(path)
+func NewStderrConsoleWriter() Writer {
+	return consoleWriter{
+		console: os.Stderr,
 	}
+}
 
-	f, ope := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
-	if ope != nil {
-		// 打开文件失败，返回错误
-		return nil, fmt.Errorf("open log file error: %w", ope)
+type multiWriter struct {
+	writers []Writer
+}
+
+func (m multiWriter) Write(data []byte) {
+	for _, writer := range m.writers {
+		writer.Write(data)
 	}
+}
 
-	w = &writer{}
-	w.init(f)
-	return w, nil
+func (m multiWriter) Close() {
+	for _, writer := range m.writers {
+		writer.Close()
+	}
+}
+
+func NewMultiWriter(writers ...Writer) Writer {
+	return multiWriter{
+		writers: writers,
+	}
 }

@@ -20,8 +20,8 @@ type sqliteDb struct {
 
 func (s *sqliteDb) Init(options database.Options) error {
 	// 初始化日志
-	s.BaseDatabaseImplement.ParseLoggerOptions(options)
 	dataSource := options.DataSource
+	s.Logger = logger.Default()
 	s.Logger.Info(logger.NewFields().WithMessage("start open sqliteDb database").WithData(dataSource))
 
 	// 连接数据库
@@ -60,12 +60,12 @@ func (s *sqliteDb) Init(options database.Options) error {
 }
 
 func NewSqliteDb(config Config, models ...any) (db database.Database, err error) {
-	sqliteDb := &sqliteDb{}
-	if initErr := sqliteDb.Init(convertConfigToOptions(config)); initErr != nil {
+	rdb := &sqliteDb{}
+	if initErr := rdb.Init(convertConfigToOptions(config)); initErr != nil {
 		return nil, fmt.Errorf("init sqliteDb database error: %w", initErr)
-	} else if migrateErr := sqliteDb.Migrate(models...); migrateErr != nil {
+	} else if migrateErr := rdb.Migrate(models...); migrateErr != nil {
 		return nil, fmt.Errorf("migrate sqliteDb database error: %w", migrateErr)
 	} else {
-		return sqliteDb, nil
+		return rdb, nil
 	}
 }

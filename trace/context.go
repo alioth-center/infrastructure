@@ -54,6 +54,10 @@ func GetTid(ctx context.Context) string {
 // FromContext checks if the context contains a trace ID. If it does, it returns the context unchanged.
 // If the context does not contain a trace ID, it returns a new context with a generated trace ID.
 func FromContext(ctx context.Context) (traced context.Context) {
+	if ctx == nil {
+		return NewContext()
+	}
+
 	value := ctx.Value(traceIDKey)
 	if value != nil {
 		return ctx
@@ -68,6 +72,23 @@ func ForkContext(ctx context.Context) (forked context.Context) {
 	traced := FromContext(ctx)
 	tid := GetTid(traced)
 	return NewContextWithTid(tid)
+}
+
+// ForkContextWithoutCancel creates a new context that is derived from the given
+// context but without the ability to be canceled. This function is useful when
+// you want to create a context that won't be affected by the cancellation of
+// its parent context.
+//
+// Parameters:
+//
+//	ctx (context.Context): The parent context from which the new context is derived.
+//
+// Returns:
+//
+//	forked (context.Context): A new context that is derived from the given context
+//	                          without the ability to be canceled.
+func ForkContextWithoutCancel(ctx context.Context) (forked context.Context) {
+	return FromContext(context.WithoutCancel(ctx))
 }
 
 // ForkContextWithOpts creates a new traced context from an existing context, copying specified fields along with the trace ID.
