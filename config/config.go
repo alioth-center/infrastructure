@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/alioth-center/infrastructure/errors"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,7 +27,7 @@ func LoadConfig(receiver any, path string) (err error) {
 	case ".xml":
 		return loadXmlConfigWithKeys(receiver, bytesOfConfig)
 	default:
-		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
+		return ErrUnSupportedConfigExtension
 	}
 }
 
@@ -45,7 +44,7 @@ func LoadConfigWithKeys(receiver any, path string, keys ...string) (err error) {
 	case ".json":
 		return loadJsonConfigWithKeys(receiver, bytesOfConfig, keys...)
 	default:
-		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
+		return ErrUnSupportedConfigExtension
 	}
 }
 
@@ -63,7 +62,7 @@ func LoadEmbedConfig(receiver any, fs embed.FS, name string) (err error) {
 	case ".xml":
 		return loadXmlConfigWithKeys(receiver, bytesOfConfig)
 	default:
-		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(name))
+		return ErrUnSupportedConfigExtension
 	}
 }
 
@@ -79,7 +78,7 @@ func LoadEmbedConfigWithKeys(receiver any, fs embed.FS, name string, keys ...str
 	case ".json":
 		return loadJsonConfigWithKeys(receiver, bytesOfConfig, keys...)
 	default:
-		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(name))
+		return ErrUnSupportedConfigExtension
 	}
 }
 
@@ -92,7 +91,7 @@ func WriteConfig(path string, object any) (err error) {
 	case ".xml":
 		return writeXmlConfig(path, object)
 	default:
-		return errors.NewUnSupportedConfigExtensionError(filepath.Ext(path))
+		return ErrUnSupportedConfigExtension
 	}
 }
 
@@ -108,7 +107,7 @@ func readConfigFile(path string, bytes ...[]byte) (content []byte, err error) {
 	}
 
 	if fileInfo.IsDir() {
-		return nil, errors.NewConfigFilepathIsDirError(path)
+		return nil, ErrConfigFilePathIsDir
 	}
 
 	f, ofe := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0o666)
@@ -144,7 +143,7 @@ func loadConfigWithKeys(receiver any, bytesOfConfig []byte, unmarshalFunc func(d
 
 		contentBuffer, existKey := objectBuffer[key]
 		if !existKey {
-			return errors.NewConfigContentNotExistsError(key)
+			return ErrConfigContentNotExists
 		}
 
 		marshalBytes, marshalErr := marshalFunc(contentBuffer)

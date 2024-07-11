@@ -3,7 +3,6 @@ package concurrency
 import (
 	"fmt"
 
-	"github.com/alioth-center/infrastructure/errors"
 	"github.com/alioth-center/infrastructure/utils/values"
 )
 
@@ -95,7 +94,7 @@ func Async[out any](fn func() out) (promise Promise[out]) {
 func Await[out any](promise Promise[out]) (result out, err error) {
 	res, open := <-promise
 	if !open {
-		return values.Nil[out](), errors.NewPromiseCompletedError()
+		return values.Nil[out](), ErrPromiseCompleted
 	}
 	return res.result, res.err
 }
