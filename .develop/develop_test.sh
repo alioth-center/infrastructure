@@ -27,10 +27,10 @@ golangci-lint run -v --timeout=10m --fix
 # Run go tests with race detector and coverage
 go test -race -v ./... -coverprofile ./coverage.txt
 
-# cleanup logs
+# Cleanup testing logs
 rm ./**/*.log ./**/*.jsonl
 
-# generate diff
+# Generate diff
 git diff >> .develop/develop.diff
 
 # Generate HTML coverage report
