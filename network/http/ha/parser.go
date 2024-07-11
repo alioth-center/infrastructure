@@ -1,6 +1,9 @@
 package ha
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/network/http"
 )
@@ -23,10 +26,10 @@ func ParseConfig(config EngineConfig) (engine *http.Engine, err error) {
 	}
 
 	exitChan := make(chan struct{})
-	exit.Register(func(sig string) string {
+	exit.RegisterExitEvent(func(signal os.Signal) {
 		exitChan <- struct{}{}
-		return "arranged http engine exited"
-	}, "exit arranged http engine")
+		fmt.Println("exit arranged http engine")
+	}, "SHUTDOWN_HTTP_ENGINE")
 	engine.ServeAsync(config.Bind, exitChan)
 
 	return engine, nil

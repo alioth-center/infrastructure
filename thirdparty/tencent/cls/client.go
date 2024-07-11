@@ -2,6 +2,7 @@ package cls
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
@@ -44,7 +45,8 @@ func (c *client) init() error {
 
 	// start cls client
 	instance.Start()
-	exit.Register(c.exit, values.BuildStrings("cls client exit: ", c.opts.TopicID))
+
+	exit.RegisterExitEvent(c.exit, "CLOSE_CLS_CONN")
 
 	clients.Set(clientKey, instance)
 	c.instance = instance
@@ -62,15 +64,15 @@ func (c *client) Fail(result *tcls.Result) {
 		WithData(result.GetReservedAttempts()))
 }
 
-func (c *client) exit(sig string) string {
+func (c *client) exit(_ os.Signal) {
 	if c.instance != nil {
 		e := c.instance.Close(1000)
 		if e != nil {
-			return values.BuildStrings("failed to close cls client: ", e.Error())
+			fmt.Println(values.BuildStrings("failed to close cls client: ", e.Error()))
 		}
 	}
 
-	return values.BuildStrings("cls client closed with signal: ", sig)
+	fmt.Println(values.BuildStrings("cls client closed"))
 }
 
 func (c *client) execute(fields map[string]string) {

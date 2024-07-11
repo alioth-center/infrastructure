@@ -9,3 +9,7 @@ coverage.txt
 
 # 本地调试日志文件
 *.log
+*.jsonl
+
+# git diff
+*.diff

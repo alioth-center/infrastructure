@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc/peer"
@@ -17,6 +18,25 @@ func TestStack(t *testing.T) {
 				t.Log("\n" + string(Stack(0)))
 			}
 		})
+	}
+}
+
+func TestCaller(t *testing.T) {
+	fn := func() {
+		file := Caller(0)
+		if !strings.HasSuffix(file, "unit_test.go:32") {
+			t.Error("file is not equal")
+		}
+	}
+
+	fn()
+}
+
+func TestFunctionLocation(t *testing.T) {
+	fn := func() {}
+	file := FunctionLocation(fn)
+	if !strings.HasSuffix(file, "unit_test.go:36") {
+		t.Error("file is not equal")
 	}
 }
 

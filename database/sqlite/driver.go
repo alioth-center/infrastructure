@@ -20,8 +20,8 @@ type sqliteDb struct {
 
 func (s *sqliteDb) Init(options database.Options) error {
 	// 初始化日志
-	s.BaseDatabaseImplement.ParseLoggerOptions(options)
 	dataSource := options.DataSource
+	s.Logger = logger.Default()
 	s.Logger.Info(logger.NewFields().WithMessage("start open sqliteDb database").WithData(dataSource))
 
 	// 连接数据库
@@ -52,20 +52,20 @@ func (s *sqliteDb) Init(options database.Options) error {
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open sqliteDb database").WithData(dataSource))
 
 	// 注册退出事件
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(_ os.Signal) {
 		_ = sqlDb.Close()
-		return "closed sqlite database"
-	}, "sqlite database")
+		fmt.Println("closed sqlite database")
+	}, "CLOSE_SQLITE_DB_CONN")
 	return nil
 }
 
 func NewSqliteDb(config Config, models ...any) (db database.Database, err error) {
-	sqliteDb := &sqliteDb{}
-	if initErr := sqliteDb.Init(convertConfigToOptions(config)); initErr != nil {
+	rdb := &sqliteDb{}
+	if initErr := rdb.Init(convertConfigToOptions(config)); initErr != nil {
 		return nil, fmt.Errorf("init sqliteDb database error: %w", initErr)
-	} else if migrateErr := sqliteDb.Migrate(models...); migrateErr != nil {
+	} else if migrateErr := rdb.Migrate(models...); migrateErr != nil {
 		return nil, fmt.Errorf("migrate sqliteDb database error: %w", migrateErr)
 	} else {
-		return sqliteDb, nil
+		return rdb, nil
 	}
 }

@@ -9,38 +9,34 @@ import (
 )
 
 const (
+	// defaultTraceIDKey is the default key used to store the trace ID in the context.
 	defaultTraceIDKey = "trace_id"
 )
 
 var traceIDKey = defaultTraceIDKey
 
+// ContextKey returns the current key used to store the trace ID in the context.
 func ContextKey() string {
 	return traceIDKey
 }
 
-// SetTraceIDKey it will set the key of trace_id in context globally, only set once.
-// if you need to call it, make sure to set it before any other operation.
+// SetTraceIDKey sets the key used to store the trace ID in the context globally.
+// This function should be called only once, before any other operations that use the trace ID.
 func SetTraceIDKey(key string) {
 	if traceIDKey == defaultTraceIDKey {
-		// only set once
 		traceIDKey = key
 	}
 }
 
-// TransformContext transform a context to a traced context.
-// if the context is already a traced context, return itself and its trace id.
+// TransformContext transforms a context into a traced context, returning the traced context and its trace ID.
+// If the context already contains a trace ID, it returns the context unchanged along with the existing trace ID.
 func TransformContext(ctx context.Context) (traceID string, result context.Context) {
 	traced := FromContext(ctx)
 	tid := GetTid(traced)
 	return tid, traced
 }
 
-// GetTid get trace if from a traced context, if not a traced context, return empty string.
-// example:
-//
-//	var tid string
-//	tid = trace.GetTid(trace.NewContext()) // tid is a full 36 length uuid string
-//	tid = trace.GetTid(context.Background()) // tid is empty string
+// GetTid retrieves the trace ID from a traced context. If the context does not contain a trace ID, it returns an empty string.
 func GetTid(ctx context.Context) string {
 	value := ctx.Value(traceIDKey)
 	if value == nil {
@@ -55,13 +51,13 @@ func GetTid(ctx context.Context) string {
 	return tid
 }
 
-// FromContext if ctx has trace_id, return itself, else return the context with trace_id
-// example:
-//
-//	tracedCtx := trace.FromContext(ctx)
-//
-// then you can use tracedCtx to do something
+// FromContext checks if the context contains a trace ID. If it does, it returns the context unchanged.
+// If the context does not contain a trace ID, it returns a new context with a generated trace ID.
 func FromContext(ctx context.Context) (traced context.Context) {
+	if ctx == nil {
+		return NewContext()
+	}
+
 	value := ctx.Value(traceIDKey)
 	if value != nil {
 		return ctx
@@ -70,15 +66,32 @@ func FromContext(ctx context.Context) (traced context.Context) {
 	return context.WithValue(ctx, traceIDKey, uuid.NewString()) // nolint
 }
 
-// ForkContext create a new traced context from an existed context.
-// only the trace id will be copied, if no trace id, a new trace id will be generated.
+// ForkContext creates a new traced context from an existing context, copying only the trace ID.
+// If the original context does not contain a trace ID, a new trace ID is generated.
 func ForkContext(ctx context.Context) (forked context.Context) {
 	traced := FromContext(ctx)
 	tid := GetTid(traced)
 	return NewContextWithTid(tid)
 }
 
-// ForkContextWithOpts create a new traced context from an existed context which carries the values in fields
+// ForkContextWithoutCancel creates a new context that is derived from the given
+// context but without the ability to be canceled. This function is useful when
+// you want to create a context that won't be affected by the cancellation of
+// its parent context.
+//
+// Parameters:
+//
+//	ctx (context.Context): The parent context from which the new context is derived.
+//
+// Returns:
+//
+//	forked (context.Context): A new context that is derived from the given context
+//	                          without the ability to be canceled.
+func ForkContextWithoutCancel(ctx context.Context) (forked context.Context) {
+	return FromContext(context.WithoutCancel(ctx))
+}
+
+// ForkContextWithOpts creates a new traced context from an existing context, copying specified fields along with the trace ID.
 func ForkContextWithOpts(ctx context.Context, fields ...string) (forked context.Context) {
 	forked = ForkContext(ctx)
 	for _, field := range fields {
@@ -88,33 +101,29 @@ func ForkContextWithOpts(ctx context.Context, fields ...string) (forked context.
 	return forked
 }
 
-// NewContext build a new context with trace id.
+// NewContext creates a new context with a generated trace ID.
 func NewContext() context.Context {
 	return NewContextWithTid(uuid.NewString())
 }
 
-// NewContextWithTid build a new context with existed trace id.
+// NewContextWithTid creates a new context with the specified trace ID.
 func NewContextWithTid(traceID string) context.Context {
 	return context.WithValue(context.Background(), traceIDKey, traceID) // nolint
 }
 
-// AttachTraceID 为 context 附加 trace_id
+// AttachTraceID attaches a newly generated trace ID to the given context, returning the new trace ID and the updated context.
 func AttachTraceID(ctx context.Context) (traceID string, result context.Context) {
 	traceID = uuid.NewString()
 	return traceID, context.WithValue(ctx, traceIDKey, traceID) // nolint
 }
 
+// Context creates a new context with the specified trace ID, overwriting any existing trace ID.
 func Context(ctx context.Context, traceID string) context.Context {
 	return context.WithValue(ctx, traceIDKey, traceID) // nolint
 }
 
-// GetClientIPFromPeer get client ip from a grpc request, if not a grpc request or no client ip, return empty string
-// example:
-//
-//	clientIP := trace.GetClientIPFromPeer(ctx)
-//	if clientIP == "" {
-//		// not a grpc request or no client ip
-//	}
+// GetClientIPFromPeer extracts the client IP address from a gRPC request context.
+// If the context does not originate from a gRPC request or the client IP cannot be determined, it returns an empty string.
 func GetClientIPFromPeer(ctx context.Context) (ip string) {
 	peerCtx, convertSuccess := peer.FromContext(ctx)
 	if !convertSuccess {

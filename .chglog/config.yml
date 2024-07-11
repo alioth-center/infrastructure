@@ -1,7 +1,7 @@
 style: github
-template: CHANGELOG.tpl.md
+template: changelog.tpl.md
 info:
-  title: CHANGELOG
+  title: changelog
   repository_url: https://github.com/alioth-center/infrastructure
 options:
   tag_filter_pattern: '^v'

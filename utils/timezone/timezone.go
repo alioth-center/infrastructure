@@ -2,8 +2,6 @@ package timezone
 
 import (
 	"time"
-
-	"github.com/alioth-center/infrastructure/errors"
 )
 
 var (
@@ -25,7 +23,7 @@ func SetLocal(timezone TimeZone) (err error) {
 
 	if _, exist := timezoneData[timezone]; !exist {
 		// if timezone is not exist, return error
-		return errors.NewInvalidTimezoneError(string(timezone))
+		return ErrInvalidTimezone
 	}
 
 	if !isSetLocal {
@@ -35,7 +33,7 @@ func SetLocal(timezone TimeZone) (err error) {
 		return nil
 	}
 
-	return errors.NewLocalTimezoneAlreadySetError()
+	return ErrLocalTimezoneAlreadySet
 }
 
 type TimeZone string

@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/alioth-center/infrastructure/database"
 	"github.com/alioth-center/infrastructure/exit"
@@ -18,7 +19,7 @@ type mysqlDb struct {
 
 func (s *mysqlDb) Init(options database.Options) error {
 	// 初始化日志
-	s.BaseDatabaseImplement.ParseLoggerOptions(options)
+	s.Logger = logger.Default()
 	s.Logger.Info(logger.NewFields().WithMessage("start open mysqlDb database").WithData(options.DataSource))
 
 	// 连接数据库
@@ -42,10 +43,10 @@ func (s *mysqlDb) Init(options database.Options) error {
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open mysqlDb database").WithData(dataSource))
 
 	// 注册退出事件
-	exit.Register(func(_ string) string {
+	exit.RegisterExitEvent(func(_ os.Signal) {
 		_ = sqlDb.Close()
-		return "closed mysql database"
-	}, "mysql database")
+		fmt.Println("closed mysql database")
+	}, "CLOSE_MYSQL_DB_CONN")
 	return nil
 }
 

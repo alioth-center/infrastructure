@@ -29,5 +29,11 @@ golangci-lint run -v --timeout=10m --fix
 REM Run go tests with race detector and coverage
 go test -race -v .\... -coverprofile .\coverage.txt
 
+REM Cleanup testing logs
+for /r %%G in (*.log *.jsonl) do del "%%G"
+
+REM Generate diff
+git diff >> .develop\develop.diff
+
 REM Generate HTML coverage report
 go tool cover -html=.\coverage.txt

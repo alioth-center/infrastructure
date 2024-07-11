@@ -3,10 +3,6 @@ package logger
 import (
 	"context"
 	"os"
-	"path"
-	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/alioth-center/infrastructure/trace"
@@ -23,17 +19,15 @@ const (
 	LevelPanic Level = "panic"
 )
 
+func (l Level) shouldLog(level Level) bool {
+	// logger.Level.shouldLog(input.Level)
+	return LevelValueMap[l] <= LevelValueMap[level]
+}
+
 var (
 	workingDirectory = "./"
 	timeFormat       = "2006.01.02-15:04:05.000Z07:00"
-	LevelValueMap    = map[Level]int{
-		LevelDebug: 0,
-		LevelInfo:  1,
-		LevelWarn:  2,
-		LevelError: 3,
-		LevelFatal: 4,
-		LevelPanic: 5,
-	}
+	LevelValueMap    = map[Level]int{LevelDebug: 0, LevelInfo: 1, LevelWarn: 2, LevelError: 3, LevelFatal: 4, LevelPanic: 5}
 )
 
 func init() {
@@ -44,15 +38,15 @@ func init() {
 }
 
 type Entry struct {
-	ctx      context.Context
-	File     string         `json:"file" yaml:"file" xml:"file"`
-	Level    string         `json:"level" yaml:"level" xml:"level"`
-	CallTime string         `json:"call_time" yaml:"call_time" xml:"call_time"`
-	Service  string         `json:"service" yaml:"service" xml:"service"`
-	TraceID  string         `json:"trace_id" yaml:"trace_id" xml:"trace_id"`
-	Message  string         `json:"message,omitempty" yaml:"message,omitempty" xml:"message,omitempty"`
-	Data     any            `json:"data,omitempty" yaml:"data,omitempty" xml:"data,omitempty"`
-	Extra    map[string]any `json:"extra,omitempty" yaml:"extra,omitempty" xml:"extra,omitempty"`
+	ctx      context.Context `json:"-" yaml:"-" xml:"-"`
+	File     string          `json:"file" yaml:"file" xml:"file"`
+	Level    string          `json:"level" yaml:"level" xml:"level"`
+	Service  string          `json:"service" yaml:"service" xml:"service"`
+	TraceID  string          `json:"trace_id" yaml:"trace_id" xml:"trace_id"`
+	CallTime string          `json:"call_time" yaml:"call_time" xml:"call_time"`
+	Data     any             `json:"data,omitempty" yaml:"data,omitempty" xml:"data,omitempty"`
+	Extra    map[string]any  `json:"extra,omitempty" yaml:"extra,omitempty" xml:"extra,omitempty"`
+	Message  string          `json:"message,omitempty" yaml:"message,omitempty" xml:"message,omitempty"`
 }
 
 type Fields interface {
@@ -69,44 +63,20 @@ type Fields interface {
 }
 
 type fields struct {
-	ctx      context.Context
+	data     any
 	level    Level
 	file     string
 	service  string
 	message  string
-	data     any
-	extra    map[string]any
 	callTime string
+	extra    map[string]any
+	ctx      context.Context
 }
 
 // init 初始化日志字段
 func (f *fields) init(ctx context.Context) Fields {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+	f.file, f.ctx, f.level = trace.Caller(2), trace.FromContext(ctx), LevelInfo
 
-	pc, file, line, ok := runtime.Caller(2)
-	if !ok {
-		file = "unknown"
-		line = 0
-	}
-
-	filePath := strings.Builder{}
-	filePath.WriteString(file)
-	filePath.WriteString(":")
-	filePath.WriteString(strconv.Itoa(line))
-
-	f.file = strings.TrimPrefix(filePath.String(), workingDirectory)
-
-	if fp := runtime.FuncForPC(pc); fp == nil {
-		f.service = "unknown"
-	} else {
-		f.service = path.Base(fp.Name())
-	}
-
-	f.ctx = ctx
-
-	f.level = LevelInfo
 	return f
 }
 

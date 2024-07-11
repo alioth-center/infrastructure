@@ -1,95 +1,57 @@
 package logger
 
 import (
-	"context"
-	"fmt"
+	"github.com/alioth-center/infrastructure/trace"
 	"testing"
+	"time"
 )
 
-func TestLog(t *testing.T) {
-	type data struct {
-		Name string `json:"name" yaml:"name" xml:"name"`
-		Age  int    `json:"age" yaml:"age" xml:"age"`
-	}
-
-	base := NewFields(context.Background()).WithMessage("test").WithLevel(LevelInfo).WithData(data{
-		Name: "alice",
-		Age:  114,
-	})
-
-	t.Run("JsonLog", func(t *testing.T) {
-		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.Export(), JsonMarshaller)
-		t.Log(string(bytesOfLog))
-	})
-
-	t.Run("TextLog", func(t *testing.T) {
-		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.Export(), TextMarshaller)
-		t.Log(string(bytesOfLog))
-	})
-
-	t.Run("CsvLog", func(t *testing.T) {
-		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.Export(), CsvMarshaller)
-		t.Log(string(bytesOfLog))
-	})
-
-	t.Run("TsvLog", func(t *testing.T) {
-		f := NewFields(context.Background()).WithBaseFields(base)
-		bytesOfLog, _ := marshalEntry(f.Export(), TsvMarshaller)
-		t.Log(string(bytesOfLog))
-	})
+func TestCustom(t *testing.T) {
+	logger := NewCustomLoggerWithOpts(WithCustomWriterOpts(NewTimeBasedRotationFileWriter("./", func(time time.Time) (filename string) { return time.Format("20060102_15") + ".jsonl" })), WithLevelOpts(LevelDebug), WithJsonFormatOpts())
+	logger.Info(NewFields(trace.NewContext()).WithMessage("hello world"))
+	time.Sleep(time.Second)
 }
 
-func TestConsoleWriter(t *testing.T) {
-	cw := ConsoleWriter()
-
-	type data struct {
-		Name string `json:"name" yaml:"name" xml:"name"`
-		Age  int    `json:"age" yaml:"age" xml:"age"`
-	}
-
-	base := NewFields(context.Background()).WithMessage("test").WithLevel(LevelInfo).WithData(data{
-		Name: "alice",
-		Age:  114,
-	})
-
-	wb, _ := marshalEntry(NewFields(context.Background()).WithBaseFields(base).Export(), JsonMarshaller)
-	cw.Write(wb)
-	cw.Write(wb)
-	cw.Write(wb)
-	cw.Write(wb)
-	// cw.Close()
+func TestLoggerFunction(t *testing.T) {
+	ctx := trace.NewContext()
+	base := NewFields(ctx).WithMessage("test").WithData(map[string]any{"foo": "bar", "nav": 0.1}).WithField("field", "value").WithCallTime(time.Now()).WithService("testing").WithTraceID(trace.GetTid(ctx)).WithLevel(LevelInfo)
+	Debug(NewFields(ctx).WithBaseFields(base))
+	Debugf(NewFields(ctx).WithBaseFields(base), "test %s", "format")
+	Info(NewFields(ctx).WithBaseFields(base))
+	Infof(NewFields(ctx).WithBaseFields(base), "test %s", "format")
+	Warn(NewFields(ctx).WithBaseFields(base))
+	Warnf(NewFields(ctx).WithBaseFields(base), "test %s", "format")
+	Error(NewFields(ctx).WithBaseFields(base))
+	Errorf(NewFields(ctx).WithBaseFields(base), "test %s", "format")
+	Fatal(NewFields(ctx).WithBaseFields(base))
+	Fatalf(NewFields(ctx).WithBaseFields(base), "test %s", "format")
+	Panic(NewFields(ctx).WithBaseFields(base))
+	Panicf(NewFields(ctx).WithBaseFields(base), "test %s", "format")
+	Log(LevelInfo, NewFields(ctx).WithBaseFields(base))
+	Logf(LevelInfo, NewFields(ctx).WithBaseFields(base), "test %s", "format")
 }
 
-func TestLogger(t *testing.T) {
-	loggerTesting := func(logging Logger, t *testing.T) {
-		logging.Debug(NewFields(context.Background()).WithMessage("test1").WithData("hello"))
-		logging.Info(NewFields(context.Background()).WithMessage("test2").WithData("hello"))
-		logging.Warn(NewFields(context.Background()).WithMessage("test3").WithData("hello"))
-		logging.Error(NewFields(context.Background()).WithMessage("test4").WithData("hello"))
-		logging.Debugf(NewFields(context.Background()).WithMessage("test5"), "hello, %s", "world")
-		logging.Infof(NewFields(context.Background()).WithMessage("test6"), "hello, %s", "world")
-		logging.Warnf(NewFields(context.Background()).WithMessage("test7"), "hello, %s", "world")
-		logging.Errorf(NewFields(context.Background()).WithMessage("test8"), "hello, %s", "world")
-		logging.Logf(LevelInfo, NewFields(context.Background()).WithMessage("test9"), "hello, %s", "world")
-	}
-
-	testingLoggers := []Logger{Default(), New(), Mute()}
-	for i, ll := range testingLoggers {
-		t.Run(fmt.Sprintf("%d:Loggeer", i), func(t *testing.T) {
-			loggerTesting(ll, t)
-		})
-	}
+func TestLoggerCtor(t *testing.T) {
+	logger := Mute()
+	logger = Default()
+	logger = File("./test.log", LevelInfo)
+	logger.Info(NewFields().WithMessage("test"))
 }
 
-func TestConfigConvert(t *testing.T) {
-	cfg := Config{
-		Level:     "info",
-		Formatter: "json",
-	}
-	opt := convertConfigToOptions(cfg)
-	logger := newLoggerWithOptions(opt)
-	logger.Info(NewFields(context.Background()).WithMessage("test1").WithData("hello"))
+func TestWriter(t *testing.T) {
+	writer := NewStdoutConsoleWriter()
+	writer.Write([]byte("hello world"))
+	writer.Close()
+
+	writer = NewMultiWriter(NewStdoutConsoleWriter(), NewStderrConsoleWriter())
+	writer.Write([]byte("hello world"))
+	writer.Close()
+
+	writer = NewFileWriter("./test_writer.log")
+	writer.Write([]byte("hello world"))
+	writer.Close()
+
+	writer = NewTimeBasedRotationFileWriter("./", func(time time.Time) (_ string) { return "test_timed.jsonl" })
+	writer.Write([]byte("hello world"))
+	writer.Close()
 }
