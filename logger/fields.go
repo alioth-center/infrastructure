@@ -75,7 +75,7 @@ type fields struct {
 
 // init 初始化日志字段
 func (f *fields) init(ctx context.Context) Fields {
-	f.file, f.ctx, f.level = trace.Caller(2), trace.FromContext(ctx), LevelInfo
+	f.file, f.ctx, f.level = trace.Caller(1), trace.FromContext(ctx), LevelInfo
 
 	return f
 }
