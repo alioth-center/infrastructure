@@ -194,16 +194,3 @@ func NewFields(ctx ...context.Context) Fields {
 
 	return (&fields{}).init(context.Background())
 }
-
-func NewFieldsFromEntry(entry *Entry) Fields {
-	return &fields{
-		ctx:      trace.NewContextWithTid(entry.TraceID),
-		level:    Level(entry.Level),
-		file:     entry.File,
-		service:  entry.Service,
-		message:  entry.Message,
-		data:     entry.Data,
-		extra:    entry.Extra,
-		callTime: entry.CallTime,
-	}
-}

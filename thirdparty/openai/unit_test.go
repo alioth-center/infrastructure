@@ -2,13 +2,14 @@ package openai
 
 import (
 	"bytes"
-	"github.com/alioth-center/infrastructure/logger"
-	"github.com/alioth-center/infrastructure/network/http"
 	"io"
 	h "net/http"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/network/http"
 )
 
 func TestOpenAiClient(t *testing.T) {
@@ -39,7 +40,6 @@ func TestOpenAiClient(t *testing.T) {
 				N: 1,
 			},
 		})
-
 		if err != nil {
 			t.Error(err)
 		}
@@ -55,7 +55,6 @@ func TestOpenAiClient(t *testing.T) {
 				Input: "Hello, world!",
 			},
 		})
-
 		if err != nil {
 			t.Error(err)
 		}

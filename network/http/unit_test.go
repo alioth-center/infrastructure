@@ -3,13 +3,14 @@ package http
 import (
 	"bytes"
 	"context"
-	"github.com/alioth-center/infrastructure/utils/values"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/utils/values"
+	"github.com/gin-gonic/gin"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/trace"
