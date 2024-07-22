@@ -60,6 +60,7 @@ type Fields interface {
 	WithService(service string) Fields
 	WithCallTime(callTime time.Time) Fields
 	WithBaseFields(base Fields) Fields
+	WithAttachFields(attach Fields) Fields
 }
 
 type fields struct {
@@ -75,7 +76,7 @@ type fields struct {
 
 // init 初始化日志字段
 func (f *fields) init(ctx context.Context) Fields {
-	f.file, f.ctx, f.level = trace.Caller(2), trace.FromContext(ctx), LevelInfo
+	f.file, f.ctx, f.level = trace.Caller(1), trace.FromContext(ctx), LevelInfo
 
 	return f
 }
@@ -162,23 +163,34 @@ func (f *fields) WithBaseFields(base Fields) Fields {
 	return f
 }
 
+func (f *fields) WithAttachFields(attach Fields) Fields {
+	entry := attach.Export()
+	if entry.Level != "" {
+		f.level = Level(entry.Level)
+	}
+	if entry.Service != "" {
+		f.service = entry.Service
+	}
+	if entry.Message != "" {
+		f.message = entry.Message
+	}
+	if entry.Data != nil {
+		f.data = entry.Data
+	}
+	if f.extra == nil {
+		f.extra = map[string]any{}
+	}
+	for k, v := range entry.Extra {
+		f.extra[k] = v
+	}
+
+	return f
+}
+
 func NewFields(ctx ...context.Context) Fields {
 	if len(ctx) == 1 {
 		return (&fields{}).init(ctx[0])
 	}
 
 	return (&fields{}).init(context.Background())
-}
-
-func NewFieldsFromEntry(entry *Entry) Fields {
-	return &fields{
-		ctx:      trace.NewContextWithTid(entry.TraceID),
-		level:    Level(entry.Level),
-		file:     entry.File,
-		service:  entry.Service,
-		message:  entry.Message,
-		data:     entry.Data,
-		extra:    entry.Extra,
-		callTime: entry.CallTime,
-	}
 }

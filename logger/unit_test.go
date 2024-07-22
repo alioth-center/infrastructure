@@ -1,9 +1,11 @@
 package logger
 
 import (
-	"github.com/alioth-center/infrastructure/trace"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/alioth-center/infrastructure/trace"
 )
 
 func TestCustom(t *testing.T) {
@@ -14,7 +16,7 @@ func TestCustom(t *testing.T) {
 
 func TestLoggerFunction(t *testing.T) {
 	ctx := trace.NewContext()
-	base := NewFields(ctx).WithMessage("test").WithData(map[string]any{"foo": "bar", "nav": 0.1}).WithField("field", "value").WithCallTime(time.Now()).WithService("testing").WithTraceID(trace.GetTid(ctx)).WithLevel(LevelInfo)
+	base := NewFields(ctx).WithMessage("test").WithData(map[string]any{"foo": "bar", "nav": 0.1}).WithField("field", "value").WithCallTime(time.Now()).WithTraceID(trace.GetTid(ctx)).WithLevel(LevelInfo)
 	Debug(NewFields(ctx).WithBaseFields(base))
 	Debugf(NewFields(ctx).WithBaseFields(base), "test %s", "format")
 	Info(NewFields(ctx).WithBaseFields(base))
@@ -54,4 +56,15 @@ func TestWriter(t *testing.T) {
 	writer = NewTimeBasedRotationFileWriter("./", func(time time.Time) (_ string) { return "test_timed.jsonl" })
 	writer.Write([]byte("hello world"))
 	writer.Close()
+}
+
+func TestFields(t *testing.T) {
+	fields := NewFields()
+	fields = fields.WithAttachFields(NewFields().WithMessage("test").WithService("test").WithData(map[string]any{"foo": "bar"}).WithField("field", "value").WithCallTime(time.Now()).WithTraceID("test").WithCallTime(time.Time{}))
+
+	os.Setenv(serviceEnvKey, "ac_testing")
+	os.Setenv(extraFieldsKey, "KEY1,KEY2")
+	os.Setenv("KEY1", "VALUE1")
+	os.Setenv("KEY2", "VALUE2")
+	NewCustomLoggerWithOpts().Info(NewFields().WithMessage("test"))
 }
