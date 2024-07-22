@@ -43,3 +43,17 @@ func WithHookOpts(hook func(Fields), levels ...Level) Option {
 		}
 	}
 }
+
+func WithAttachFields(fields Fields) Option {
+	return func(logger *customLogger) {
+		if fields == nil {
+			return
+		}
+		if logger.attach == nil {
+			logger.attach = fields
+			return
+		}
+
+		logger.attach = logger.attach.WithAttachFields(fields)
+	}
+}

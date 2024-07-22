@@ -60,6 +60,7 @@ type Fields interface {
 	WithService(service string) Fields
 	WithCallTime(callTime time.Time) Fields
 	WithBaseFields(base Fields) Fields
+	WithAttachFields(attach Fields) Fields
 }
 
 type fields struct {
@@ -159,6 +160,30 @@ func (f *fields) WithBaseFields(base Fields) Fields {
 	f.message = entry.Message
 	f.data = entry.Data
 	f.extra = entry.Extra
+	return f
+}
+
+func (f *fields) WithAttachFields(attach Fields) Fields {
+	entry := attach.Export()
+	if entry.Level != "" {
+		f.level = Level(entry.Level)
+	}
+	if entry.Service != "" {
+		f.service = entry.Service
+	}
+	if entry.Message != "" {
+		f.message = entry.Message
+	}
+	if entry.Data != nil {
+		f.data = entry.Data
+	}
+	if f.extra == nil {
+		f.extra = map[string]any{}
+	}
+	for k, v := range entry.Extra {
+		f.extra[k] = v
+	}
+
 	return f
 }
 

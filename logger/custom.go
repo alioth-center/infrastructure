@@ -2,6 +2,13 @@ package logger
 
 import (
 	"fmt"
+	"os"
+	"strings"
+)
+
+const (
+	serviceEnvKey  = "AC_SERVICE"
+	extraFieldsKey = "AC_EXTRA_FIELDS"
 )
 
 // NewCustomLoggerWithOpts creates and returns a new custom logger instance
@@ -34,6 +41,26 @@ func NewCustomLoggerWithOpts(opts ...Option) Logger {
 		WithLevelOpts(LevelInfo),
 	}, opts...)
 
+	// Inject service field
+	attachField := NewFields()
+	if srv := os.Getenv(serviceEnvKey); srv != "" {
+		attachField = attachField.WithService(srv)
+	}
+
+	// Inject extra fields
+	if extraKeys := strings.Split(strings.TrimSpace(os.Getenv(extraFieldsKey)), ","); len(extraKeys) > 0 {
+		for _, key := range extraKeys {
+			if value := os.Getenv(key); value != "" {
+				attachField = attachField.WithField(key, value)
+			}
+		}
+	}
+
+	// If inject fields not nil, inject it
+	if entry := attachField.Export(); len(entry.Extra) != 0 || entry.Service != "" {
+		opts = append(opts, WithAttachFields(attachField))
+	}
+
 	// Apply all options to the custom logger
 	for _, opt := range opts {
 		if opt != nil {
@@ -53,6 +80,7 @@ type customLogger struct {
 	level      Level
 	marshaller func(Fields) []byte
 	writer     Writer
+	attach     Fields
 }
 
 func (c customLogger) Debug(fields Fields) {
@@ -114,6 +142,9 @@ func (c customLogger) Panicf(fields Fields, format string, args ...any) {
 func (c customLogger) log(level Level, fields Fields) {
 	if c.level.shouldLog(level) {
 		callbacks := c.hooks[level]
+		if c.attach != nil {
+			fields = fields.WithAttachFields(c.attach)
+		}
 		for _, callback := range callbacks {
 			go callback(fields)
 		}
