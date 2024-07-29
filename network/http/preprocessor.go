@@ -195,16 +195,21 @@ func CheckRequestBodyPreprocessor[request any, response any](_ *EndPoint[request
 	}
 
 	// unmarshal request body
-	requestBody, unmarshalErr := defaultPayloadProcessor[request](origin.ContentType(), payload, nil)
-	if unmarshalErr != nil {
-		errMsg := values.BuildStringsWithJoin(" ", "invalid request body:", unmarshalErr.Error())
-		origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
-			ErrorCode:    ErrorCodeInvalidRequestBody,
-			ErrorMessage: errMsg,
-			RequestID:    trace.GetTid(dest),
-		})
-		origin.Set(ErrorContextKey(), errMsg)
-		return
+	requestBody := values.Nil[request]()
+	if len(payload) > 0 {
+		tryRequestBody, unmarshalErr := defaultPayloadProcessor[request](origin.ContentType(), payload, nil)
+		if unmarshalErr != nil {
+			errMsg := values.BuildStringsWithJoin(" ", "invalid request body:", unmarshalErr.Error())
+			origin.AbortWithStatusJSON(StatusBadRequest, &FrameworkResponse{
+				ErrorCode:    ErrorCodeInvalidRequestBody,
+				ErrorMessage: errMsg,
+				RequestID:    trace.GetTid(dest),
+			})
+			origin.Set(ErrorContextKey(), errMsg)
+			return
+		}
+
+		requestBody = tryRequestBody
 	}
 
 	// check request body
