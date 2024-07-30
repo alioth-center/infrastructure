@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
 	"log"
+
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	var rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:   "column",
 		Short: "Generate column definition files from GORM models",
 		Run: func(cmd *cobra.Command, args []string) {
