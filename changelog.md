@@ -2,6 +2,38 @@
 ## [Unreleased]
 
 
+<a name="v1.2.17"></a>
+## [v1.2.17] - 2024-07-30
+### Chore
+- 规范化文件命名和日志清理
+- update CHANGELOG
+- **deps:** bump google.golang.org/grpc
+
+### Feat
+- **http:** 增加模式设置功能和请求头常量定义
+- **logger:** 增强日志功能，支持从环境变量注入附加字段
+- **trace:** 添加详细文档注释和新功能函数
+
+### Fix
+- **logger:** 修正 init 函数中 Caller 函数的调用深度
+
+### Refactor
+- **errors:** 移除 errors 包并使用本地定义的错误变量
+- **exit:** 适配 exit 包的重构
+- **exit:** 重构退出事件处理机制并添加单元测试
+- **logger:** 代码重构和优化测试用例
+- **logger:** 重构日志模块，简化日志选项和初始化流程
+
+### Style
+- **trace:** golangci-lint fix
+
+### Pull Requests
+- Merge pull request [#24](https://github.com/alioth-center/infrastructure/issues/24) from Jecosine/main
+- Merge pull request [#23](https://github.com/alioth-center/infrastructure/issues/23) from sunist-c/main
+- Merge pull request [#22](https://github.com/alioth-center/infrastructure/issues/22) from sunist-c/main
+- Merge pull request [#21](https://github.com/alioth-center/infrastructure/issues/21) from alioth-center/dependabot/go_modules/go_modules-00bc3d2421
+
+
 <a name="v1.2.16"></a>
 ## [v1.2.16] - 2024-06-28
 ### Chore
@@ -376,7 +408,8 @@
 - 删除无效文件
 
 
-[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.16...HEAD
+[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.17...HEAD
+[v1.2.17]: https://github.com/alioth-center/infrastructure/compare/v1.2.16...v1.2.17
 [v1.2.16]: https://github.com/alioth-center/infrastructure/compare/v1.2.15...v1.2.16
 [v1.2.15]: https://github.com/alioth-center/infrastructure/compare/v1.2.14...v1.2.15
 [v1.2.14]: https://github.com/alioth-center/infrastructure/compare/v1.2.13...v1.2.14
