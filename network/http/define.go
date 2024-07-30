@@ -1,5 +1,22 @@
 package http
 
+import (
+	"os"
+
+	"github.com/gin-gonic/gin"
+)
+
+const (
+	ModeRelease = "RELEASE"
+)
+
+var mode = os.Getenv("AC_MODE")
+
+func SetMode(m string) {
+	mode = m
+	gin.SetMode(gin.ReleaseMode)
+}
+
 const (
 	defaultTraceHeaderKey  = "Ac-Request-Id"
 	defaultErrorContextKey = "ac-error"
@@ -207,3 +224,19 @@ type FrameworkResponse struct {
 	RequestID    string `json:"request_id"`
 	Data         any    `json:"data,omitempty"`
 }
+
+type HeaderEnum = string
+
+const (
+	HeaderAuthorization  HeaderEnum = "Authorization"
+	HeaderContentType    HeaderEnum = "Content-Type"
+	HeaderUserAgent      HeaderEnum = "User-Agent"
+	HeaderAccept         HeaderEnum = "Accept"
+	HeaderEncoding       HeaderEnum = "Accept-Encoding"
+	HeaderAcceptLanguage HeaderEnum = "Accept-Language"
+	HeaderContentLength  HeaderEnum = "Content-Length"
+)
+
+type NoBody = struct{}
+
+type NoResponse = struct{}

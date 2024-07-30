@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -257,7 +258,11 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 				RequestID:    tid,
 			}
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errResponse)
-			return
+
+			if mode != ModeRelease {
+				// recovered error should be panic with stack trace when not in release mode
+				panic(fmt.Sprintf("error: %v\nwith stack:\n%s", recovered.Error(), trace.Stack(1)))
+			}
 		}
 	}()
 
