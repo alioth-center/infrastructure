@@ -15,9 +15,18 @@ const DriverName = "postgres"
 
 type postgresDb struct {
 	database.BaseDatabaseImplement
+	database.BaseDatabaseImplementV2
+
+	initialized bool
 }
 
 func (s *postgresDb) Init(options database.Options) error {
+	// 防止重复初始化
+	if s.initialized {
+		return nil
+	}
+	s.initialized = true
+
 	// 初始化日志
 	s.Logger = logger.Default()
 	s.Logger.Info(logger.NewFields().WithMessage("start open postgresDb database").WithData(options.DataSource))
@@ -39,7 +48,7 @@ func (s *postgresDb) Init(options database.Options) error {
 	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
-	s.Db = db
+	s.BaseDatabaseImplement.Db, s.BaseDatabaseImplementV2.Db = db, db
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open postgresDb database").WithData(dataSource))
 
 	// 注册退出事件
@@ -50,6 +59,9 @@ func (s *postgresDb) Init(options database.Options) error {
 	return nil
 }
 
+// NewPostgresDb creates a new postgres database instance.
+//
+// Deprecated: Use NewPostgresSQLv2 instead.
 func NewPostgresDb(config Config, models ...any) (db database.Database, err error) {
 	postgresDb := &postgresDb{}
 	if initErr := postgresDb.Init(convertConfigToOptions(config)); initErr != nil {
@@ -59,4 +71,18 @@ func NewPostgresDb(config Config, models ...any) (db database.Database, err erro
 	} else {
 		return postgresDb, nil
 	}
+}
+
+// NewPostgresSQLv2 creates a new postgres database instance.
+func NewPostgresSQLv2(config Config, models ...any) (db database.DatabaseV2, err error) {
+	postgresDb := &postgresDb{}
+	if initErr := postgresDb.Init(convertConfigToOptions(config)); initErr != nil {
+		return nil, fmt.Errorf("init postgresDb database error: %w", initErr)
+	}
+
+	if migrateErr := postgresDb.Migrate(models...); migrateErr != nil {
+		return nil, fmt.Errorf("migrate postgresDb database error: %w", migrateErr)
+	}
+
+	return postgresDb, nil
 }

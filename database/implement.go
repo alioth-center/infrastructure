@@ -3,7 +3,10 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
+
+	"gorm.io/gorm/clause"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"gorm.io/gorm"
@@ -329,3 +332,99 @@ func (s *BaseDatabaseImplement) ExtMethods() ExtMethods {
 func (s *BaseDatabaseImplement) SetLogger(logger logger.Logger) {
 	s.Logger = logger
 }
+
+type BaseDatabaseImplementV2 struct {
+	Db *gorm.DB
+}
+
+func (v2 *BaseDatabaseImplementV2) GetGormCore(ctx context.Context) *gorm.DB {
+	return v2.Db.WithContext(ctx)
+}
+
+func (v2 *BaseDatabaseImplementV2) GetDataBySingleCondition(ctx context.Context, receiver any, column string, condition any, needFields ...string) error {
+	if column == "" || condition == nil || EmptySlice(condition) {
+		return ErrInvalidCondition
+	}
+
+	if len(needFields) == 0 {
+		needFields = append(needFields, "*")
+	}
+
+	return v2.Db.WithContext(ctx).Model(receiver).Where(column, condition).Select(needFields).Scan(receiver).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) GetDataByCustomCondition(ctx context.Context, receiver, condition any, needFields ...string) error {
+	if condition == nil || EmptySlice(condition) {
+		return ErrInvalidCondition
+	}
+
+	if len(needFields) == 0 {
+		needFields = append(needFields, "*")
+	}
+
+	return v2.Db.WithContext(ctx).Model(receiver).Where(condition).Select(needFields).Scan(receiver).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) ListDataWithPage(ctx context.Context, receiver any, filter any, order string, desc bool, offset, limit int, needFields ...string) error {
+	if filter == nil || EmptySlice(filter) {
+		return ErrInvalidCondition
+	}
+
+	if len(needFields) == 0 {
+		needFields = append(needFields, "*")
+	}
+
+	return v2.Db.WithContext(ctx).Model(receiver).Where(filter).Order(clause.OrderByColumn{
+		Column: clause.Column{Name: order}, Desc: desc,
+	}).Limit(limit).Offset(offset * limit).Select(needFields).Scan(receiver).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) CreateSingleDataIfNotExist(ctx context.Context, data any) (created bool, err error) {
+	if data == nil || FromSlice(data) || FromMap(data) {
+		return false, ErrInvalidSingleData
+	}
+
+	session := v2.Db.WithContext(ctx).Model(data).Clauses(clause.OnConflict{DoNothing: true}).Create(data)
+	if session.Error != nil {
+		return false, session.Error
+	}
+
+	return session.RowsAffected > 0, nil
+}
+
+func (v2 *BaseDatabaseImplementV2) CreateDataOnDuplicateKeyUpdate(ctx context.Context, data any, indexKeys, updateFields []string) error {
+	if len(indexKeys) == 0 || len(updateFields) == 0 {
+		return ErrInvalidCondition
+	}
+
+	duplicatedColumns := make([]clause.Column, len(indexKeys))
+	for i, key := range indexKeys {
+		duplicatedColumns[i] = clause.Column{Name: key}
+	}
+
+	return v2.Db.WithContext(ctx).Model(data).Clauses(clause.OnConflict{
+		Columns:   duplicatedColumns,
+		DoUpdates: clause.AssignmentColumns(updateFields),
+	}).Create(data).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) UpdateDataBySingleCondition(ctx context.Context, updates any, column string, condition any) error {
+	if column == "" || condition == nil || EmptySlice(condition) {
+		return ErrInvalidCondition
+	}
+
+	return v2.Db.WithContext(ctx).Model(updates).Where(column, condition).Updates(updates).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) UpdateDataByCustomCondition(ctx context.Context, updates, condition any) error {
+	if condition == nil || EmptySlice(condition) {
+		return ErrInvalidCondition
+	}
+
+	return v2.Db.WithContext(ctx).Model(updates).Where(condition).Updates(updates).Error
+}
+
+var (
+	ErrInvalidCondition  = errors.New("invalid condition")
+	ErrInvalidSingleData = errors.New("invalid single data")
+)
