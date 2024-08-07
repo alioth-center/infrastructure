@@ -16,9 +16,18 @@ const DriverName = "sqlite"
 
 type sqliteDb struct {
 	database.BaseDatabaseImplement
+	database.BaseDatabaseImplementV2
+
+	initialized bool
 }
 
 func (s *sqliteDb) Init(options database.Options) error {
+	// 防止重复初始化
+	if s.initialized {
+		return nil
+	}
+	s.initialized = true
+
 	// 初始化日志
 	dataSource := options.DataSource
 	s.Logger = logger.Default()
@@ -48,7 +57,7 @@ func (s *sqliteDb) Init(options database.Options) error {
 	s.BaseDatabaseImplement.SetDriverName(DriverName)
 
 	// 连接成功
-	s.Db = db
+	s.BaseDatabaseImplement.Db, s.BaseDatabaseImplementV2.Db = db, db
 	s.Logger.Info(logger.NewFields().WithMessage("successfully open sqliteDb database").WithData(dataSource))
 
 	// 注册退出事件
@@ -59,6 +68,9 @@ func (s *sqliteDb) Init(options database.Options) error {
 	return nil
 }
 
+// NewSqliteDb creates a new sqlite database instance.
+//
+// Deprecated: Use NewSQLiteV2 instead.
 func NewSqliteDb(config Config, models ...any) (db database.Database, err error) {
 	rdb := &sqliteDb{}
 	if initErr := rdb.Init(convertConfigToOptions(config)); initErr != nil {
@@ -68,4 +80,18 @@ func NewSqliteDb(config Config, models ...any) (db database.Database, err error)
 	} else {
 		return rdb, nil
 	}
+}
+
+// NewSQLiteV2 creates a new sqlite database instance.
+func NewSQLiteV2(config Config, models ...any) (db database.DatabaseV2, err error) {
+	rdb := &sqliteDb{}
+	if initErr := rdb.Init(convertConfigToOptions(config)); initErr != nil {
+		return nil, fmt.Errorf("init sqliteDb database error: %w", initErr)
+	}
+
+	if migrateErr := rdb.Migrate(models...); migrateErr != nil {
+		return nil, fmt.Errorf("migrate sqliteDb database error: %w", migrateErr)
+	}
+
+	return rdb, nil
 }

@@ -4,7 +4,7 @@ import "github.com/alioth-center/infrastructure/database"
 
 type Extension struct{}
 
-func (e *Extension) InitializeExtension(base database.Database) Extended {
+func (e *Extension) InitializeExtension(base database.Database) Extended { // nolint:staticcheck
 	return &extended{
 		Database: base,
 		methods:  base.ExtMethods(),
