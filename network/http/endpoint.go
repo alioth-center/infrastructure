@@ -1,7 +1,9 @@
 package http
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -266,8 +268,12 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 		}
 	}()
 
+	// copy request body
+	content, _ := io.ReadAll(ctx.Request.Body)
+	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(content))
+
 	// init context and preprocess
-	context := NewContext[request, response](WithContext[request, response](tracedCtx), WithExtraParams[request, response](extraParams))
+	context := NewContext[request, response](WithContext[request, response](tracedCtx), WithExtraParams[request, response](extraParams), WithRawRequest[request, response](ctx.Request))
 	preprocessors := DefaultPreprocessors[request, response]()
 	if len(ep.preprocessors) > 0 {
 		preprocessors = ep.preprocessors
@@ -278,6 +284,9 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 	if ctx.IsAborted() {
 		return
 	}
+
+	// write request body back
+	ctx.Request.Body = io.NopCloser(bytes.NewBuffer(content))
 
 	// execute endpoint handler chain
 	ep.chain.Execute(context)
