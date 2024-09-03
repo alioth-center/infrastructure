@@ -20,7 +20,7 @@ type Engine struct {
 }
 
 func (e *Engine) registerEndpoints() {
-	if e.middlewares != nil && len(e.middlewares) > 0 {
+	if len(e.middlewares) > 0 {
 		e.core.Use(e.middlewares...)
 	}
 

@@ -1,6 +1,10 @@
 package database
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/alioth-center/infrastructure/utils/values"
+)
 
 func FromSlice(s any) bool {
 	v := reflect.ValueOf(s)
@@ -31,4 +35,12 @@ func FromMap(m any) bool {
 
 func Receivable(v any) bool {
 	return v != nil && reflect.ValueOf(v).Kind() == reflect.Ptr
+}
+
+func Column(tableName, columnName string) string {
+	return values.BuildStrings(tableName, ".", columnName)
+}
+
+func ColumnAlias(tableName, columnName, alias string) string {
+	return values.BuildStrings(tableName, ".", columnName, " as ", alias)
 }
