@@ -1,8 +1,9 @@
 package database
 
 import (
-	"gorm.io/gorm"
 	"reflect"
+
+	"gorm.io/gorm"
 
 	"github.com/alioth-center/infrastructure/utils/values"
 )
