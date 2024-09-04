@@ -3,6 +3,8 @@ package database
 import (
 	"reflect"
 
+	"gorm.io/gorm"
+
 	"github.com/alioth-center/infrastructure/utils/values"
 )
 
@@ -43,4 +45,8 @@ func Column(tableName, columnName string) string {
 
 func ColumnAlias(tableName, columnName, alias string) string {
 	return values.BuildStrings(tableName, ".", columnName, " as ", alias)
+}
+
+func JoinSubQueryAlias(query *gorm.DB, alias string) string {
+	return values.BuildStrings("(", query.Statement.SQL.String(), ") as ", alias)
 }

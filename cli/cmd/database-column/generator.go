@@ -61,11 +61,20 @@ func hasTableNameMethod(node *ast.File, structName string) bool {
 	for _, decl := range node.Decls {
 		if funcDecl, ok := decl.(*ast.FuncDecl); ok {
 			if funcDecl.Recv != nil && len(funcDecl.Recv.List) > 0 {
-				if starExpr, ok := funcDecl.Recv.List[0].Type.(*ast.StarExpr); ok {
+				recvType := funcDecl.Recv.List[0].Type
+				// Check if the receiver is a pointer to the struct
+				if starExpr, ok := recvType.(*ast.StarExpr); ok {
 					if ident, ok := starExpr.X.(*ast.Ident); ok && ident.Name == structName {
 						if funcDecl.Name.Name == "TableName" {
 							return true
 						}
+					}
+				}
+
+				// Check if the receiver is the struct itself (non-pointer receiver)
+				if ident, ok := recvType.(*ast.Ident); ok && ident.Name == structName {
+					if funcDecl.Name.Name == "TableName" {
+						return true
 					}
 				}
 			}
