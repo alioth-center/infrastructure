@@ -424,6 +424,14 @@ func (v2 *BaseDatabaseImplementV2) UpdateDataByCustomCondition(ctx context.Conte
 	return v2.Db.WithContext(ctx).Model(updates).Where(condition).Updates(updates).Error
 }
 
+func (v2 *BaseDatabaseImplementV2) ExecuteRawSqlTemplateQuery(ctx context.Context, receiver any, sql string, template RawSqlTemplate) error {
+	return v2.Db.WithContext(ctx).Raw(template.ParseTemplate(sql)).Scan(receiver).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) ExecuteRawSqlTemplate(ctx context.Context, sql string, template RawSqlTemplate) error {
+	return v2.Db.WithContext(ctx).Exec(template.ParseTemplate(sql)).Error
+}
+
 var (
 	ErrInvalidCondition  = errors.New("invalid condition")
 	ErrInvalidSingleData = errors.New("invalid single data")
