@@ -2,6 +2,50 @@
 ## [Unreleased]
 
 
+<a name="v1.2.18"></a>
+## [v1.2.18] - 2024-09-05
+
+<a name="v1.2.1i"></a>
+## [v1.2.1i] - 2024-09-05
+### Chore
+- 给上下文新增原始请求，预处理后恢复请求体内容
+- update CHANGELOG
+- **readme:** 添加 wakatime 时间 badge
+
+### Feat
+- **database:** 拓展 database.v2 非模板的 raw sql 执行能力
+- **database:** 添加 database.v2 的 rawsql 能力并拓展接口
+- **database:** 为 database 添加一个用于构建子查询的方法
+- **database:** 为 database 添加两个构建 column 的方法
+- **database:** 引入 DatabaseV2 接口并实现其基本方法
+- **database-column:** 添加生成数据库列定义文件的功能
+- **http:** 添加 http 模块的 base response 结构
+- **utils:** 添加一个判断是否为内网 IP 的工具方法
+- **values:** 拓展字符串构建部分屏蔽数据方法
+
+### Fix
+- **database-column:** 修复 database-column 工具在 linux 环境下无法使用的问题
+- **openai:** 修复 break 修改对应的测试用例
+
+### Refactor
+- **generator:** 改进代码生成注释的方式
+- **openai:** 为 openai client 添加 context 参数
+
+### Style
+- **database:** golanglint-ci format fix
+- **database-column:** golangci-lint fix
+- **engine:** 修复 engine 中的冗余判断
+- **http:** golangci-lint format fix
+
+### Pull Requests
+- Merge pull request [#31](https://github.com/alioth-center/infrastructure/issues/31) from sunist-c/main
+- Merge pull request [#30](https://github.com/alioth-center/infrastructure/issues/30) from sunist-c/main
+- Merge pull request [#29](https://github.com/alioth-center/infrastructure/issues/29) from sunist-c/main
+- Merge pull request [#28](https://github.com/alioth-center/infrastructure/issues/28) from Jecosine/main
+- Merge pull request [#27](https://github.com/alioth-center/infrastructure/issues/27) from sunist-c/main
+- Merge pull request [#25](https://github.com/alioth-center/infrastructure/issues/25) from sunist-c/main
+
+
 <a name="v1.2.17"></a>
 ## [v1.2.17] - 2024-07-30
 ### Chore
@@ -408,7 +452,9 @@
 - 删除无效文件
 
 
-[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.17...HEAD
+[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.18...HEAD
+[v1.2.18]: https://github.com/alioth-center/infrastructure/compare/v1.2.1i...v1.2.18
+[v1.2.1i]: https://github.com/alioth-center/infrastructure/compare/v1.2.17...v1.2.1i
 [v1.2.17]: https://github.com/alioth-center/infrastructure/compare/v1.2.16...v1.2.17
 [v1.2.16]: https://github.com/alioth-center/infrastructure/compare/v1.2.15...v1.2.16
 [v1.2.15]: https://github.com/alioth-center/infrastructure/compare/v1.2.14...v1.2.15
