@@ -432,6 +432,14 @@ func (v2 *BaseDatabaseImplementV2) ExecuteRawSqlTemplate(ctx context.Context, sq
 	return v2.Db.WithContext(ctx).Exec(template.ParseTemplate(sql)).Error
 }
 
+func (v2 *BaseDatabaseImplementV2) ExecuteRawSqlQuery(ctx context.Context, receiver any, sql string) error {
+	return v2.Db.WithContext(ctx).Raw(sql).Scan(receiver).Error
+}
+
+func (v2 *BaseDatabaseImplementV2) ExecuteRawSql(ctx context.Context, sql string) error {
+	return v2.Db.WithContext(ctx).Exec(sql).Error
+}
+
 var (
 	ErrInvalidCondition  = errors.New("invalid condition")
 	ErrInvalidSingleData = errors.New("invalid single data")
