@@ -159,4 +159,48 @@ type DatabaseV2 interface {
 	// Returns:
 	//	error: An error if the operation fails, otherwise nil.
 	UpdateDataByCustomCondition(ctx context.Context, updates, condition any) error
+
+	// ExecuteRawSqlTemplateQuery executes a raw SQL template query with the provided context.
+	//
+	// Parameters:
+	//	ctx (context.Context): The context for the database operation.
+	//	receiver (any): The destination where the query result will be stored.
+	//  sql (string): The raw SQL template to execute.
+	//	template (RawSqlTemplate): The raw SQL template value to execute.
+	//
+	// Returns:
+	//	error: An error if the operation fails, otherwise nil.
+	ExecuteRawSqlTemplateQuery(ctx context.Context, receiver any, sql string, template RawSqlTemplate) error
+
+	// ExecuteRawSqlTemplate executes a raw SQL template with the provided context.
+	//
+	// Parameters:
+	//	ctx (context.Context): The context for the database operation.
+	//  sql (string): The raw SQL template to execute.
+	//	template (RawSqlTemplate): The raw SQL template value to execute.
+	//
+	// Returns:
+	//	error: An error if the operation fails, otherwise nil.
+	ExecuteRawSqlTemplate(ctx context.Context, sql string, template RawSqlTemplate) error
+
+	// ExecuteRawSqlQuery executes a raw SQL query with the provided context.
+	//
+	// Parameters:
+	//	ctx (context.Context): The context for the database operation.
+	//	receiver (any): The destination where the query result will be stored.
+	//  sql (string): The raw SQL to execute.
+	//
+	// Returns:
+	//	error: An error if the operation fails, otherwise nil.
+	ExecuteRawSqlQuery(ctx context.Context, receiver any, sql string) error
+
+	// ExecuteRawSql executes a raw SQL with the provided context.
+	//
+	// Parameters:
+	//	ctx (context.Context): The context for the database operation.
+	//  sql (string): The raw SQL to execute.
+	//
+	// Returns:
+	//	error: An error if the operation fails, otherwise nil.
+	ExecuteRawSql(ctx context.Context, sql string) error
 }

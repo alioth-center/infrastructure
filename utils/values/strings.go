@@ -79,6 +79,33 @@ func BuildStringsWithTemplate(template string, args ...string) string {
 	return template
 }
 
+// SecretString returns a string with the middle part replaced by paddingChar.
+//
+// Parameters:
+//
+//	raw (string): The original string.
+//	prefixDisplay (int): The number of characters to display at the beginning of the string.
+//	suffixDisplay (int): The number of characters to display at the end of the string.
+//	paddingChar (string): The character to replace the middle part of the string.
+//
+// Returns:
+//
+//	string: The string with the middle part replaced by paddingChar.
+//
+// Example:
+//
+//	SecretString("1234567890", 3, 3, "*") -> "123****890"
+//	SecretString("123", 3, 3, "*") -> "123"
+func SecretString(raw string, prefixDisplay, suffixDisplay int, paddingChar string) string {
+	runes := []rune(raw)
+	length := len(runes)
+	if length <= prefixDisplay+suffixDisplay {
+		return string(runes)
+	}
+
+	return BuildStrings(string(runes[:prefixDisplay]), strings.Repeat(paddingChar, length-prefixDisplay-suffixDisplay), string(runes[length-suffixDisplay:]))
+}
+
 // StringToInt 字符串转换为int
 // example:
 //

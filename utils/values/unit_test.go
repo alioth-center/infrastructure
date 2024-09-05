@@ -87,6 +87,75 @@ func TestString(t *testing.T) {
 		})
 	})
 
+	t.Run("SecretString", func(t *testing.T) {
+		testCases := []struct {
+			name   string
+			secret string
+			prefix int
+			suffix int
+			char   string
+			want   string
+		}{
+			{
+				name:   "Normal",
+				secret: "1234567890",
+				prefix: 3,
+				suffix: 3,
+				char:   "*",
+				want:   "123****890",
+			},
+			{
+				name:   "Empty",
+				secret: "",
+				prefix: 3,
+				suffix: 3,
+				char:   "*",
+				want:   "",
+			},
+			{
+				name:   "Short",
+				secret: "123",
+				prefix: 3,
+				suffix: 3,
+				char:   "*",
+				want:   "123",
+			},
+			{
+				name:   "Prefix",
+				secret: "123",
+				prefix: 1,
+				suffix: 0,
+				char:   "*",
+				want:   "1**",
+			},
+			{
+				name:   "Suffix",
+				secret: "123",
+				prefix: 0,
+				suffix: 1,
+				char:   "*",
+				want:   "**3",
+			},
+			{
+				name:   "Hans",
+				secret: "我是刻晴",
+				prefix: 1,
+				suffix: 2,
+				char:   "*",
+				want:   "我*刻晴",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				result := SecretString(tc.secret, tc.prefix, tc.suffix, tc.char)
+				if result != tc.want {
+					t.Errorf("SecretString() = %v, want %v", result, tc.want)
+				}
+			})
+		}
+	})
+
 	t.Run("StringToInt", func(t *testing.T) {
 		t.Run("Normal", func(t *testing.T) {
 			result := StringToInt("123", 0)
