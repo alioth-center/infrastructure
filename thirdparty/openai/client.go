@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/alioth-center/infrastructure/logger"
@@ -11,23 +12,23 @@ import (
 
 type Client interface {
 	CalculateToken(inputs ...string) (tokens int)
-	ListModels(req ListModelRequest) (resp ListModelResponseBody, err error)
-	RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error)
-	GenerateImage(req CreateImageRequest) (resp ImageResponseBody, err error)
-	CompleteChat(req CompleteChatRequest) (resp CompleteChatResponseBody, err error)
-	CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error)
-	CreateTranscription(req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error)
-	CompleteModeration(req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error)
-	Embedding(req EmbeddingRequest) (resp EmbeddingResponseBody, err error)
+	ListModels(ctx context.Context, req ListModelRequest) (resp ListModelResponseBody, err error)
+	RetrieveModel(ctx context.Context, req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error)
+	GenerateImage(ctx context.Context, req CreateImageRequest) (resp ImageResponseBody, err error)
+	CompleteChat(ctx context.Context, req CompleteChatRequest) (resp CompleteChatResponseBody, err error)
+	CreateSpeech(ctx context.Context, req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error)
+	CreateTranscription(ctx context.Context, req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error)
+	CompleteModeration(ctx context.Context, req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error)
+	Embedding(ctx context.Context, req EmbeddingRequest) (resp EmbeddingResponseBody, err error)
 
-	CreateFineTuningJob(req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error)
-	RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error)
-	ListFineTuningJobs(req ListFineTuningJobsRequest) (resp ListFineTuningJobsResponseBody, err error)
-	CancelFineTuningJob(req CancelFineTuningJobRequest) (resp CancelFineTuningJobResponseBody, err error)
-	UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, err error)
-	ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err error)
-	DeleteFile(req DeleteFileRequest) (resp DeleteFileResponseBody, err error)
-	RetrieveFile(req RetrieveFileRequest) (resp RetrieveFileResponseBody, err error)
+	CreateFineTuningJob(ctx context.Context, req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error)
+	RetrieveFineTuningJob(ctx context.Context, req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error)
+	ListFineTuningJobs(ctx context.Context, req ListFineTuningJobsRequest) (resp ListFineTuningJobsResponseBody, err error)
+	CancelFineTuningJob(ctx context.Context, req CancelFineTuningJobRequest) (resp CancelFineTuningJobResponseBody, err error)
+	UploadFile(ctx context.Context, req UploadFileRequest) (resp UploadFileResponseBody, err error)
+	ListFiles(ctx context.Context, req ListFilesRequest) (resp ListFilesResponseBody, err error)
+	DeleteFile(ctx context.Context, req DeleteFileRequest) (resp DeleteFileResponseBody, err error)
+	RetrieveFile(ctx context.Context, req RetrieveFileRequest) (resp RetrieveFileResponseBody, err error)
 }
 
 type client struct {
@@ -43,8 +44,9 @@ func (c client) CalculateToken(inputs ...string) (tokens int) {
 	return tokens
 }
 
-func (c client) ListModels(_ ListModelRequest) (resp ListModelResponseBody, err error) {
+func (c client) ListModels(ctx context.Context, _ ListModelRequest) (resp ListModelResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumListModel).
+		WithContext(ctx).
 		WithMethod(http.GET).
 		WithAccept(http.ContentTypeJson)
 	response, executeErr := c.executor.ExecuteRequest(request)
@@ -65,8 +67,9 @@ func (c client) ListModels(_ ListModelRequest) (resp ListModelResponseBody, err 
 	return resp, nil
 }
 
-func (c client) RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error) {
+func (c client) RetrieveModel(ctx context.Context, req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumRetrieveModel, "model", req.Model).
+		WithContext(ctx).
 		WithMethod(http.GET).
 		WithAccept(http.ContentTypeJson)
 	response, executeErr := c.executor.ExecuteRequest(request)
@@ -87,8 +90,9 @@ func (c client) RetrieveModel(req RetrieveModelRequest) (resp RetrieveModelRespo
 	return resp, nil
 }
 
-func (c client) GenerateImage(req CreateImageRequest) (resp ImageResponseBody, err error) {
+func (c client) GenerateImage(ctx context.Context, req CreateImageRequest) (resp ImageResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCreateImage).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithJsonBody(&req.Body)
@@ -110,8 +114,9 @@ func (c client) GenerateImage(req CreateImageRequest) (resp ImageResponseBody, e
 	return resp, nil
 }
 
-func (c client) CompleteChat(req CompleteChatRequest) (resp CompleteChatResponseBody, err error) {
+func (c client) CompleteChat(ctx context.Context, req CompleteChatRequest) (resp CompleteChatResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCompleteChat).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithJsonBody(&req.Body)
@@ -133,8 +138,9 @@ func (c client) CompleteChat(req CompleteChatRequest) (resp CompleteChatResponse
 	return resp, nil
 }
 
-func (c client) CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error) {
+func (c client) CreateSpeech(ctx context.Context, req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCreateSpeech).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithJsonBody(&req.Body)
 	response, executeErr := c.executor.ExecuteRequest(request)
@@ -155,7 +161,7 @@ func (c client) CreateSpeech(req CreateSpeechRequest) (resp CreateSpeechResponse
 	return resp, nil
 }
 
-func (c client) CreateTranscription(req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error) {
+func (c client) CreateTranscription(ctx context.Context, req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error) {
 	multipart := http.NewMultipartBodyBuilder().WithFile("file", req.FormBody.FileName, req.FormBody.File)
 	for k, v := range req.FormBody.ToMultiPartBody() {
 		multipart = multipart.WithForm(k, v)
@@ -166,6 +172,7 @@ func (c client) CreateTranscription(req CreateTranscriptionRequest) (resp Create
 	}
 
 	request := c.options.buildBaseRequest(EndpointEnumCreateTranscription).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithBody(multipartBody).
@@ -188,8 +195,9 @@ func (c client) CreateTranscription(req CreateTranscriptionRequest) (resp Create
 	return resp, nil
 }
 
-func (c client) CompleteModeration(req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error) {
+func (c client) CompleteModeration(ctx context.Context, req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumCompleteModeration).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithJsonBody(&req.Body)
@@ -211,8 +219,9 @@ func (c client) CompleteModeration(req CompleteModerationRequest) (resp Complete
 	return resp, nil
 }
 
-func (c client) Embedding(req EmbeddingRequest) (resp EmbeddingResponseBody, err error) {
+func (c client) Embedding(ctx context.Context, req EmbeddingRequest) (resp EmbeddingResponseBody, err error) {
 	request := c.options.buildBaseRequest(EndpointEnumEmbedding).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithJsonBody(&req.Body)
@@ -234,9 +243,9 @@ func (c client) Embedding(req EmbeddingRequest) (resp EmbeddingResponseBody, err
 	return resp, nil
 }
 
-func (c client) CreateFineTuningJob(req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumCreateFineTuningJob).
+func (c client) CreateFineTuningJob(ctx context.Context, req CreateFineTuningJobRequest) (resp CreateFineTuningJobResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumCreateFineTuningJob).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithJsonBody(&req.Body)
@@ -258,9 +267,9 @@ func (c client) CreateFineTuningJob(req CreateFineTuningJobRequest) (resp Create
 	return resp, nil
 }
 
-func (c client) RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumRetrieveFineTuningJob, "id", req.Body.ID).
+func (c client) RetrieveFineTuningJob(ctx context.Context, req RetrieveFineTuningJobRequest) (resp RetrieveFineTuningJobResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumRetrieveFineTuningJob, "id", req.Body.ID).
+		WithContext(ctx).
 		WithMethod(http.GET).
 		WithAccept(http.ContentTypeJson)
 	response, executeErr := c.executor.ExecuteRequest(request)
@@ -281,9 +290,9 @@ func (c client) RetrieveFineTuningJob(req RetrieveFineTuningJobRequest) (resp Re
 	return resp, nil
 }
 
-func (c client) ListFineTuningJobs(req ListFineTuningJobsRequest) (resp ListFineTuningJobsResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumListFineTuningJobs).
+func (c client) ListFineTuningJobs(ctx context.Context, req ListFineTuningJobsRequest) (resp ListFineTuningJobsResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumListFineTuningJobs).
+		WithContext(ctx).
 		WithMethod(http.GET).
 		WithAccept(http.ContentTypeJson).
 		WithQueryIgnoreEmptyValue("after", req.Body.After).
@@ -306,9 +315,9 @@ func (c client) ListFineTuningJobs(req ListFineTuningJobsRequest) (resp ListFine
 	return resp, nil
 }
 
-func (c client) CancelFineTuningJob(req CancelFineTuningJobRequest) (resp CancelFineTuningJobResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumCancelFineTuningJob, "id", req.Body.ID).
+func (c client) CancelFineTuningJob(ctx context.Context, req CancelFineTuningJobRequest) (resp CancelFineTuningJobResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumCancelFineTuningJob, "id", req.Body.ID).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson)
 	response, executeErr := c.executor.ExecuteRequest(request)
@@ -329,7 +338,7 @@ func (c client) CancelFineTuningJob(req CancelFineTuningJobRequest) (resp Cancel
 	return resp, nil
 }
 
-func (c client) UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, err error) {
+func (c client) UploadFile(ctx context.Context, req UploadFileRequest) (resp UploadFileResponseBody, err error) {
 	multipart := http.NewMultipartBodyBuilder().WithFile("file", req.FormBody.FileName, req.FormBody.File)
 	for k, v := range req.FormBody.ToMultiPartBody() {
 		multipart = multipart.WithForm(k, v)
@@ -339,8 +348,8 @@ func (c client) UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, 
 		return UploadFileResponseBody{}, fmt.Errorf("build upload file multipart body error: %w", buildMultipartErr)
 	}
 
-	request := c.options.
-		buildBaseRequest(EndpointEnumUploadFile).
+	request := c.options.buildBaseRequest(EndpointEnumUploadFile).
+		WithContext(ctx).
 		WithMethod(http.POST).
 		WithAccept(http.ContentTypeJson).
 		WithBody(multipartBody).
@@ -363,9 +372,9 @@ func (c client) UploadFile(req UploadFileRequest) (resp UploadFileResponseBody, 
 	return resp, nil
 }
 
-func (c client) ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumListFiles).
+func (c client) ListFiles(ctx context.Context, req ListFilesRequest) (resp ListFilesResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumListFiles).
+		WithContext(ctx).
 		WithMethod(http.GET).
 		WithAccept(http.ContentTypeJson).
 		WithUserAgent(c.options.getUserAgent()).
@@ -388,9 +397,9 @@ func (c client) ListFiles(req ListFilesRequest) (resp ListFilesResponseBody, err
 	return resp, nil
 }
 
-func (c client) DeleteFile(req DeleteFileRequest) (resp DeleteFileResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumDeleteFile, "id", req.Body.ID).
+func (c client) DeleteFile(ctx context.Context, req DeleteFileRequest) (resp DeleteFileResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumDeleteFile, "id", req.Body.ID).
+		WithContext(ctx).
 		WithMethod(http.DELETE).
 		WithAccept(http.ContentTypeJson)
 	response, executeErr := c.executor.ExecuteRequest(request)
@@ -411,9 +420,9 @@ func (c client) DeleteFile(req DeleteFileRequest) (resp DeleteFileResponseBody, 
 	return resp, nil
 }
 
-func (c client) RetrieveFile(req RetrieveFileRequest) (resp RetrieveFileResponseBody, err error) {
-	request := c.options.
-		buildBaseRequest(EndpointEnumRetrieveFile, "id", req.Body.ID).
+func (c client) RetrieveFile(ctx context.Context, req RetrieveFileRequest) (resp RetrieveFileResponseBody, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumRetrieveFile, "id", req.Body.ID).
+		WithContext(ctx).
 		WithMethod(http.GET).
 		WithAccept(http.ContentTypeJson)
 	response, executeErr := c.executor.ExecuteRequest(request)
