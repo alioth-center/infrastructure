@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"github.com/alioth-center/infrastructure/trace"
 	"io"
 	h "net/http"
 	"os"
@@ -13,6 +14,8 @@ import (
 )
 
 func TestOpenAiClient(t *testing.T) {
+	background := trace.NewContext()
+
 	// uses real openai endpoint to test, because mocking the endpoint cannot find issues in the client
 	var client Client
 	apiKey, baseUrl := os.Getenv("OPENAI_API_KEY"), os.Getenv("OPENAI_BASE_URL")
@@ -24,7 +27,7 @@ func TestOpenAiClient(t *testing.T) {
 	}
 
 	t.Run("CompleteChat", func(t *testing.T) {
-		response, err := client.CompleteChat(CompleteChatRequest{
+		response, err := client.CompleteChat(background, CompleteChatRequest{
 			Body: CompleteChatRequestBody{
 				Model: "gpt-4o",
 				Messages: []ChatMessageObject{
@@ -50,7 +53,7 @@ func TestOpenAiClient(t *testing.T) {
 	})
 
 	t.Run("Embedding", func(t *testing.T) {
-		response, err := client.Embedding(EmbeddingRequest{
+		response, err := client.Embedding(background, EmbeddingRequest{
 			Body: EmbeddingRequestBody{
 				Input: "Hello, world!",
 			},
