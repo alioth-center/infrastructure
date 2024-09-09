@@ -2,8 +2,12 @@ package http
 
 import (
 	"context"
+	"net"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/alioth-center/infrastructure/utils/network"
 
 	"github.com/alioth-center/infrastructure/utils/values"
 )
@@ -23,263 +27,171 @@ type PreprocessedContext[request any, response any] interface {
 type Context[request any, response any] interface {
 	context.Context
 
-	// reset resets the acContext to its initial state.
-	// example:
-	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.reset()
-	// 	}
+	// reset resets the acContext to its initial state, clearing handlers and resetting the index.
 	reset()
 
-	// setHandlers sets the handlers of the acContext.
-	// example:
+	// setHandlers sets the handlers chain for the context.
 	//
-	//	func initContext() {
-	// 		chain := NewChain[request, response](
-	//			func(ctx Context[request, response]) {
-	//				// do something
-	//				ctx.Next()
-	//			},
-	//			func(ctx Context[request, response]) {
-	//				// do something
-	//				ctx.Next()
-	//			},
-	//		)
-	//		ctx.setHandlers(chain)
-	//	}
+	// Parameters:
+	//   chain (Chain[request, response]): The chain of handlers to be set.
 	setHandlers(chain Chain[request, response])
 
-	// Next calls the following handlers until abort or the end of the chain.
-	// example:
-	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.Next()
-	//		// do something after returned from the following handlers
-	//	}
+	// Next calls the next handler in the chain.
+	// If there are no more handlers, it stops execution.
 	Next()
 
-	// Abort aborts the following handlers.
-	// example:
-	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.Abort()
-	//		// do something after aborted
-	//	}
+	// Abort stops the execution of the remaining handlers in the chain.
 	Abort()
 
-	// IsAborted returns true if the following handlers are aborted.
-	// example:
+	// IsAborted checks if the execution of the remaining handlers has been aborted.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		if ctx.IsAborted() {
-	//			// do something if aborted
-	//		}
-	//		// do something after aborted
-	//	}
+	// Returns:
+	//   bool: True if the execution has been aborted, otherwise false.
 	IsAborted() bool
 
-	// RawRequest returns the raw request.
-	// example:
+	// RawRequest returns the raw HTTP request.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		raw := ctx.RawRequest()
-	//		// do something with raw
-	//	}
+	// Returns:
+	//   *http.Request: The raw HTTP request.
 	RawRequest() *http.Request
 
-	// QueryParams returns the query params.
-	// example:
+	// QueryParams returns the query parameters.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		params := ctx.QueryParams()
-	//		// do something with params
-	//	}
+	// Returns:
+	//   Params: The query parameters.
 	QueryParams() Params
 
-	// PathParams returns the path params.
-	// example:
+	// PathParams returns the path parameters.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		params := ctx.PathParams()
-	//		// do something with params
-	//	}
+	// Returns:
+	//   Params: The path parameters.
 	PathParams() Params
 
-	// HeaderParams returns the header params.
-	// example:
+	// HeaderParams returns the header parameters.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		params := ctx.HeaderParams()
-	//		// do something with params
-	//	}
+	// Returns:
+	//   Params: The header parameters.
 	HeaderParams() Params
 
-	// CookieParams returns the cookie params.
-	// example:
+	// CookieParams returns the cookie parameters.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		params := ctx.CookieParams()
-	//		// do something with params
-	//	}
+	// Returns:
+	//   Params: The cookie parameters.
 	CookieParams() Params
 
-	// NormalHeaders returns the normal headers.
-	// example:
+	// NormalHeaders returns the normal request headers.
+	// Includes following headers:
+	//   - Accept
+	//   - Accept-Encoding
+	//   - Accept-Language
+	//   - User-Agent
+	//   - Content-Type
+	//   - Content-Length
+	//   - Origin
+	//   - Referer
+	//   - Authorization
+	//   - ApiKey
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		headers := ctx.NormalHeaders()
-	//		// do something with headers
-	//	}
+	// Returns:
+	//   RequestHeader: The normal request headers.
 	NormalHeaders() RequestHeader
 
-	// ExtraParams returns the extra params.
-	// example:
+	// ExtraParams returns the extra parameters.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		params := ctx.ExtraParams()
-	//		// do something with params
-	//	}
+	// Returns:
+	//   Params: The extra parameters.
 	ExtraParams() Params
 
-	// SetExtraParam sets the extra param.
-	// example:
+	// SetExtraParam sets a single extra parameter.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetExtraParam("key", "value")
-	//		// do something with params
-	//	}
+	// Parameters:
+	//   key (string): The key of the extra parameter.
+	//   value (string): The value of the extra parameter.
 	SetExtraParam(key string, value string)
 
 	// Request returns the processed request.
-	// example:
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		req := ctx.Request()
-	//		// do something with req
-	//	}
+	// Returns:
+	//   request: The processed request
 	Request() request
 
 	// Response returns the response.
-	// example:
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		resp := ctx.Response()
-	//		// do something with resp
-	//	}
+	// Returns:
+	//   response: The response.
 	Response() response
 
 	// SetResponse sets the response.
-	// example:
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetResponse(resp)
-	//		// do something with resp
-	//	}
+	// Parameters:
+	//   resp (response): The response to be set.
 	SetResponse(resp response)
 
 	// ResponseHeaders returns the response headers.
-	// example:
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		headers := ctx.ResponseHeaders()
-	//		// do something with headers
-	//	}
+	// Returns:
+	//   Params: The response headers.
 	ResponseHeaders() Params
 
-	// SetResponseHeader sets the response header.
-	// example:
+	// SetResponseHeader sets a single response header.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetResponseHeader("key", "value")
-	//		// do something with resp
-	//	}
+	// Parameters:
+	//   key (string): The key of the response header.
+	//   value (string): The value of the response header.
 	SetResponseHeader(key string, value string)
 
-	// ResponseSetCookies returns the response cookies.
-	// example:
+	// ResponseSetCookies returns the response set cookies.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		cookies := ctx.ResponseSetCookies()
-	//		// do something with cookies
-	//	}
+	// Returns:
+	//   []Cookie: The response set cookies.
 	ResponseSetCookies() []Cookie
 
-	// SetResponseSetCookie sets the response cookie.
-	// example:
+	// SetResponseSetCookie sets a response cookie.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetResponseSetCookie(cookie)
-	//		// do something with resp
-	//	}
+	// Parameters:
+	//   cookie (Cookie): The response cookie to be set.
 	SetResponseSetCookie(cookie Cookie)
 
-	// StatusCode returns the status code.
-	// example:
+	// StatusCode returns the status code of the response.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		status := ctx.StatusCode()
-	//		// do something with status
-	//	}
+	// Returns:
+	//   int: The status code of the response.
 	StatusCode() int
 
-	// SetStatusCode sets the status code.
-	// example:
+	// SetStatusCode sets the status code of the response.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetStatusCode(StatusOK)
-	//		// do something with status
-	//	}
+	// Parameters:
+	//   status (int): The status code to be set.
 	SetStatusCode(status int)
 
-	// Error returns the error.
-	// example:
+	// ClientIP retrieves the client's IP address from the request context.
+	// It checks various headers and the remote address in the following priority order:
+	// 	1. X-Forwarded-For header (may contain multiple IPs, comma-separated)
+	// 	2. X-Real-IP header
+	// 	3. RemoteAddr from the raw request
+	// 	4. Extra parameters passed in the context
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		err := ctx.Error()
-	//		// do something with err
-	//	}
+	// Returns:
+	//   ip (string): The client's IP address if found and valid, otherwise an empty string.
+	ClientIP() string
+
+	// Error returns the error set in the context.
+	//
+	// Returns:
+	//   error: The error set in the context.
 	Error() error
 
-	// SetError sets the error.
-	// example:
+	// SetError sets an error in the context.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetError(err)
-	//		// do something with err
-	//	}
+	// Parameters:
+	//   err (error): The error to be set.
 	SetError(err error)
 
-	// SetValue sets the value, equals to context.WithValue
-	// example:
+	// SetValue sets a value in the context, equivalent to context.WithValue.
 	//
-	//	func handler(ctx Context[request, response]) {
-	//		// do something
-	//		ctx.SetValue("key", "value")
-	//		// do something with value
-	//	}
+	// Parameters:
+	//   key (any): The key for the value.
+	//   value (any): The value to be set.
 	SetValue(key, value any)
 }
 
@@ -459,6 +371,40 @@ func (c *acContext[request, response]) StatusCode() int {
 
 func (c *acContext[request, response]) SetStatusCode(status int) {
 	c.status = status
+}
+
+func (c *acContext[request, response]) ClientIP() string {
+	// check client IP from X-Forwarded-For
+	if xForwardedFor := c.raw.Header.Get(HeaderXForwardedFor); xForwardedFor != "" {
+		ips := strings.Split(xForwardedFor, ",")
+		for _, ip := range ips {
+			ip = strings.TrimSpace(ip)
+			if network.IsValidIP(ip) {
+				return ip
+			}
+		}
+	}
+
+	// check client IP from X-Real-IP
+	if xRealIP := c.raw.Header.Get(HeaderXRealIP); xRealIP != "" && network.IsValidIP(xRealIP) {
+		return xRealIP
+	}
+
+	// check client IP from RemoteAddr
+	if remoteAddr := c.raw.RemoteAddr; remoteAddr != "" {
+		if ip, _, err := net.SplitHostPort(remoteAddr); err == nil {
+			if network.IsValidIP(ip) {
+				return ip
+			}
+		}
+	}
+
+	// gin default client IP
+	if clientIP, got := c.extraParams[RemoteIPKey]; got && network.IsValidIP(clientIP) {
+		return clientIP
+	}
+
+	return ""
 }
 
 func (c *acContext[request, response]) Error() error {
