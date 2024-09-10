@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -425,7 +426,7 @@ func TestAcContext(t *testing.T) {
 
 		err := &http.ProtocolError{ErrorString: "test error"}
 		ctx.SetError(err)
-		if ctx.Error() != err {
+		if !errors.Is(err, ctx.Error()) {
 			t.Fatal("Expected Error to return the set error")
 		}
 
@@ -448,6 +449,31 @@ func TestAcContext(t *testing.T) {
 		}
 		if ctx.Value(testKey) != testValue {
 			t.Fatal("Expected Value to return the set value")
+		}
+
+		// test client ip
+		ctx.raw.Header.Set("X-Forwarded-For", "1.1.1.1")
+		if ctx.ClientIP() != "1.1.1.1" {
+			t.Fatal("Expected ClientIP to return the set client ip")
+		}
+		ctx.raw.Header.Del("X-Forwarded-For")
+		ctx.raw.Header.Set("X-Real-IP", "2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+		if ctx.ClientIP() != "2001:0db8:85a3:0000:0000:8a2e:0370:7334" {
+			t.Fatal("Expected ClientIP to return the set client ip")
+		}
+		ctx.raw.Header.Del("X-Real-IP")
+		ctx.raw.RemoteAddr = "114.51.41.191:9810"
+		if ctx.ClientIP() != "114.51.41.191" {
+			t.Fatal("Expected ClientIP to return the set client ip" + ctx.ClientIP())
+		}
+		ctx.raw.RemoteAddr = ""
+		ctx.extraParams[RemoteIPKey] = "127.0.0.1"
+		if ctx.ClientIP() != "127.0.0.1" {
+			t.Fatal("Expected ClientIP to return the set client ip")
+		}
+		ctx.extraParams[RemoteIPKey] = ""
+		if ctx.ClientIP() != "" {
+			t.Fatal("Expected ClientIP to return empty string")
 		}
 	})
 }

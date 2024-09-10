@@ -228,13 +228,26 @@ type FrameworkResponse struct {
 type HeaderEnum = string
 
 const (
-	HeaderAuthorization  HeaderEnum = "Authorization"
-	HeaderContentType    HeaderEnum = "Content-Type"
-	HeaderUserAgent      HeaderEnum = "User-Agent"
-	HeaderAccept         HeaderEnum = "Accept"
-	HeaderEncoding       HeaderEnum = "Accept-Encoding"
-	HeaderAcceptLanguage HeaderEnum = "Accept-Language"
-	HeaderContentLength  HeaderEnum = "Content-Length"
+	HeaderAuthorization   HeaderEnum = "Authorization"
+	HeaderContentType     HeaderEnum = "Content-Type"
+	HeaderUserAgent       HeaderEnum = "User-Agent"
+	HeaderAccept          HeaderEnum = "Accept"
+	HeaderEncoding        HeaderEnum = "Accept-Encoding"
+	HeaderAcceptLanguage  HeaderEnum = "Accept-Language"
+	HeaderContentLength   HeaderEnum = "Content-Length"
+	HeaderHost            HeaderEnum = "Host"
+	HeaderReferer         HeaderEnum = "Referer"
+	HeaderOrigin          HeaderEnum = "Origin"
+	HeaderCookie          HeaderEnum = "Cookie"
+	HeaderSetCookie       HeaderEnum = "Set-Cookie"
+	HeaderXForwardedProto HeaderEnum = "X-Forwarded-Proto"
+	HeaderXForwardedPort  HeaderEnum = "X-Forwarded-Port"
+	HeaderXForwardedFor   HeaderEnum = "X-Forwarded-For"
+	HeaderXForwardedHost  HeaderEnum = "X-Forwarded-Host"
+	HeaderXRealIP         HeaderEnum = "X-Real-IP"
+	HeaderXRequestID      HeaderEnum = "X-Request-ID"
+	HeaderXAPIKey         HeaderEnum = "X-API-Key"
+	HeaderXTraceID        HeaderEnum = "X-Trace-ID"
 )
 
 type NoBody = struct{}

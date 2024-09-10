@@ -44,3 +44,19 @@ func IsPrivateIP(ip string) (isPrivate bool) {
 	// If no private IP block contains the IP, return false
 	return false
 }
+
+// IsValidIP determines whether a given IP address is a valid IP address.
+// It parses the IP address from a string and checks if the parsed IP is not nil.
+//
+// Parameters:
+//
+//	ip (string): The IP address in string format to be checked.
+//
+// Returns:
+//
+//	isValid (bool): Returns true if the IP address is a valid IP address,
+//	                false otherwise.
+func IsValidIP(ip string) (isValid bool) {
+	// Parse string ip to net.IP, if it's not nil, it's a valid IP
+	return net.ParseIP(ip) != nil
+}

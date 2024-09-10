@@ -56,3 +56,52 @@ func TestIsPrivateIP(t *testing.T) {
 		})
 	}
 }
+
+func TestIsVaildIP(t *testing.T) {
+	type args struct {
+		ip string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "valid ip 1",
+			args: args{ip: "1.1.1.1"},
+			want: true,
+		},
+		{
+			name: "valid ip 2",
+			args: args{ip: "192.168.1.1"},
+			want: true,
+		},
+		{
+			name: "valid ipv6",
+			args: args{ip: "2001:4860:4860::8888"},
+			want: true,
+		},
+		{
+			name: "invalid ip",
+			args: args{ip: "999.999.999.999"},
+			want: false,
+		},
+		{
+			name: "invalid ipv6",
+			args: args{ip: "2001:4860:4860::8888:"},
+			want: false,
+		},
+		{
+			name: "empty ip",
+			args: args{ip: ""},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsValidIP(tt.args.ip); got != tt.want {
+				t.Errorf("IsValidIP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
