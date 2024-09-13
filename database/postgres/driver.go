@@ -27,9 +27,13 @@ func (s *postgresDb) Init(options database.Options) error {
 	}
 	s.initialized = true
 
-	// 初始化日志
-	s.Logger = logger.Default()
-	s.Logger.Info(logger.NewFields().WithMessage("start open postgresDb database").WithData(options.DataSource))
+	// 初始化日志器
+	if options.Logger == nil {
+		options.Logger = logger.Default()
+	}
+
+	s.Logger = options.Logger
+	options.Logger.Info(logger.NewFields().WithMessage("start open postgresDb database").WithData(options.DataSource))
 
 	// 连接数据库
 	dataSource := options.DataSource
@@ -37,6 +41,7 @@ func (s *postgresDb) Init(options database.Options) error {
 	if openErr != nil {
 		return fmt.Errorf("open postgresDb database error: %w", openErr)
 	}
+	db.Logger = database.NewDBLogger(options.Logger)
 
 	// 设置数据库连接池
 	sqlDb, dbe := db.DB()
@@ -77,6 +82,21 @@ func NewPostgresDb(config Config, models ...any) (db database.Database, err erro
 func NewPostgresSQLv2(config Config, models ...any) (db database.DatabaseV2, err error) {
 	postgresDb := &postgresDb{}
 	if initErr := postgresDb.Init(convertConfigToOptions(config)); initErr != nil {
+		return nil, fmt.Errorf("init postgresDb database error: %w", initErr)
+	}
+
+	if migrateErr := postgresDb.Migrate(models...); migrateErr != nil {
+		return nil, fmt.Errorf("migrate postgresDb database error: %w", migrateErr)
+	}
+
+	return postgresDb, nil
+}
+
+func NewWithLogger(config Config, logger logger.Logger, models ...any) (db database.DatabaseV2, err error) {
+	postgresDb := &postgresDb{}
+	opts := convertConfigToOptions(config)
+	opts.Logger = logger
+	if initErr := postgresDb.Init(opts); initErr != nil {
 		return nil, fmt.Errorf("init postgresDb database error: %w", initErr)
 	}
 

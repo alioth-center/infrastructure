@@ -8,7 +8,6 @@ import (
 
 type Config struct {
 	Database      string `yaml:"database,omitempty" json:"database,omitempty" xml:"database,omitempty"`
-	Debug         bool   `yaml:"debug,omitempty" json:"debug,omitempty" xml:"debug,omitempty"`
 	Stdout        string `yaml:"stdout,omitempty" json:"stdout,omitempty" xml:"stdout,omitempty"`
 	Stderr        string `yaml:"stderr,omitempty" json:"stderr,omitempty" xml:"stderr,omitempty"`
 	MaxIdle       int    `yaml:"max_idle,omitempty" json:"max_idle,omitempty" xml:"max_idle,omitempty"`
@@ -20,7 +19,6 @@ type Config struct {
 func convertConfigToOptions(cfg Config) (opt database.Options) {
 	return database.Options{
 		DataSource: cfg.Database,
-		DebugLog:   cfg.Debug,
 		MaxIdle:    cfg.MaxIdle,
 		MaxOpen:    cfg.MaxOpen,
 		MaxLife:    time.Duration(cfg.MaxLifeSecond) * time.Second,

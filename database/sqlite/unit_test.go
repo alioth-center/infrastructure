@@ -19,7 +19,6 @@ func (t table) TableName() string {
 func TestSqliteDb(t *testing.T) {
 	opt := Config{
 		Database:      ":memory:",
-		Debug:         true,
 		TimeoutSecond: 1,
 	}
 	ctx := trace.NewContext()
