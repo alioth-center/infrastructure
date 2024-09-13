@@ -19,7 +19,6 @@ func (t table) TableName() string {
 func TestOrmExtension(t *testing.T) {
 	opt := sqlite.Config{
 		Database:      ":memory:",
-		Debug:         true,
 		TimeoutSecond: 1,
 	}
 	db, e := sqlite.NewSqliteDb(opt, &table{})
