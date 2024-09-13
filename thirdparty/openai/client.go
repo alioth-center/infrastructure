@@ -153,11 +153,7 @@ func (c client) CreateSpeech(ctx context.Context, req CreateSpeechRequest) (resp
 		return CreateSpeechResponseBody{}, &ResponseStatusError{StatusCode: code, Status: message}
 	}
 
-	bindErr := response.BindJson(&resp)
-	if bindErr != nil {
-		return CreateSpeechResponseBody{}, fmt.Errorf("parse create speech response error: %w", bindErr)
-	}
-
+	resp = response.RawBody()
 	return resp, nil
 }
 
