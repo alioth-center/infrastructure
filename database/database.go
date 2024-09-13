@@ -15,7 +15,7 @@ type Options struct {
 	MaxOpen    int
 	MaxLife    time.Duration
 	Timeout    time.Duration
-	DebugLog   bool
+	Logger     logger.Logger
 }
 
 // Database is the interface that wraps the basic database operations.

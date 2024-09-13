@@ -27,9 +27,14 @@ func (s *mysqlDb) Init(options database.Options) error {
 	}
 	s.initialized = true
 
-	// 初始化日志
-	s.Logger = logger.Default()
-	s.Logger.Info(logger.NewFields().WithMessage("start open mysqlDb database").WithData(options.DataSource))
+	// 初始化日志器
+	if options.Logger == nil {
+		options.Logger = logger.Default()
+	}
+
+	s.SetLogger(options.Logger)
+	options.Logger = logger.Default()
+	options.Logger.Info(logger.NewFields().WithMessage("start open mysqlDb database").WithData(options.DataSource))
 
 	// 连接数据库
 	dataSource := options.DataSource
@@ -37,6 +42,7 @@ func (s *mysqlDb) Init(options database.Options) error {
 	if openErr != nil {
 		return fmt.Errorf("open mysqlDb database error: %w", openErr)
 	}
+	db.Logger = database.NewDBLogger(options.Logger)
 
 	// 设置数据库连接池
 	sqlDb, dbe := db.DB()
@@ -77,6 +83,21 @@ func NewMysqlDb(config Config, models ...any) (db database.Database, err error) 
 func NewMySQLv2(config Config, models ...any) (db database.DatabaseV2, err error) {
 	mysqlDb := &mysqlDb{}
 	if initErr := mysqlDb.Init(convertConfigToOptions(config)); initErr != nil {
+		return nil, fmt.Errorf("init mysqlDb database error: %w", initErr)
+	}
+
+	if migrateErr := mysqlDb.Migrate(models...); migrateErr != nil {
+		return nil, fmt.Errorf("migrate mysqlDb database error: %w", migrateErr)
+	}
+
+	return mysqlDb, nil
+}
+
+func NewWithLogger(config Config, logger logger.Logger, models ...any) (db database.DatabaseV2, err error) {
+	mysqlDb := &mysqlDb{}
+	opts := convertConfigToOptions(config)
+	opts.Logger = logger
+	if initErr := mysqlDb.Init(opts); initErr != nil {
 		return nil, fmt.Errorf("init mysqlDb database error: %w", initErr)
 	}
 

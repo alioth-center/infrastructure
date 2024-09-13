@@ -38,7 +38,6 @@ func convertConfigToOptions(cfg Config) (opt database.Options) {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s", cfg.Host, cfg.Username, cfg.Password, cfg.Database, cfg.Port, ssl, cfg.Location)
 	return database.Options{
 		DataSource: dsn,
-		DebugLog:   cfg.Debug,
 		MaxIdle:    cfg.MaxIdle,
 		MaxOpen:    cfg.MaxOpen,
 		MaxLife:    time.Duration(cfg.MaxLifeSecond) * time.Second,
