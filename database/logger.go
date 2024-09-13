@@ -2,9 +2,10 @@ package database
 
 import (
 	"context"
+	"time"
+
 	"github.com/alioth-center/infrastructure/logger"
 	glog "gorm.io/gorm/logger"
-	"time"
 )
 
 type DBLogger struct {
