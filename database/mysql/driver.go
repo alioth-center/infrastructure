@@ -33,7 +33,6 @@ func (s *mysqlDb) Init(options database.Options) error {
 	}
 
 	s.SetLogger(options.Logger)
-	options.Logger = logger.Default()
 	options.Logger.Info(logger.NewFields().WithMessage("start open mysqlDb database").WithData(options.DataSource))
 
 	// 连接数据库

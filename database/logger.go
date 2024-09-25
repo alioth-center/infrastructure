@@ -35,9 +35,11 @@ func (dl *DBLogger) Error(ctx context.Context, s string, i ...interface{}) {
 func (dl *DBLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql string, rowsAffected int64), err error) {
 	sql, rows := fc()
 	if err != nil {
-		dl.log.Errorf(logger.NewFields(ctx), "trace error: %v, sql: %s, rows affected: %d", err, sql, rows)
+		logMessage := map[string]any{"sql": sql, "error": err.Error(), "rows": rows}
+		dl.log.Error(logger.NewFields(ctx).WithMessage("tracing sql with error").WithData(logMessage))
 		return
 	}
 
-	dl.log.Infof(logger.NewFields(ctx), "trace sql: %s, rows affected: %d", sql, rows)
+	logMessage := map[string]any{"sql": sql, "rows": rows}
+	dl.log.Info(logger.NewFields(ctx).WithMessage("tracing sql").WithData(logMessage))
 }
