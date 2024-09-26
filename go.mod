@@ -3,6 +3,7 @@ module github.com/alioth-center/infrastructure
 go 1.22.4
 
 require (
+	github.com/atotto/clipboard v0.1.4
 	github.com/gin-gonic/gin v1.10.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-redis/redis/v8 v8.11.5
@@ -10,6 +11,7 @@ require (
 	github.com/joeycumines/go-prompt v0.0.0-20240416230256-6187f5f46668
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/larksuite/oapi-sdk-go/v3 v3.2.7
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pandodao/tokenizer-go v0.2.0
 	github.com/schollz/progressbar/v3 v3.14.4
 	github.com/spf13/cobra v1.8.1
@@ -62,7 +64,7 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-tty v0.0.5 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
