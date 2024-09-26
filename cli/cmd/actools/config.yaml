@@ -1,0 +1,35 @@
+#preferred_language: zh-CN
+cli_prefix: 'ac_tools$ '
+commands:
+  geoip:
+    handler: GetGeoIP
+    descriptions:
+      - lang: zh-CN
+        text: 根据IP地址查询地理位置
+      - lang: en-US
+        text: Query location by IP address
+    commands:
+      ip:
+        handler: GetGeoIP
+        type: option
+        descriptions:
+          - lang: zh-CN
+            name: 1.1.1.1
+            text: IP地址
+          - lang: en-US
+            name: 1.1.1.1
+            text: IP address
+  json:
+    handler: FormatJSON
+    descriptions:
+      - lang: zh-CN
+        text: 格式化JSON字符串
+      - lang: en-US
+        text: Format JSON string
+  exit:
+    handler: AcDefaultExitFn
+    descriptions:
+      - lang: zh-CN
+        text: 退出程序
+      - lang: en-US
+        text: Exit the program
