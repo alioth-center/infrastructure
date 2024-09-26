@@ -84,59 +84,59 @@ type customLogger struct {
 }
 
 func (c customLogger) Debug(fields Fields) {
-	c.log(LevelDebug, fields)
+	c.log(LevelDebug, fields.WithLevel(LevelDebug))
 }
 
 func (c customLogger) Info(fields Fields) {
-	c.log(LevelInfo, fields)
+	c.log(LevelInfo, fields.WithLevel(LevelInfo))
 }
 
 func (c customLogger) Warn(fields Fields) {
-	c.log(LevelWarn, fields)
+	c.log(LevelWarn, fields.WithLevel(LevelWarn))
 }
 
 func (c customLogger) Error(fields Fields) {
-	c.log(LevelError, fields)
+	c.log(LevelError, fields.WithLevel(LevelError))
 }
 
 func (c customLogger) Fatal(fields Fields) {
-	c.log(LevelFatal, fields)
+	c.log(LevelFatal, fields.WithLevel(LevelFatal))
 }
 
 func (c customLogger) Panic(fields Fields) {
-	c.log(LevelPanic, fields)
+	c.log(LevelPanic, fields.WithLevel(LevelPanic))
 }
 
 func (c customLogger) Log(level Level, fields Fields) {
-	c.log(level, fields)
+	c.log(level, fields.WithLevel(level))
 }
 
 func (c customLogger) Logf(level Level, fields Fields, format string, args ...any) {
-	c.log(level, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.log(level, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(level))
 }
 
 func (c customLogger) Debugf(fields Fields, format string, args ...any) {
-	c.log(LevelDebug, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.log(LevelDebug, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(LevelDebug))
 }
 
 func (c customLogger) Infof(fields Fields, format string, args ...any) {
-	c.log(LevelInfo, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.log(LevelInfo, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(LevelInfo))
 }
 
 func (c customLogger) Warnf(fields Fields, format string, args ...any) {
-	c.log(LevelWarn, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.log(LevelWarn, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(LevelWarn))
 }
 
 func (c customLogger) Errorf(fields Fields, format string, args ...any) {
-	c.Log(LevelError, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.Log(LevelError, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(LevelError))
 }
 
 func (c customLogger) Fatalf(fields Fields, format string, args ...any) {
-	c.Log(LevelFatal, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.Log(LevelFatal, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(LevelFatal))
 }
 
 func (c customLogger) Panicf(fields Fields, format string, args ...any) {
-	c.log(LevelPanic, fields.WithMessage(fmt.Sprintf(format, args...)))
+	c.log(LevelPanic, fields.WithMessage(fmt.Sprintf(format, args...)).WithLevel(LevelPanic))
 }
 
 func (c customLogger) log(level Level, fields Fields) {
