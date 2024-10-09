@@ -33,3 +33,21 @@ commands:
         text: 退出程序
       - lang: en-US
         text: Exit the program
+  time:
+    handler: UnixTime
+    descriptions:
+      - lang: zh-CN
+        text: 获取当前时间
+      - lang: en-US
+        text: Get current time
+    commands:
+      timestamp:
+        handler: UnixTime
+        type: option
+        descriptions:
+          - lang: zh-CN
+            name: 1600000000
+            text: 时间戳
+          - lang: en-US
+            name: 1600000000
+            text: timestamp
