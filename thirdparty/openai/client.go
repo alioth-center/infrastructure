@@ -1,8 +1,13 @@
 package openai
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"strings"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
@@ -16,6 +21,7 @@ type Client interface {
 	RetrieveModel(ctx context.Context, req RetrieveModelRequest) (resp RetrieveModelResponseBody, err error)
 	GenerateImage(ctx context.Context, req CreateImageRequest) (resp ImageResponseBody, err error)
 	CompleteChat(ctx context.Context, req CompleteChatRequest) (resp CompleteChatResponseBody, err error)
+	CompleteStreamingChat(ctx context.Context, req CompleteChatRequest) (events <-chan StreamingReplyObject, err error)
 	CreateSpeech(ctx context.Context, req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error)
 	CreateTranscription(ctx context.Context, req CreateTranscriptionRequest) (resp CreateTranscriptionResponseBody, err error)
 	CompleteModeration(ctx context.Context, req CompleteModerationRequest) (resp CompleteModerationResponseBody, err error)
@@ -34,6 +40,7 @@ type Client interface {
 type client struct {
 	executor http.Client
 	options  Config
+	logger   logger.Logger
 }
 
 func (c client) CalculateToken(inputs ...string) (tokens int) {
@@ -136,6 +143,61 @@ func (c client) CompleteChat(ctx context.Context, req CompleteChatRequest) (resp
 	}
 
 	return resp, nil
+}
+
+func (c client) CompleteStreamingChat(ctx context.Context, req CompleteChatRequest) (events <-chan StreamingReplyObject, err error) {
+	request := c.options.buildBaseRequest(EndpointEnumCompleteChat).
+		WithContext(ctx).
+		WithMethod(http.POST).
+		WithJsonBody(&req.Body)
+	rawRequest, buildErr := request.Build()
+	if buildErr != nil {
+		return nil, fmt.Errorf("build complete chat request error: %w", buildErr)
+	}
+
+	response, executeErr := c.executor.ExecuteRawRequest(rawRequest)
+	if executeErr != nil {
+		return nil, fmt.Errorf("execute complete chat request error: %w", executeErr)
+	}
+
+	if response == nil || response.StatusCode != http.StatusOK {
+		return nil, errors.New("complete chat response status code is not 200")
+	}
+
+	reader := bufio.NewReader(response.Body)
+	result := make(chan StreamingReplyObject, 256)
+	go func(events chan StreamingReplyObject, body io.ReadCloser, reader *bufio.Reader) {
+		defer close(events)
+
+		for {
+			line, readErr := reader.ReadString('\n')
+			if readErr != nil && errors.Is(readErr, io.EOF) {
+				break
+			}
+			if readErr != nil {
+				c.logger.Error(logger.NewFields(ctx).WithMessage("read complete chat response error").WithData(readErr))
+				break
+			}
+
+			line = strings.TrimPrefix(line, "data: ")
+			line = strings.TrimSuffix(line, "\n")
+			if len(line) == 0 {
+				continue
+			}
+
+			var reply StreamingReplyObject
+			if unmarshalErr := json.Unmarshal([]byte(line), &reply); unmarshalErr != nil {
+				c.logger.Error(logger.NewFields(ctx).WithMessage("unmarshal complete chat response error").WithData(unmarshalErr))
+				break
+			}
+
+			events <- reply
+		}
+
+		_ = body.Close()
+	}(result, response.Body, reader)
+
+	return result, nil
 }
 
 func (c client) CreateSpeech(ctx context.Context, req CreateSpeechRequest) (resp CreateSpeechResponseBody, err error) {
@@ -443,12 +505,14 @@ func NewClient(options Config, logger logger.Logger) Client {
 	return client{
 		executor: http.NewLoggerClient(logger),
 		options:  options,
+		logger:   logger,
 	}
 }
 
-func NewCustomClient(opts Config, cli http.Client) Client {
+func NewCustomClient(opts Config, cli http.Client, logger logger.Logger) Client {
 	return client{
 		executor: cli,
 		options:  opts,
+		logger:   logger,
 	}
 }
