@@ -6,10 +6,12 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/alioth-center/infrastructure/cli"
 	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/trace"
+	vs "github.com/alioth-center/infrastructure/utils/values"
 	"github.com/atotto/clipboard"
 	"github.com/olekukonko/tablewriter"
 )
@@ -17,6 +19,7 @@ import (
 func initCommands() {
 	cli.RegisterHandler("GetGeoIP", GetGeoIP)
 	cli.RegisterHandler("FormatJSON", JsonFormat)
+	cli.RegisterHandler("UnixTime", UnixTime)
 }
 
 func toString(value any) string {
@@ -214,4 +217,20 @@ func JsonFormat(_ *cli.Input) {
 	if err != nil {
 		log.Fatalf("无法打印格式化 JSON: %v", err)
 	}
+}
+
+func UnixTime(input *cli.Input) {
+	ts := vs.StringToInt(input.Params.GetString("timestamp"), int64(0))
+	if ts == 0 {
+		printResult(values{"error", "invalid timestamp"})
+		return
+	}
+
+	// check millisecond or second
+	if ts < 1000000000000 {
+		ts *= 1000
+	}
+
+	timestamp := time.UnixMilli(ts)
+	printResult(values{"timestamp", fmt.Sprintf("%v", timestamp.Format("2006-01-02 15:04:05.000-07"))})
 }

@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"encoding/json"
 	"io"
 	"strconv"
 )
@@ -102,8 +103,72 @@ var supportedChatRoleEnum = map[string]ChatRoleEnum{
 // ChatMessageObject 聊天消息对象
 // reference https://platform.openai.com/docs/api-reference/chat/object
 type ChatMessageObject struct {
-	Role    ChatRoleEnum `json:"role"`
-	Content string       `json:"content"`
+	Role    ChatRoleEnum    `json:"role"`
+	Content json.RawMessage `json:"content"`
+}
+
+func (co *ChatMessageObject) GetStringContent() string {
+	var contentBuffer any
+	tryErr := json.Unmarshal(co.Content, &contentBuffer)
+	if tryErr != nil {
+		return string(co.Content)
+	}
+
+	type imageContent []struct {
+		Text     string `json:"text,omitempty"`
+		Type     string `json:"type"`
+		ImageUrl struct {
+			Detail string `json:"detail"`
+			Url    string `json:"url"`
+		} `json:"image_url,omitempty"`
+	}
+
+	if content, ok := contentBuffer.(string); ok {
+		return content
+	}
+
+	obj := imageContent{}
+	err := json.Unmarshal(co.Content, &obj)
+	if err != nil {
+		return string(co.Content)
+	}
+
+	for _, item := range obj {
+		if item.Type == "text" {
+			return item.Text
+		}
+	}
+
+	return string(co.Content)
+}
+
+type StreamingReplyObject struct {
+	Id                string                       `json:"id"`
+	Object            string                       `json:"object"`
+	Created           int                          `json:"created"`
+	Model             string                       `json:"model"`
+	Choices           []StreamingReplyChoiceObject `json:"choices"`
+	SystemFingerprint string                       `json:"system_fingerprint"`
+	Usage             *UsageObject                 `json:"usage,omitempty"`
+}
+
+type StreamingReplyChoiceObject struct {
+	Index int `json:"index"`
+	Delta struct {
+		Content string `json:"content"`
+	} `json:"delta"`
+	Logprobs     ReplyLogprobs `json:"logprobs"`
+	FinishReason string        `json:"finish_reason"`
+}
+
+type ReplyLogprobs struct {
+	Refusal interface{} `json:"refusal"`
+	Content []struct {
+		TopLogprobs []interface{} `json:"top_logprobs"`
+		Logprob     float64       `json:"logprob"`
+		Bytes       []int         `json:"bytes"`
+		Token       string        `json:"token"`
+	} `json:"content"`
 }
 
 // ReplyChoiceObject 回复选择对象
@@ -163,13 +228,14 @@ type CompleteChatRequestBody struct {
 	FrequencyPenalty float64             `json:"frequency_penalty,omitempty"` // 重复惩罚，-2~+2，越高越不可能重复
 	User             string              `json:"user,omitempty"`              // 用户的唯一标识符，用于openai跟踪
 	LogitBias        map[string]float64  `json:"logit_bias,omitempty"`        // 对特定token的偏好
-	LogProbs         int                 `json:"logprobs,omitempty"`          // 返回token的log概率
+	LogProbs         bool                `json:"logprobs,omitempty"`          // 返回token的log概率
 	TopLogProbs      int                 `json:"top_logprobs,omitempty"`      // 返回token的top log概率
 	ResponseFormat   *ResponseFormat     `json:"response_format,omitempty"`   // 返回格式，text 或者 json_object
 	Seed             int                 `json:"seed,omitempty"`              // 随机种子
 	ServiceTier      string              `json:"service_tier,omitempty"`      // 服务层级
 	Tools            []Tools             `json:"tools,omitempty"`             // 模型可以调用的工具列表
 	ToolChoice       any                 `json:"tool_choice,omitempty"`       // 控制模型调用哪个（如果有）工具
+	StreamOptions    json.RawMessage     `json:"stream_options,omitempty"`    // 流式传输选项
 }
 
 // CompleteChatRequest 聊天请求

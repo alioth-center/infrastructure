@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+type (
+	VInt interface {
+		~int | ~int8 | ~int16 | ~int32 | ~int64
+	}
+
+	VUint interface {
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
+	}
+)
+
 // BuildStrings 构建字符串，使用strings.Builder
 // example:
 //
@@ -110,7 +120,7 @@ func SecretString(raw string, prefixDisplay, suffixDisplay int, paddingChar stri
 // example:
 //
 //	StringToInt("1", 0) -> 1
-func StringToInt[T ~int](raw string, defaultValue T) T {
+func StringToInt[T VInt](raw string, defaultValue T) T {
 	if raw == "" {
 		return defaultValue
 	}
@@ -127,7 +137,7 @@ func StringToInt[T ~int](raw string, defaultValue T) T {
 // example:
 //
 //	StringToUint("1", 0) -> 1
-func StringToUint[T ~uint](raw string, defaultValue T) T {
+func StringToUint[T VUint](raw string, defaultValue T) T {
 	if raw == "" {
 		return defaultValue
 	}
@@ -191,7 +201,7 @@ func StringToStringPtr[T ~string](raw string) *T {
 // example:
 //
 //	StringToIntPtr("1") -> 1
-func StringToIntPtr[T ~int](raw string) *T {
+func StringToIntPtr[T VInt](raw string) *T {
 	if raw == "" {
 		return nil
 	}
@@ -209,7 +219,7 @@ func StringToIntPtr[T ~int](raw string) *T {
 // example:
 //
 //	StringToUintPtr("1") -> 1
-func StringToUintPtr[T ~uint](raw string) *T {
+func StringToUintPtr[T VUint](raw string) *T {
 	if raw == "" {
 		return nil
 	}

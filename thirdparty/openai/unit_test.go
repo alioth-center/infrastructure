@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/alioth-center/infrastructure/trace"
 	"io"
 	h "net/http"
@@ -33,11 +34,11 @@ func TestOpenAiClient(t *testing.T) {
 				Messages: []ChatMessageObject{
 					{
 						Role:    ChatRoleEnumSystem,
-						Content: "now testing api is working, please echo any input",
+						Content: json.RawMessage(`"now testing api is working, please echo any input"`),
 					},
 					{
 						Role:    ChatRoleEnumUser,
-						Content: "testing",
+						Content: json.RawMessage(`"testing"`),
 					},
 				},
 				N: 1,
@@ -47,7 +48,7 @@ func TestOpenAiClient(t *testing.T) {
 			t.Error(err)
 		}
 
-		if len(response.Choices) == 0 || !strings.Contains(response.Choices[0].Message.Content, "testing") {
+		if len(response.Choices) == 0 || !strings.Contains(string(response.Choices[0].Message.Content), "testing") {
 			t.Error("response is not as expected")
 		}
 	})
@@ -107,5 +108,5 @@ func initMockingClient(t *testing.T) Client {
 	)
 
 	client := http.NewMockClientWithLogger(logger.Default(), chatCompletionsOpts, embeddingOpts)
-	return NewCustomClient(Config{}, client)
+	return NewCustomClient(Config{}, client, logger.Default())
 }
