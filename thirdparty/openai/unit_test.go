@@ -34,11 +34,11 @@ func TestOpenAiClient(t *testing.T) {
 				Messages: []ChatMessageObject{
 					{
 						Role:    ChatRoleEnumSystem,
-						Content: json.RawMessage("now testing api is working, please echo any input"),
+						Content: json.RawMessage(`"now testing api is working, please echo any input"`),
 					},
 					{
 						Role:    ChatRoleEnumUser,
-						Content: json.RawMessage("testing"),
+						Content: json.RawMessage(`"testing"`),
 					},
 				},
 				N: 1,
