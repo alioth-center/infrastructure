@@ -1,17 +1,16 @@
 package openai
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/utils/values"
+	"github.com/gin-contrib/sse"
 	"github.com/pandodao/tokenizer-go"
 )
 
@@ -164,38 +163,38 @@ func (c client) CompleteStreamingChat(ctx context.Context, req CompleteChatReque
 		return nil, errors.New("complete chat response status code is not 200")
 	}
 
-	reader := bufio.NewReader(response.Body)
 	result := make(chan StreamingReplyObject, 256)
-	go func(events chan StreamingReplyObject, body io.ReadCloser, reader *bufio.Reader) {
+	go func(events chan StreamingReplyObject, body io.ReadCloser) {
 		defer close(events)
 
-		for {
-			line, readErr := reader.ReadString('\n')
-			if readErr != nil && errors.Is(readErr, io.EOF) {
-				break
-			}
-			if readErr != nil {
-				c.logger.Error(logger.NewFields(ctx).WithMessage("read complete chat response error").WithData(readErr))
-				break
-			}
-
-			line = strings.TrimPrefix(line, "data: ")
-			line = strings.TrimSuffix(line, "\n")
-			if len(line) == 0 {
+		decoded, decodeErr := sse.Decode(response.Body)
+		if decodeErr != nil {
+			c.logger.Error(logger.NewFields(ctx).WithMessage("decode complete chat response error").WithData(decodeErr))
+			return
+		}
+		for _, event := range decoded {
+			reply := StreamingReplyObject{}
+			payload, ok := event.Data.(string)
+			if !ok {
+				c.logger.Error(logger.NewFields(ctx).WithMessage("convert complete chat response data error").WithData(map[string]any{"event": event}))
 				continue
 			}
 
-			var reply StreamingReplyObject
-			if unmarshalErr := json.Unmarshal([]byte(line), &reply); unmarshalErr != nil {
-				c.logger.Error(logger.NewFields(ctx).WithMessage("unmarshal complete chat response error").WithData(unmarshalErr))
+			// end of the conversation
+			if payload == "[DONE]" {
 				break
+			}
+
+			if unmarshalErr := json.Unmarshal(json.RawMessage(payload), &reply); unmarshalErr != nil {
+				c.logger.Error(logger.NewFields(ctx).WithMessage("unmarshal complete chat response error").WithData(map[string]any{"error": unmarshalErr, "event": event}))
+				continue
 			}
 
 			events <- reply
 		}
 
-		_ = body.Close()
-	}(result, response.Body, reader)
+		_ = response.Body.Close()
+	}(result, response.Body)
 
 	return result, nil
 }
