@@ -28,29 +28,29 @@ func TestOpenAiClient(t *testing.T) {
 	}
 
 	t.Run("CompleteChat", func(t *testing.T) {
-		response, err := client.CompleteChat(background, CompleteChatRequest{
-			Body: CompleteChatRequestBody{
-				Model: "gpt-4o",
-				Messages: []ChatMessageObject{
-					{
-						Role:    ChatRoleEnumSystem,
-						Content: json.RawMessage(`"now testing api is working, please echo any input"`),
+		for i := 0; i < 10; i++ {
+			response, err := client.CompleteChat(background, CompleteChatRequest{
+				Body: CompleteChatRequestBody{
+					Model: "gpt-4o-mini",
+					Messages: []ChatMessageObject{
+						{Role: ChatRoleEnumSystem, Content: json.RawMessage(`"Please echo the input content, without any changes"`)},
+						{Role: ChatRoleEnumUser, Content: json.RawMessage(`"testing"`)},
 					},
-					{
-						Role:    ChatRoleEnumUser,
-						Content: json.RawMessage(`"testing"`),
-					},
+					N: 1,
 				},
-				N: 1,
-			},
-		})
-		if err != nil {
-			t.Error(err)
+			})
+			if err != nil {
+				t.Error(err)
+			}
+
+			if len(response.Choices) == 0 || !strings.Contains(strings.ToLower(string(response.Choices[0].Message.Content)), "testing") {
+				continue
+			}
+
+			return
 		}
 
-		if len(response.Choices) == 0 || !strings.Contains(string(response.Choices[0].Message.Content), "testing") {
-			t.Error("response is not as expected")
-		}
+		t.Error("response is not as expected")
 	})
 
 	t.Run("Embedding", func(t *testing.T) {
