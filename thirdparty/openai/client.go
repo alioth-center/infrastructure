@@ -167,7 +167,7 @@ func (c client) CompleteStreamingChat(ctx context.Context, req CompleteChatReque
 	go func(events chan StreamingReplyObject, body io.ReadCloser) {
 		defer close(events)
 
-		decoded, decodeErr := sse.Decode(response.Body)
+		decoded, decodeErr := sse.Decode(body)
 		if decodeErr != nil {
 			c.logger.Error(logger.NewFields(ctx).WithMessage("decode complete chat response error").WithData(decodeErr))
 			return
@@ -193,7 +193,7 @@ func (c client) CompleteStreamingChat(ctx context.Context, req CompleteChatReque
 			events <- reply
 		}
 
-		_ = response.Body.Close()
+		_ = body.Close()
 	}(result, response.Body)
 
 	return result, nil
