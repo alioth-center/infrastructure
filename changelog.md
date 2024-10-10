@@ -2,11 +2,48 @@
 ## [Unreleased]
 
 
+<a name="v1.2.19"></a>
+## [v1.2.19] - 2024-10-10
+### Chore
+- update CHANGELOG
+
+### Ci
+- **conf:** 修改 ci 配置
+
+### Feat
+- **cli:** 添加 geoip 和 json format 的工具方法
+- **database:** 为 database 实现 gorm logger 并添加配置方法
+- **network:** 为 network 包添加判断 ip 是否有效的方法和对应的测试样例
+- **openai:** 为 openai api 添加图片支持和流式支持
+- **utils:**  添加判断 ip/cidr 是否合法，判断 ip 是否在 cidr 内的方法
+
+### Fix
+- **database:** 适配 database 单元测试
+- **logger:** 修复 logger level 失效的问题
+- **openai:** 优化 openai 测试的提示词，避免 openai 的智障导致测试失败
+- **openai:** 适配 openai 的单元测试用例
+- **openai:** 修复 openai client createSpeech 节点的实现错误
+
+### Perf
+- **openai:** 优化参数传递
+- **openai:** 使用 sse 封装优化 openai 流式逻辑
+
+### Refactor
+- **http:** 为 http context 新增了 ClientIP 方法获取请求的真实 IP，完善了注释和测试
+
+### Pull Requests
+- Merge pull request [#39](https://github.com/alioth-center/infrastructure/issues/39) from sunist-c/main
+- Merge pull request [#38](https://github.com/alioth-center/infrastructure/issues/38) from sunist-c/main
+- Merge pull request [#37](https://github.com/alioth-center/infrastructure/issues/37) from sunist-c/main
+- Merge pull request [#36](https://github.com/alioth-center/infrastructure/issues/36) from sunist-c/main
+- Merge pull request [#35](https://github.com/alioth-center/infrastructure/issues/35) from sunist-c/main
+- Merge pull request [#34](https://github.com/alioth-center/infrastructure/issues/34) from sunist-c/main
+- Merge pull request [#33](https://github.com/alioth-center/infrastructure/issues/33) from sunist-c/main
+- Merge pull request [#32](https://github.com/alioth-center/infrastructure/issues/32) from sunist-c/main
+
+
 <a name="v1.2.18"></a>
 ## [v1.2.18] - 2024-09-05
-
-<a name="v1.2.1i"></a>
-## [v1.2.1i] - 2024-09-05
 ### Chore
 - 给上下文新增原始请求，预处理后恢复请求体内容
 - update CHANGELOG
@@ -452,9 +489,9 @@
 - 删除无效文件
 
 
-[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.18...HEAD
-[v1.2.18]: https://github.com/alioth-center/infrastructure/compare/v1.2.1i...v1.2.18
-[v1.2.1i]: https://github.com/alioth-center/infrastructure/compare/v1.2.17...v1.2.1i
+[Unreleased]: https://github.com/alioth-center/infrastructure/compare/v1.2.19...HEAD
+[v1.2.19]: https://github.com/alioth-center/infrastructure/compare/v1.2.18...v1.2.19
+[v1.2.18]: https://github.com/alioth-center/infrastructure/compare/v1.2.17...v1.2.18
 [v1.2.17]: https://github.com/alioth-center/infrastructure/compare/v1.2.16...v1.2.17
 [v1.2.16]: https://github.com/alioth-center/infrastructure/compare/v1.2.15...v1.2.16
 [v1.2.15]: https://github.com/alioth-center/infrastructure/compare/v1.2.14...v1.2.15
