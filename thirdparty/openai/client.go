@@ -10,7 +10,6 @@ import (
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/utils/values"
-	"github.com/gin-contrib/sse"
 	"github.com/pandodao/tokenizer-go"
 )
 
@@ -167,25 +166,16 @@ func (c client) CompleteStreamingChat(ctx context.Context, req CompleteChatReque
 	go func(events chan StreamingReplyObject, body io.ReadCloser) {
 		defer close(events)
 
-		decoded, decodeErr := sse.Decode(body)
-		if decodeErr != nil {
-			c.logger.Error(logger.NewFields(ctx).WithMessage("decode complete chat response error").WithData(decodeErr))
-			return
-		}
-		for _, event := range decoded {
+		for event := range http.ParseServerSentEventFromBody(body, 4096, 256) {
 			reply := StreamingReplyObject{}
-			payload, ok := event.Data.(string)
-			if !ok {
-				c.logger.Error(logger.NewFields(ctx).WithMessage("convert complete chat response data error").WithData(map[string]any{"event": event}))
-				continue
-			}
+			payload := event.Data
 
 			// end of the conversation
-			if payload == "[DONE]" {
+			if string(payload) == "[DONE]" {
 				break
 			}
 
-			if unmarshalErr := json.Unmarshal(json.RawMessage(payload), &reply); unmarshalErr != nil {
+			if unmarshalErr := json.Unmarshal(payload, &reply); unmarshalErr != nil {
 				c.logger.Error(logger.NewFields(ctx).WithMessage("unmarshal complete chat response error").WithData(map[string]any{"error": unmarshalErr, "event": event}))
 				continue
 			}
