@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,6 +148,7 @@ type EndPoint[request any, response any] struct {
 	router         Router
 	chain          Chain[request, response]
 	allowMethods   methodList
+	customRender   bool
 	parsingHeaders map[string]bool
 	parsingQueries map[string]bool
 	parsingParams  map[string]bool
@@ -300,6 +302,14 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 		}
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, errResponse)
 		return
+	} else if len(ctx.Errors) > 0 {
+		errResponse := &FrameworkResponse{
+			ErrorCode:    ErrorCodeInternalErrorOccurred,
+			ErrorMessage: ctx.Errors.String(),
+			RequestID:    tid,
+		}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, errResponse)
+		return
 	}
 
 	// set response
@@ -309,7 +319,26 @@ func (ep *EndPoint[request, response]) Serve(ctx *gin.Context) {
 	for _, cookie := range context.ResponseSetCookies() {
 		ctx.SetCookie(cookie.Name, cookie.Value, cookie.MaxAge, cookie.Path, cookie.Domain, cookie.Secure, cookie.HttpOnly)
 	}
-	ctx.JSON(context.StatusCode(), context.Response())
+
+	// write response
+	if ep.customRender {
+		// enable no render or customRender options, write nothing to response writer
+		ctx.Status(context.StatusCode())
+		return
+	}
+
+	// disable custom render options, use default json render
+	outData, encodeErr := json.Marshal(context.Response())
+	if encodeErr != nil {
+		errResponse := &FrameworkResponse{
+			ErrorCode:    ErrorCodeInternalErrorOccurred,
+			ErrorMessage: values.BuildStrings("internal error: ", encodeErr.Error()),
+			RequestID:    tid,
+		}
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, errResponse)
+		return
+	}
+	ctx.Data(context.StatusCode(), ContentTypeJson, outData)
 }
 
 // EndPointOptions is the options for EndPoint.
@@ -450,6 +479,12 @@ func WithCustomPreprocessors[request any, response any](preprocessors ...Endpoin
 func WithAllowedMethodsOpts[request any, response any](methods ...Method) EndPointOptions[request, response] {
 	return func(ep *EndPoint[request, response]) {
 		ep.SetAllowedMethods(methods...)
+	}
+}
+
+func WithCustomRender[request any, response any](enable bool) EndPointOptions[request, response] {
+	return func(ep *EndPoint[request, response]) {
+		ep.customRender = enable
 	}
 }
 
@@ -636,6 +671,11 @@ func (eb *EndPointBuilder[request, response]) SetHandlerChain(chain Chain[reques
 
 func (eb *EndPointBuilder[request, response]) SetCustomPreprocessors(preprocessors ...EndpointPreprocessor[request, response]) *EndPointBuilder[request, response] {
 	eb.options = append(eb.options, WithCustomPreprocessors[request, response](preprocessors...))
+	return eb
+}
+
+func (eb *EndPointBuilder[request, response]) SetCustomRender(enable bool) *EndPointBuilder[request, response] {
+	eb.options = append(eb.options, WithCustomRender[request, response](enable))
 	return eb
 }
 

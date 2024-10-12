@@ -1042,8 +1042,8 @@ func TestEngine(t *testing.T) {
 
 	// Test registerEndpoints
 	engine.registerEndpoints()
-	if len(engine.core.Handlers) != 3 { // 1 for traceContext, 2 for added middlewares
-		t.Fatalf("Expected 3 handlers, got %d", len(engine.core.Handlers))
+	if len(engine.core.Handlers) != 4 { // 1 for traceContext, 2 for added middlewares
+		t.Fatalf("Expected 4 handlers, got %d", len(engine.core.Handlers))
 	}
 
 	// Test traceContext

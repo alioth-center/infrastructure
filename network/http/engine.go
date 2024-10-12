@@ -109,6 +109,7 @@ func NewEngine(base string) *Engine {
 		middlewares: []gin.HandlerFunc{},
 	}
 
+	e.core.Use(gin.Recovery())
 	e.core.Use(e.traceContext)
 	e.core.NoRoute(e.defaultHandler)
 	e.core.NoMethod(e.defaultHandler)
