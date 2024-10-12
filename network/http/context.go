@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/alioth-center/infrastructure/utils/network"
 
 	"github.com/alioth-center/infrastructure/utils/values"
@@ -20,6 +22,7 @@ type PreprocessedContext[request any, response any] interface {
 	SetCookieParams(params Params)
 	SetExtraParams(params Params)
 	SetRawRequest(raw *http.Request)
+	SetResponseWriter(res gin.ResponseWriter)
 	SetRequest(req request)
 	SetRequestHeader(headers RequestHeader)
 }
@@ -127,6 +130,12 @@ type Context[request any, response any] interface {
 	//   resp (response): The response to be set.
 	SetResponse(resp response)
 
+	// CustomRender returns the custom response writer.
+	//
+	// Returns:
+	//   gin.ResponseWriter: The custom response writer.
+	CustomRender() gin.ResponseWriter
+
 	// ResponseHeaders returns the response headers.
 	//
 	// Returns:
@@ -202,10 +211,11 @@ type acContext[request any, response any] struct {
 	cookieParams Params
 	extraParams  Params
 
-	idx int
-	h   Chain[request, response]
-	raw *http.Request
-	ctx context.Context
+	idx    int
+	h      Chain[request, response]
+	raw    *http.Request
+	rawRes gin.ResponseWriter
+	ctx    context.Context
 
 	req        request
 	resp       response
@@ -247,6 +257,10 @@ func (c *acContext[request, response]) SetExtraParams(params Params) {
 
 func (c *acContext[request, response]) SetRawRequest(raw *http.Request) {
 	c.raw = raw
+}
+
+func (c *acContext[request, response]) SetResponseWriter(res gin.ResponseWriter) {
+	c.rawRes = res
 }
 
 func (c *acContext[request, response]) SetRequest(req request) {
@@ -339,6 +353,10 @@ func (c *acContext[request, response]) Response() response {
 
 func (c *acContext[request, response]) SetResponse(resp response) {
 	c.resp = resp
+}
+
+func (c *acContext[request, response]) CustomRender() gin.ResponseWriter {
+	return c.rawRes
 }
 
 func (c *acContext[request, response]) ResponseHeaders() Params {

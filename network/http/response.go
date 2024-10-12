@@ -81,6 +81,18 @@ func (p *simpleParser) BindCookie(fields ...string) (cookies map[string]*http.Co
 	return cookies
 }
 
+func (p *simpleParser) BindServerSentEvent(fn func(event *ServerSentEvent)) {
+	if p.raw == nil || p.raw.Body == nil {
+		return
+	}
+
+	for event := range ParseServerSentEventFromBody(p.raw.Body, 4096, 256) {
+		fn(event)
+	}
+
+	_ = p.raw.Body.Close()
+}
+
 func NewSimpleResponseParser(r *http.Response) ResponseParser {
 	// read response body
 	buf := &bytes.Buffer{}

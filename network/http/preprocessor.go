@@ -175,7 +175,7 @@ func CheckRequestCookiesPreprocessor[request any, response any](endpoint *EndPoi
 	dest.SetCookieParams(cookies)
 }
 
-func CheckRequestBodyPreprocessor[request any, response any](_ *EndPoint[request, response], origin *gin.Context, dest PreprocessedContext[request, response]) {
+func CheckRequestBodyPreprocessor[request any, response any](ep *EndPoint[request, response], origin *gin.Context, dest PreprocessedContext[request, response]) {
 	// checking chain is aborted, no need to check
 	if origin.IsAborted() {
 		return
@@ -225,4 +225,8 @@ func CheckRequestBodyPreprocessor[request any, response any](_ *EndPoint[request
 	}
 
 	dest.SetRequest(requestBody)
+
+	if ep.customRender {
+		dest.SetResponseWriter(origin.Writer)
+	}
 }
