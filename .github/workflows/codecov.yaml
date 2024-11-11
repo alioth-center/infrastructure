@@ -13,8 +13,7 @@ jobs:
     strategy:
       matrix:
         go-version: [ '1.22', 'stable' ]
-    runs-on:
-      group: alioth-runners
+    runs-on: ubuntu-latest
 
     services:
       mysql:
