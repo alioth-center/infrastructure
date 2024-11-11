@@ -150,3 +150,8 @@ func RandomFourDigitNumberCodeWithPrefix(prefix string) string {
 func UUID() string {
 	return uuid.NewString()
 }
+
+// TraceID 生成TraceID
+func TraceID() string {
+	return strings.ReplaceAll(UUID(), "-", "")
+}

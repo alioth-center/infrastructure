@@ -4,7 +4,8 @@ import (
 	"context"
 	"net"
 
-	"github.com/google/uuid"
+	"github.com/alioth-center/infrastructure/utils/generate"
+
 	"google.golang.org/grpc/peer"
 )
 
@@ -63,7 +64,7 @@ func FromContext(ctx context.Context) (traced context.Context) {
 		return ctx
 	}
 
-	return context.WithValue(ctx, traceIDKey, uuid.NewString()) // nolint
+	return context.WithValue(ctx, traceIDKey, generate.TraceID()) // nolint
 }
 
 // ForkContext creates a new traced context from an existing context, copying only the trace ID.
@@ -103,7 +104,7 @@ func ForkContextWithOpts(ctx context.Context, fields ...string) (forked context.
 
 // NewContext creates a new context with a generated trace ID.
 func NewContext() context.Context {
-	return NewContextWithTid(uuid.NewString())
+	return NewContextWithTid(generate.TraceID())
 }
 
 // NewContextWithTid creates a new context with the specified trace ID.
@@ -113,7 +114,7 @@ func NewContextWithTid(traceID string) context.Context {
 
 // AttachTraceID attaches a newly generated trace ID to the given context, returning the new trace ID and the updated context.
 func AttachTraceID(ctx context.Context) (traceID string, result context.Context) {
-	traceID = uuid.NewString()
+	traceID = generate.TraceID()
 	return traceID, context.WithValue(ctx, traceIDKey, traceID) // nolint
 }
 
