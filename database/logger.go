@@ -36,10 +36,10 @@ func (dl *DBLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql s
 	sql, rows := fc()
 	if err != nil {
 		logMessage := map[string]any{"sql": sql, "error": err.Error(), "rows": rows}
-		dl.log.Error(logger.NewFields(ctx).WithMessage("tracing sql with error").WithData(logMessage))
+		dl.log.Error(logger.NewFields(ctx).WithMessage("tracing sql with error").WithData(logMessage).WithCallTime(begin))
 		return
 	}
 
 	logMessage := map[string]any{"sql": sql, "rows": rows}
-	dl.log.Info(logger.NewFields(ctx).WithMessage("tracing sql").WithData(logMessage))
+	dl.log.Debug(logger.NewFields(ctx).WithMessage("tracing sql").WithData(logMessage).WithCallTime(begin))
 }
