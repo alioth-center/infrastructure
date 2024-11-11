@@ -2,7 +2,7 @@ package logger
 
 import (
 	"context"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/alioth-center/infrastructure/trace"
@@ -25,28 +25,20 @@ func (l Level) shouldLog(level Level) bool {
 }
 
 var (
-	workingDirectory = "./"
-	timeFormat       = "2006.01.02-15:04:05.000Z07:00"
-	LevelValueMap    = map[Level]int{LevelDebug: 0, LevelInfo: 1, LevelWarn: 2, LevelError: 3, LevelFatal: 4, LevelPanic: 5}
+	timeFormat    = "2006.01.02-15:04:05.000Z07:00"
+	LevelValueMap = map[Level]int{LevelDebug: 0, LevelInfo: 1, LevelWarn: 2, LevelError: 3, LevelFatal: 4, LevelPanic: 5}
 )
 
-func init() {
-	wd, getWdErr := os.Getwd()
-	if getWdErr == nil {
-		workingDirectory = wd
-	}
-}
-
 type Entry struct {
-	ctx      context.Context `json:"-" yaml:"-" xml:"-"`
-	File     string          `json:"file" yaml:"file" xml:"file"`
-	Level    string          `json:"level" yaml:"level" xml:"level"`
-	Service  string          `json:"service" yaml:"service" xml:"service"`
-	TraceID  string          `json:"trace_id" yaml:"trace_id" xml:"trace_id"`
-	CallTime string          `json:"call_time" yaml:"call_time" xml:"call_time"`
-	Data     any             `json:"data,omitempty" yaml:"data,omitempty" xml:"data,omitempty"`
-	Extra    map[string]any  `json:"extra,omitempty" yaml:"extra,omitempty" xml:"extra,omitempty"`
-	Message  string          `json:"message,omitempty" yaml:"message,omitempty" xml:"message,omitempty"`
+	ctx      context.Context
+	File     string         `json:"file" yaml:"file" xml:"file"`
+	Level    string         `json:"level" yaml:"level" xml:"level"`
+	Service  string         `json:"service" yaml:"service" xml:"service"`
+	TraceID  string         `json:"trace_id" yaml:"trace_id" xml:"trace_id"`
+	CallTime string         `json:"call_time" yaml:"call_time" xml:"call_time"`
+	Data     any            `json:"data,omitempty" yaml:"data,omitempty" xml:"data,omitempty"`
+	Extra    map[string]any `json:"extra,omitempty" yaml:"extra,omitempty" xml:"extra,omitempty"`
+	Message  string         `json:"message,omitempty" yaml:"message,omitempty" xml:"message,omitempty"`
 }
 
 type Fields interface {
@@ -78,7 +70,24 @@ type fields struct {
 func (f *fields) init(ctx context.Context) Fields {
 	f.file, f.ctx, f.level = trace.Caller(1), trace.FromContext(ctx), LevelInfo
 
+	f.trimFile()
 	return f
+}
+
+func (f *fields) trimFile() {
+	// pkgDirectory = /go/pkg/mod/
+	// file         = /go/pkg/mod/github.com/alioth-center/infrastructure@v1.2.20-0.20241111063616-8dbdc7df08ae/thirdparty/openai/client.go:185
+	// result       =             github.com/alioth-center/infrastructure                                      /thirdparty/openai/client.go:185
+
+	if pkgDirectory != "" {
+		f.file = strings.TrimPrefix(f.file, pkgDirectory)
+	}
+
+	if atIndex := strings.Index(f.file, "@"); atIndex != -1 {
+		if slashIndex := strings.Index(f.file[atIndex:], "/"); slashIndex != -1 {
+			f.file = f.file[:atIndex] + f.file[atIndex+slashIndex:]
+		}
+	}
 }
 
 // Export 导出日志字段
@@ -165,21 +174,25 @@ func (f *fields) WithBaseFields(base Fields) Fields {
 
 func (f *fields) WithAttachFields(attach Fields) Fields {
 	entry := attach.Export()
-	if entry.Level != "" {
+
+	if entry.Level != "" && f.level == "" {
 		f.level = Level(entry.Level)
 	}
-	if entry.Service != "" {
+
+	if entry.Service != "" && f.service == "" {
 		f.service = entry.Service
 	}
-	if entry.Message != "" {
+	if entry.Message != "" && f.message == "" {
 		f.message = entry.Message
 	}
-	if entry.Data != nil {
+	if entry.Data != nil && f.data == nil {
 		f.data = entry.Data
 	}
+
 	if f.extra == nil {
 		f.extra = map[string]any{}
 	}
+
 	for k, v := range entry.Extra {
 		f.extra[k] = v
 	}

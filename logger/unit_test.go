@@ -66,5 +66,5 @@ func TestFields(t *testing.T) {
 	os.Setenv(extraFieldsKey, "KEY1,KEY2")
 	os.Setenv("KEY1", "VALUE1")
 	os.Setenv("KEY2", "VALUE2")
-	NewCustomLoggerWithOpts().Info(NewFields().WithMessage("test"))
+	NewCustomLoggerWithOpts().Error(NewFields().WithMessage("test"))
 }

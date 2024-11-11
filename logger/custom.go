@@ -7,9 +7,22 @@ import (
 )
 
 const (
-	serviceEnvKey  = "AC_SERVICE"
-	extraFieldsKey = "AC_EXTRA_FIELDS"
+	serviceEnvKey   = "AC_SERVICE"
+	extraFieldsKey  = "AC_EXTRA_FIELDS"
+	pkgDirectoryKey = "AC_PKG_DIR"
 )
+
+var (
+	serviceEnv   string
+	extraFields  string
+	pkgDirectory string
+)
+
+func init() {
+	serviceEnv = os.Getenv(serviceEnvKey)
+	extraFields = os.Getenv(extraFieldsKey)
+	pkgDirectory = os.Getenv(pkgDirectoryKey)
+}
 
 // NewCustomLoggerWithOpts creates and returns a new custom logger instance
 // with the specified options. This function initializes a custom logger
@@ -43,12 +56,12 @@ func NewCustomLoggerWithOpts(opts ...Option) Logger {
 
 	// Inject service field
 	attachField := NewFields()
-	if srv := os.Getenv(serviceEnvKey); srv != "" {
-		attachField = attachField.WithService(srv)
+	if serviceEnv != "" {
+		attachField = attachField.WithService(serviceEnv)
 	}
 
 	// Inject extra fields
-	if extraKeys := strings.Split(strings.TrimSpace(os.Getenv(extraFieldsKey)), ","); len(extraKeys) > 0 {
+	if extraKeys := strings.Split(strings.TrimSpace(extraFields), ","); len(extraKeys) > 0 {
 		for _, key := range extraKeys {
 			if value := os.Getenv(key); value != "" {
 				attachField = attachField.WithField(key, value)
