@@ -2,11 +2,11 @@ package openai
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/alioth-center/infrastructure/logger"
 	"github.com/alioth-center/infrastructure/network/http"
@@ -171,13 +171,8 @@ func (c client) CompleteStreamingChat(ctx context.Context, req CompleteChatReque
 			reply := StreamingReplyObject{}
 			payload := event.Data
 
-			// attempt to decode base64 encoded payload
-			if decoded, decodeErr := base64.StdEncoding.DecodeString(string(payload)); decodeErr == nil {
-				payload = decoded
-			}
-
 			// end of the conversation
-			if string(payload) == "[DONE]" {
+			if strings.TrimSpace(string(payload)) == "[DONE]" {
 				break
 			}
 

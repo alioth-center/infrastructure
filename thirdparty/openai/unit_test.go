@@ -3,15 +3,15 @@ package openai
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/network/http"
 	"github.com/alioth-center/infrastructure/trace"
 	"io"
 	h "net/http"
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/alioth-center/infrastructure/logger"
-	"github.com/alioth-center/infrastructure/network/http"
 )
 
 func TestOpenAiClient(t *testing.T) {
@@ -109,4 +109,42 @@ func initMockingClient(t *testing.T) Client {
 
 	client := http.NewMockClientWithLogger(logger.Default(), chatCompletionsOpts, embeddingOpts)
 	return NewCustomClient(Config{}, client, logger.Default())
+}
+
+func TestCompleteStreamingChat(t *testing.T) {
+	apiKey, baseUrl := os.Getenv("OPENAI_API_KEY"), os.Getenv("OPENAI_BASE_URL")
+	if apiKey == "" || baseUrl == "" {
+		t.Skip("OPENAI_API_KEY or OPENAI_BASE_URL is empty")
+	}
+
+	cli := NewClient(Config{ApiKey: apiKey, BaseUrl: baseUrl}, logger.Default())
+
+	for i := 0; i < 10; i++ {
+		input := "Hello, world! Please echo the input content, without any changes"
+		slices, err := cli.CompleteStreamingChat(trace.NewContext(), CompleteChatRequest{
+			Body: CompleteChatRequestBody{
+				Model: "gpt-4o-mini",
+				Messages: []ChatMessageObject{
+					{Role: ChatRoleEnumSystem, Content: json.RawMessage(`"Please echo the input content, without any changes"`)},
+					{Role: ChatRoleEnumUser, Content: json.RawMessage(fmt.Sprintf(`"%s"`, input))},
+				},
+				N:      1,
+				Stream: true,
+			},
+		})
+		if err != nil {
+			t.Error(err)
+		}
+
+		output := ""
+		for slice := range slices {
+			output += slice.Choices[0].Delta.Content
+		}
+
+		if output == input {
+			return
+		}
+	}
+
+	t.Error("failed to complete streaming chat")
 }
