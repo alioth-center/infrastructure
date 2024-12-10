@@ -2,6 +2,12 @@ package network
 
 import (
 	"net"
+
+	"github.com/alioth-center/infrastructure/utils/values"
+)
+
+const (
+	maxPort = 1 << 16
 )
 
 var privateIpBlocks = []*net.IPNet{
@@ -105,4 +111,14 @@ func IPInCIDR(ip, cidr string) (inCIDR bool) {
 
 	// Check if IP is in CIDR
 	return ipNet.Contains(addr)
+}
+
+func IsValidHostPort(hostPort string) (isValid bool) {
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return false
+	}
+
+	portValue := values.StringToInt(port, -1)
+	return IsValidIP(host) && portValue < maxPort && portValue > 0
 }
