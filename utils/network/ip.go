@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/alioth-center/infrastructure/utils/values"
 	"net"
+
+	"github.com/alioth-center/infrastructure/utils/values"
 )
 
 const (
