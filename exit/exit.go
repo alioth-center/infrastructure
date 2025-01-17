@@ -27,12 +27,14 @@ var (
 )
 
 func init() {
-	bannerBytes, err := banner.ReadFile("banner.txt")
-	if err == nil {
-		// try to print banner, if error occurs, ignore it
-		// you can delete this block if you don't want to print banner,
-		// or you can change the banner.txt file to customize your banner
-		fmt.Println(string(bannerBytes))
+	if os.Getenv("DISABLE_ALIOTH_BANNER_PRINT") == "" {
+		bannerBytes, err := banner.ReadFile("banner.txt")
+		if err == nil {
+			// try to print banner, if error occurs, ignore it
+			// you can delete this block if you don't want to print banner,
+			// or you can change the banner.txt file to customize your banner
+			fmt.Println(string(bannerBytes))
+		}
 	}
 
 	exitImmediately.Store(true)
