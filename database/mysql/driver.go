@@ -1,108 +1,57 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/alioth-center/infrastructure/database"
-	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/utils/shortcut"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 const DriverName = "mysql"
 
-type mysqlDb struct {
-	database.BaseDatabaseImplement
-	database.BaseDatabaseImplementV2
-
-	initialized bool
+// DefaultDriver returns a new instance of the mysqlDriver.
+// Use database.NewDatabaseConnection with this driver to create a new mysql connection.
+func DefaultDriver() database.Driver {
+	return mysqlDriver{}
 }
 
-func (s *mysqlDb) Init(options database.Options) error {
-	// 防止重复初始化
-	if s.initialized {
-		return nil
-	}
-	s.initialized = true
+type mysqlDriver struct{}
 
-	// 初始化日志器
-	if options.Logger == nil {
-		options.Logger = logger.Default()
-	}
-
-	s.SetLogger(options.Logger)
-	options.Logger.Info(logger.NewFields().WithMessage("start open mysqlDb database").WithData(options.DataSource))
-
-	// 连接数据库
-	dataSource := options.DataSource
-	db, openErr := gorm.Open(mysql.Open(dataSource), &gorm.Config{})
-	if openErr != nil {
-		return fmt.Errorf("open mysqlDb database error: %w", openErr)
-	}
-	db.Logger = database.NewDBLogger(options.Logger)
-
-	// 设置数据库连接池
-	sqlDb, dbe := db.DB()
-	if dbe != nil {
-		return fmt.Errorf("get mysqlDb database error: %w", dbe)
-	}
-	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
-	s.BaseDatabaseImplement.SetRandCommand("rand()")
-	s.BaseDatabaseImplement.SetDriverName(DriverName)
-
-	// 连接成功
-	s.BaseDatabaseImplement.Db, s.BaseDatabaseImplementV2.Db = db, db
-	s.Logger.Info(logger.NewFields().WithMessage("successfully open mysqlDb database").WithData(dataSource))
-
-	// 注册退出事件
-	exit.RegisterExitEvent(func(_ os.Signal) {
-		_ = sqlDb.Close()
-		fmt.Println("closed mysql database")
-	}, "CLOSE_MYSQL_DB_CONN")
-	return nil
+func (m mysqlDriver) DriverName() string {
+	return DriverName
 }
 
-// NewMysqlDb creates a new mysql database instance.
-//
-// Deprecated: Use NewMySQLv2 instead.
-func NewMysqlDb(config Config, models ...any) (db database.Database, err error) {
-	mysqlDb := &mysqlDb{}
-	if initErr := mysqlDb.Init(convertConfigToOptions(config)); initErr != nil {
-		return nil, fmt.Errorf("init mysqlDb database error: %w", initErr)
-	} else if migrateErr := mysqlDb.Migrate(models...); migrateErr != nil {
-		return nil, fmt.Errorf("migrate mysqlDb database error: %w", migrateErr)
-	} else {
-		return mysqlDb, nil
-	}
+func (m mysqlDriver) BuildDataSource(dsn database.DSN) string {
+	dataSource := fmt.Sprintf(
+		"%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%s&loc=%s",
+		dsn.Username, dsn.Password,
+		dsn.Host, dsn.Port, dsn.Database,
+		dsn.Charset, shortcut.Ternary(dsn.ParseTime, "True", "False"), dsn.Location,
+	)
+	dataSource += shortcut.Ternary(dsn.Timeout > 0, fmt.Sprintf("&timeout=%ds", dsn.Timeout), "")
+
+	return dataSource
 }
 
-// NewMySQLv2 creates a new mysql database instance.
-func NewMySQLv2(config Config, models ...any) (db database.DatabaseV2, err error) {
-	mysqlDb := &mysqlDb{}
-	if initErr := mysqlDb.Init(convertConfigToOptions(config)); initErr != nil {
-		return nil, fmt.Errorf("init mysqlDb database error: %w", initErr)
+func (m mysqlDriver) Connect(_ context.Context, option database.Options) (database.Database, error) {
+	if option.Logger == nil {
+		option.Logger = logger.Default()
 	}
 
-	if migrateErr := mysqlDb.Migrate(models...); migrateErr != nil {
-		return nil, fmt.Errorf("migrate mysqlDb database error: %w", migrateErr)
+	db, connectErr := gorm.Open(mysql.Open(option.DataSource), &gorm.Config{
+		Logger: database.NewDBLogger(option.Logger),
+	})
+	if connectErr != nil {
+		return nil, connectErr
 	}
 
-	return mysqlDb, nil
-}
-
-func NewWithLogger(config Config, logger logger.Logger, models ...any) (db database.DatabaseV2, err error) {
-	mysqlDb := &mysqlDb{}
-	opts := convertConfigToOptions(config)
-	opts.Logger = logger
-	if initErr := mysqlDb.Init(opts); initErr != nil {
-		return nil, fmt.Errorf("init mysqlDb database error: %w", initErr)
+	if applyErr := database.ApplyCommonOptions(db, option); applyErr != nil {
+		return nil, applyErr
 	}
 
-	if migrateErr := mysqlDb.Migrate(models...); migrateErr != nil {
-		return nil, fmt.Errorf("migrate mysqlDb database error: %w", migrateErr)
-	}
-
-	return mysqlDb, nil
+	return database.NewBaseDatabaseImplement(db), nil
 }

@@ -9,58 +9,32 @@ import (
 	"github.com/alioth-center/infrastructure/logger"
 )
 
+// DSN is the data source definition for the database connection.
+type DSN struct {
+	Host      string
+	Port      int
+	Username  string
+	Password  string
+	Database  string
+	Charset   string
+	Location  string
+	ParseTime bool
+	Timeout   int
+}
+
+// Options is the configuration for the database connection.
 type Options struct {
-	DataSource string
-	MaxIdle    int
-	MaxOpen    int
-	MaxLife    time.Duration
-	Timeout    time.Duration
-	Logger     logger.Logger
+	DataSource    string
+	MaxIdle       int
+	MaxOpen       int
+	MaxLife       time.Duration
+	Logger        logger.Logger
+	MigrateModels []any
 }
 
 // Database is the interface that wraps the basic database operations.
 // The implementation of this interface should be thread-safe.
-//
-// Deprecated: Use DatabaseV2 instead.
 type Database interface {
-	Init(options Options) error
-	Migrate(models ...any) error
-	Has(table string, query string, args ...any) (exist bool, err error)
-	Count(table string, query string, args ...any) (count int64, err error)
-	GetOne(receiver any, query string, args ...any) error
-	GetAll(receiver any, query string, args ...any) error
-	GetPage(receiver any, offset, limit int, query string, args ...any) error
-	PickOne(receiver any, query string, args ...any) error
-	PickAll(receiver any, length int, query string, args ...any) error
-	InsertOne(data any) error
-	InsertAll(data any) error
-	UpdateOne(data any, query string, args ...any) error
-	UpdateAll(data any, query string, args ...any) error
-	DeleteOne(query string, args ...any) error
-	DeleteAll(query string, args ...any) error
-	ExecRaw(sql string, args ...any) error
-	QueryRaw(receiver any, sql string, args ...any) error
-	HasWithCtx(ctx context.Context, table string, query string, args ...any) (exist bool, err error)
-	CountWithCtx(ctx context.Context, table string, query string, args ...any) (count int64, err error)
-	GetOneWithCtx(ctx context.Context, receiver any, query string, args ...any) error
-	GetAllWithCtx(ctx context.Context, receiver any, query string, args ...any) error
-	PickOneWithCtx(ctx context.Context, receiver any, query string, args ...any) error
-	PickAllWithCtx(ctx context.Context, receiver any, length int, query string, args ...any) error
-	InsertOneWithCtx(ctx context.Context, data any) error
-	InsertAllWithCtx(ctx context.Context, data any) error
-	UpdateOneWithCtx(ctx context.Context, data any, query string, args ...any) error
-	UpdateAllWithCtx(ctx context.Context, data any, query string, args ...any) error
-	DeleteOneWithCtx(ctx context.Context, query string, args ...any) error
-	DeleteAllWithCtx(ctx context.Context, query string, args ...any) error
-	ExecRawWithCtx(ctx context.Context, sql string, args ...any) error
-	QueryRawWithCtx(ctx context.Context, receiver any, sql string, args ...any) error
-	ExtMethods() ExtMethods
-	SetLogger(logger logger.Logger)
-}
-
-// DatabaseV2 is the interface that wraps the basic database operations.
-// The implementation of this interface should be thread-safe.
-type DatabaseV2 interface {
 	// GetGormCore retrieves the core *gorm.DB instance with the provided context.
 	//
 	// Parameters:
@@ -96,23 +70,6 @@ type DatabaseV2 interface {
 	// Returns:
 	//	error: An error if the operation fails, otherwise nil.
 	GetDataByCustomCondition(ctx context.Context, receiver, condition any, needFields ...string) error
-
-	// ListDataWithPage retrieves a paginated list of data from the database based on the provided filter and ordering.
-	// The result is stored in the receiver.
-	//
-	// Parameters:
-	//	ctx (context.Context): The context for the database operation.
-	//	receiver (any): The destination where the query result will be stored.
-	//	filter (any): The filter condition for the query.
-	//	order (string): The column name to order by.
-	//	desc (bool): Whether to order in descending order.
-	//	offset (int): The offset for pagination.
-	//	limit (int): The limit for pagination.
-	//	needFields (...string): Optional fields to select in the query.
-	//
-	// Returns:
-	//	error: An error if the operation fails, otherwise nil.
-	ListDataWithPage(ctx context.Context, receiver any, filter any, order string, desc bool, offset, limit int, needFields ...string) error
 
 	// CreateSingleDataIfNotExist creates a single data record in the database if it does not already exist.
 	//
@@ -203,4 +160,37 @@ type DatabaseV2 interface {
 	// Returns:
 	//	error: An error if the operation fails, otherwise nil.
 	ExecuteRawSql(ctx context.Context, sql string) error
+}
+
+type Driver interface {
+	// DriverName returns the name of the database driver.
+	DriverName() string
+
+	// BuildDataSource builds the data source link for the database connection.
+	BuildDataSource(dsn DSN) string
+
+	// Connect establishes a connection to the database with the provided context and options.
+	Connect(ctx context.Context, option Options) (Database, error)
+}
+
+// NewDatabaseConnection creates a new database connection with the provided context, driver, DSN, and options.
+// If the data source is not provided in the options, it will be built using the Driver.BuildDataSource method.
+//
+// Parameters:
+//
+//	ctx (context.Context): The context for the database connection.
+//	driver (Driver): The database driver to use for the connection.
+//	dsn (DSN): The data source definition for the database connection.
+//	option (Options): The configuration for the database connection.
+//
+// Returns:
+//
+//	Database: The database connection instance.
+//	error: An error if the operation fails, otherwise nil.
+func NewDatabaseConnection(ctx context.Context, driver Driver, dsn DSN, option Options) (Database, error) {
+	if option.DataSource == "" {
+		option.DataSource = driver.BuildDataSource(dsn)
+	}
+
+	return driver.Connect(ctx, option)
 }
