@@ -1,41 +1,50 @@
-package sqlite
+package sqlite_test
 
 import (
-	"fmt"
+	"context"
+	"github.com/alioth-center/infrastructure/database"
+	"github.com/alioth-center/infrastructure/database/sqlite"
 	"testing"
-
-	"github.com/alioth-center/infrastructure/trace"
 )
 
-type table struct {
-	ID    int    `gorm:"primary_key;column:id;autoIncrement"`
-	Value string `gorm:"type:varchar(100);column:value"`
-}
+func TestSqliteDriver(t *testing.T) {
+	t.Run("DriverName", func(t *testing.T) {
+		driver := sqlite.DefaultDriver()
+		if driver.DriverName() != sqlite.DriverName {
+			t.Errorf("DriverName() = %s, want %s", driver.DriverName(), sqlite.DriverName)
+		}
+	})
 
-func (t table) TableName() string {
-	return "test_table"
-}
+	t.Run("BuildDataSource", func(t *testing.T) {
+		driver := sqlite.DefaultDriver()
+		dsn := database.DSN{
+			Host: "test.db",
+		}
+		dataSource := driver.BuildDataSource(dsn)
+		if dataSource != dsn.Host {
+			t.Errorf("BuildDataSource() = %s, want %s", dataSource, dsn.Host)
+		}
+	})
 
-func TestSqliteDb(t *testing.T) {
-	opt := Config{
-		Database:      ":memory:",
-		TimeoutSecond: 1,
-	}
-	ctx := trace.NewContext()
-	sqlite, e := NewSqliteDb(opt, &table{})
-	if e != nil {
-		t.Fatal(e)
-	}
+	t.Run("Connect", func(t *testing.T) {
+		driver := sqlite.DefaultDriver()
+		option := database.Options{
+			DataSource: ":memory:",
+		}
+		db, err := driver.Connect(nil, option)
+		if err != nil {
+			t.Errorf("Connect() error = %v, want nil", err)
+		}
+		if db == nil {
+			t.Errorf("Connect() db = nil, want not nil")
+		}
 
-	t.Log("insert error:", sqlite.InsertOneWithCtx(ctx, &table{Value: "test"}))
-	instance := table{}
-	t.Log("query error:", sqlite.GetOneWithCtx(ctx, &instance, "value = ?", "test"))
-	t.Log("query result:", instance)
-	t.Log("pick error:", sqlite.PickOneWithCtx(ctx, &instance, "value = ?", "test"))
-
-	t.Log(sqlite.QueryRaw(&instance, fmt.Sprintf("select * from test_table where value = '%s'", "'; insert into test_table(value) values('test_inject'); --")))
-
-	var values []table
-	t.Log(sqlite.GetAll(&values, ""))
-	t.Log(values)
+		result := map[string]any{}
+		if db.GetGormCore(context.Background()).Raw(`select "ack" as column;`).Scan(&result).Error != nil {
+			t.Errorf("Connect() db.Exec() error = %v, want nil", err)
+		}
+		if result["column"] != "ack" {
+			t.Errorf("Connect() db.Exec() result = %v, want ack", result["column"])
+		}
+	})
 }

@@ -1,108 +1,56 @@
 package postgres
 
 import (
+	"context"
 	"fmt"
-	"os"
 
 	"github.com/alioth-center/infrastructure/database"
-	"github.com/alioth-center/infrastructure/exit"
 	"github.com/alioth-center/infrastructure/logger"
+	"github.com/alioth-center/infrastructure/utils/shortcut"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 const DriverName = "postgres"
 
-type postgresDb struct {
-	database.BaseDatabaseImplement
-	database.BaseDatabaseImplementV2
-
-	initialized bool
+// DefaultDriver returns a new instance of the postgresDriver.
+// Use database.NewDatabaseConnection with this driver to create a new postgres connection.
+func DefaultDriver() database.Driver {
+	return postgresDriver{}
 }
 
-func (s *postgresDb) Init(options database.Options) error {
-	// 防止重复初始化
-	if s.initialized {
-		return nil
-	}
-	s.initialized = true
+type postgresDriver struct{}
 
-	// 初始化日志器
-	if options.Logger == nil {
-		options.Logger = logger.Default()
-	}
-
-	s.Logger = options.Logger
-	options.Logger.Info(logger.NewFields().WithMessage("start open postgresDb database").WithData(options.DataSource))
-
-	// 连接数据库
-	dataSource := options.DataSource
-	db, openErr := gorm.Open(postgres.Open(dataSource), &gorm.Config{})
-	if openErr != nil {
-		return fmt.Errorf("open postgresDb database error: %w", openErr)
-	}
-	db.Logger = database.NewDBLogger(options.Logger)
-
-	// 设置数据库连接池
-	sqlDb, dbe := db.DB()
-	if dbe != nil {
-		return fmt.Errorf("get postgresDb database error: %w", dbe)
-	}
-	s.BaseDatabaseImplement.ParseDatabaseOptions(sqlDb, options)
-	s.BaseDatabaseImplement.SetRandCommand("random()")
-	s.BaseDatabaseImplement.SetDriverName(DriverName)
-
-	// 连接成功
-	s.BaseDatabaseImplement.Db, s.BaseDatabaseImplementV2.Db = db, db
-	s.Logger.Info(logger.NewFields().WithMessage("successfully open postgresDb database").WithData(dataSource))
-
-	// 注册退出事件
-	exit.RegisterExitEvent(func(_ os.Signal) {
-		_ = sqlDb.Close()
-		fmt.Println("closed postgres database")
-	}, "CLOSE_POSTGRES_DB_CONN")
-	return nil
+func (p postgresDriver) DriverName() string {
+	return DriverName
 }
 
-// NewPostgresDb creates a new postgres database instance.
-//
-// Deprecated: Use NewPostgresSQLv2 instead.
-func NewPostgresDb(config Config, models ...any) (db database.Database, err error) {
-	postgresDb := &postgresDb{}
-	if initErr := postgresDb.Init(convertConfigToOptions(config)); initErr != nil {
-		return nil, fmt.Errorf("init postgresDb database error: %w", initErr)
-	} else if migrateErr := postgresDb.Migrate(models...); migrateErr != nil {
-		return nil, fmt.Errorf("migrate postgresDb database error: %w", migrateErr)
-	} else {
-		return postgresDb, nil
-	}
+func (p postgresDriver) BuildDataSource(dsn database.DSN) string {
+	dataSource := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=%s",
+		dsn.Host, dsn.Username, dsn.Password, dsn.Database, dsn.Port,
+		shortcut.Ternary(dsn.Location == "", "Asia/Shanghai", dsn.Location),
+	)
+	dataSource += shortcut.Ternary(dsn.Timeout > 0, fmt.Sprintf("connect_timeout=%d", dsn.Timeout), "")
+
+	return dataSource
 }
 
-// NewPostgresSQLv2 creates a new postgres database instance.
-func NewPostgresSQLv2(config Config, models ...any) (db database.DatabaseV2, err error) {
-	postgresDb := &postgresDb{}
-	if initErr := postgresDb.Init(convertConfigToOptions(config)); initErr != nil {
-		return nil, fmt.Errorf("init postgresDb database error: %w", initErr)
+func (p postgresDriver) Connect(_ context.Context, option database.Options) (database.Database, error) {
+	if option.Logger == nil {
+		option.Logger = logger.Default()
 	}
 
-	if migrateErr := postgresDb.Migrate(models...); migrateErr != nil {
-		return nil, fmt.Errorf("migrate postgresDb database error: %w", migrateErr)
+	db, connectErr := gorm.Open(postgres.Open(option.DataSource), &gorm.Config{
+		Logger: database.NewDBLogger(option.Logger),
+	})
+	if connectErr != nil {
+		return nil, connectErr
 	}
 
-	return postgresDb, nil
-}
-
-func NewWithLogger(config Config, logger logger.Logger, models ...any) (db database.DatabaseV2, err error) {
-	postgresDb := &postgresDb{}
-	opts := convertConfigToOptions(config)
-	opts.Logger = logger
-	if initErr := postgresDb.Init(opts); initErr != nil {
-		return nil, fmt.Errorf("init postgresDb database error: %w", initErr)
+	if applyErr := database.ApplyCommonOptions(db, option); applyErr != nil {
+		return nil, applyErr
 	}
 
-	if migrateErr := postgresDb.Migrate(models...); migrateErr != nil {
-		return nil, fmt.Errorf("migrate postgresDb database error: %w", migrateErr)
-	}
-
-	return postgresDb, nil
+	return database.NewBaseDatabaseImplement(db), nil
 }
